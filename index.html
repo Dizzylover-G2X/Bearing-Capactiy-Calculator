@@ -251,7 +251,12 @@
         const alpha = 1 + 0.3 * (B / L);
         const beta = 0.5 - 0.1 * (B / L);
 
-        // 1. 전반전단파괴
+        // 보정 강도 정수 산정 (국부 및 수정식용)
+        const c_local = (2.0 / 3.0) * c_in;
+        const phi_rad = phi_in * (Math.PI / 180);
+        const phi_local = Math.atan((2.0 / 3.0) * Math.tan(phi_rad)) * (180 / Math.PI);
+
+        // 1. 전반전단파괴 (원래 내부마찰각 phi_in 사용)
         const f_gen = interpolateFactors(phi_in, generalTable);
         const term1_g = alpha * c_in * f_gen.Nc;
         const term2_g = q * f_gen.Nq;
@@ -259,19 +264,16 @@
         const q_ult_g = term1_g + term2_g + term3_g;
         const q_all_g = q_ult_g / 3.0;
 
-        // 2. 국부전단파괴
-        const c_local = (2.0 / 3.0) * c_in;
-        const phi_rad = phi_in * (Math.PI / 180);
-        const phi_local = Math.atan((2.0 / 3.0) * Math.tan(phi_rad)) * (180 / Math.PI);
-        const f_loc = interpolateFactors(phi_local, localTable);
+        // 2. 국부전단파괴 (원래 내부마찰각 phi_in 사용하되 점착력 및 계수 테이블은 localTable 적용)
+        const f_loc = interpolateFactors(phi_in, localTable);
         const term1_l = alpha * c_local * f_loc.Nc;
         const term2_l = q * f_loc.Nq;
         const term3_l = beta * gamma2_eff * B * f_loc.Ng;
         const q_ult_l = term1_l + term2_l + term3_l;
         const q_all_l = q_ult_l / 3.0;
 
-        // 3. Terzaghi 수정 지지력 공식
-        const f_mod = interpolateFactors(phi_local, modifiedTable);
+        // 3. Terzaghi 수정 지지력 공식 (원래 내부마찰각 phi_in 사용하되 점착력 c_local 및 modifiedTable 적용)
+        const f_mod = interpolateFactors(phi_in, modifiedTable);
         const term1_m = alpha * c_local * f_mod.Nc;
         const term2_m = q * f_mod.Nq;
         const term3_m = beta * gamma2_eff * B * f_mod.Ng;
@@ -342,7 +344,7 @@
                 </table>
             </div>
 
-            <div class="section-title">[검증 2] Terzaghi 전반전단파괴 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
+            <div class="section-title">[검증 2] Terzaghi 전반전단파괴 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
             <div class="table-container">
                 <table class="result-table" style="font-size: 0.75em;">
                     <tr>
@@ -367,9 +369,12 @@
                     </tr>
                 </table>
             </div>
+            - 항별 세부내역: (${alpha.toFixed(2)} &times; ${c_in.toFixed(2)} &times; ${f_gen.Nc.toFixed(2)}) + (${q.toFixed(2)} &times; ${f_gen.Nq.toFixed(2)}) + (${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_gen.Ng.toFixed(2)})<br>
+            = ${term1_g.toFixed(2)} + ${term2_g.toFixed(2)} + ${term3_g.toFixed(2)} = <strong>${q_ult_g.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_g.toFixed(2)} kN/m²</strong>)<br><br>
 
-            <div class="section-title">[검증 3] Terzaghi 국부전단파괴 지지력계수 표 (적용 &Phi;' = ${phi_local.toFixed(2)}°)</div>
-            <div class="table-container">
+            <div class="section-title">[검증 3] Terzaghi 국부전단파괴 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
+            - 보정 강도 정수: c' = (2/3) &times; ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, 참조 &Phi;' = atan((2/3)&times;tan(${phi_in.toFixed(2)}°)) = <strong>${phi_local.toFixed(2)}°</strong>
+            <div class="table-container" style="margin-top:8px;">
                 <table class="result-table" style="font-size: 0.75em;">
                     <tr>
                         <th>계수</th>
@@ -393,9 +398,12 @@
                     </tr>
                 </table>
             </div>
+            - 항별 세부내역: (${alpha.toFixed(2)} &times; ${c_local.toFixed(2)} &times; ${f_loc.Nc.toFixed(2)}) + (${q.toFixed(2)} &times; ${f_loc.Nq.toFixed(2)}) + (${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_loc.Ng.toFixed(2)})<br>
+            = ${term1_l.toFixed(2)} + ${term2_l.toFixed(2)} + ${term3_l.toFixed(2)} = <strong>${q_ult_l.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_l.toFixed(2)} kN/m²</strong>)<br><br>
 
-            <div class="section-title">[검증 4] Terzaghi 수정 지지력계수 표 (적용 &Phi;' = ${phi_local.toFixed(2)}°)</div>
-            <div class="table-container">
+            <div class="section-title">[검증 4] Terzaghi 수정 지지력공식 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
+            - 보정 강도 정수: c' = (2/3) &times; ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, 참조 &Phi;' = atan((2/3)&times;tan(${phi_in.toFixed(2)}°)) = <strong>${phi_local.toFixed(2)}°</strong>
+            <div class="table-container" style="margin-top:8px;">
                 <table class="result-table" style="font-size: 0.75em;">
                     <tr>
                         <th>계수</th>
@@ -419,14 +427,8 @@
                     </tr>
                 </table>
             </div>
-
-            <div class="section-title">[검증 5] Terzaghi 수정 지지력공식 최종 결과</div>
-            - 보정 강도 정수: c' = (2/3) &times; ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, &Phi;' = atan((2/3)&times;tan(${phi_in.toFixed(2)}°)) = <strong>${phi_local.toFixed(2)}°</strong><br>
-            - ① 점착력 항 (&alpha; &times; c' &times; N<sub>c</sub>''): ${alpha.toFixed(2)} &times; ${c_local.toFixed(2)} &times; ${f_mod.Nc.toFixed(2)} = <strong>${term1_m.toFixed(2)} kN/m²</strong><br>
-            - ② 상재하중 항 (q &times; N<sub>q</sub>''): ${q.toFixed(2)} &times; ${f_mod.Nq.toFixed(2)} = <strong>${term2_m.toFixed(2)} kN/m²</strong><br>
-            - ③ 중량 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>''): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mod.Ng.toFixed(2)} = <strong>${term3_m.toFixed(2)} kN/m²</strong><br><br>
-            - 극한지지력 (q<sub>ult</sub>): ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong><br>
-            - 허용지지력 (q<sub>all</sub>, FS=3): ${q_ult_m.toFixed(2)} / 3 = <strong>${q_all_m.toFixed(2)} kN/m²</strong>
+            - 항별 세부내역: (${alpha.toFixed(2)} &times; ${c_local.toFixed(2)} &times; ${f_mod.Nc.toFixed(2)}) + (${q.toFixed(2)} &times; ${f_mod.Nq.toFixed(2)}) + (${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mod.Ng.toFixed(2)})<br>
+            = ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_m.toFixed(2)} kN/m²</strong>)
         `;
     }
 </script>
