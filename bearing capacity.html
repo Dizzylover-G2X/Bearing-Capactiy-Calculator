@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>기초 지지력 계산기</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2, h3 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: center; }
+        th { background-color: #ecf0f1; }
+        input { width: 80px; padding: 5px; text-align: center; }
+        button { width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #2980b9; }
+        .result-box { margin-top: 20px; padding: 15px; background-color: #e8f8f5; border-left: 5px solid #1abc9c; font-size: 1.1em; }
+    </style>
+	<link rel="manifest" href="manifest.json">
+	<meta name="theme-color" content="#c8c8c8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<div class="container">
+    <h2>◎ 기초 지지력 산정 (Terzaghi 전반전단파괴)</h2>
+    
+    <h3>1. 설계자료 입력</h3>
+    <table>
+        <tr>
+            <th>기초 길이 L (m)</th>
+            <th>기초 폭 B (m)</th>
+            <th>근입 깊이 Df (m)</th>
+            <th>점착력 c (kN/m²)</th>
+            <th>상재하중 q (kN/m²)</th>
+            <th>단위중량 γ2 (kN/m²)</th>
+        </tr>
+        <tr>
+            <td><input type="number" id="L" value="2.00"></td>
+            <td><input type="number" id="B" value="1.82"></td>
+            <td><input type="number" id="Df" value="2.20"></td>
+            <td><input type="number" id="c" value="3.0"></td>
+            <td><input type="number" id="q" value="39.6"></td>
+            <td><input type="number" id="gamma2" value="14.48"></td>
+        </tr>
+    </table>
+    <p>※ 현재 프로토타입은 내부마찰각(Φ) = 25도를 기준으로 세팅되어 있습니다 (Nc=25.1, Nq=12.7, Nγ=9.7).</p>
+
+    <button onclick="calculateBearingCapacity()">지지력 계산하기</button>
+
+    <div id="result" class="result-box" style="display:none;"></div>
+</div>
+
+<script>
+    function calculateBearingCapacity() {
+        // 1. 입력값 가져오기
+        const L = parseFloat(document.getElementById('L').value);
+        const B = parseFloat(document.getElementById('B').value);
+        const c = parseFloat(document.getElementById('c').value);
+        const q = parseFloat(document.getElementById('q').value);
+        const gamma2 = parseFloat(document.getElementById('gamma2').value);
+        
+        // 2. 형상계수 계산 (직사각형 기준)
+        const alpha = 1 + 0.3 * (B / L);
+        const beta = 0.5 - 0.1 * (B / L);
+
+        // 3. 지지력 계수 (Φ=25도 고정값)
+        const Nc = 25.1;
+        const Nq = 12.7;
+        const Ng = 9.7;
+
+        // 4. 극한지지력 계산 (q_ult = α*c*Nc + q*Nq + β*γ2*B*Nγ)
+        const term1 = alpha * c * Nc;
+        const term2 = q * Nq;
+        const term3 = beta * gamma2 * B * Ng;
+        const q_ult = term1 + term2 + term3;
+
+        // 5. 허용지지력 계산 (안전율 3)
+        const q_all = q_ult / 3;
+
+        // 6. 화면에 결과 출력
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <strong>[형상계수 산정]</strong><br>
+            α = ${alpha.toFixed(2)}, β = ${beta.toFixed(2)}<br><br>
+            <strong>[Terzaghi 극한지지력]</strong><br>
+            q_ult = ${term1.toFixed(1)} + ${term2.toFixed(1)} + ${term3.toFixed(1)} = <strong>${q_ult.toFixed(1)} kN/m²</strong><br><br>
+            <strong>[허용지지력 (FS=3 적용)]</strong><br>
+            q_all = ${q_ult.toFixed(1)} / 3 = <strong>${q_all.toFixed(2)} kN/m²</strong>
+        `;
+    }
+</script>
+
+<script>
+	if ('serviceWorker' in navigator) {
+	navigator.serviceWorker.register('./sw.js');
+	}
+</script>
+
+</body>
+
+</html>
