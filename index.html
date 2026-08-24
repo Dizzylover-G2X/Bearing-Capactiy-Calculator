@@ -210,23 +210,23 @@
         // 유효 상재하중(q) 산정
         const q = Df * gamma1_eff;
 
-        // 기초형상계수 산정 (직사각형 기초)[cite: 1]
+        // 기초형상계수 산정 (직사각형 기초)
         const alpha = 1 + 0.3 * (B / L);
         const beta = 0.5 - 0.1 * (B / L);
 
-        // 지지력계수 자동 보간 산정[cite: 1]
+        // 지지력계수 자동 보간 산정
         const factors = interpolateFactors(phi);
         const Nc = factors.Nc;
         const Nq = factors.Nq;
         const Ng = factors.Ng;
 
-        // 극한지지력 항별 계산[cite: 1]
+        // 극한지지력 항별 계산
         const term1 = alpha * c * Nc;
         const term2 = q * Nq;
         const term3 = beta * gamma2_eff * B * Ng;
         const q_ult = term1 + term2 + term3;
 
-        // 허용지지력 산정 (안전율 FS = 3)[cite: 1]
+        // 허용지지력 산정 (안전율 FS = 3)
         const q_all = q_ult / 3;
 
         // 결과 출력 구성 (표 형식 적용)
@@ -240,7 +240,7 @@
             <strong>[2] 유효 상재하중(q) 산정</strong><br>
             - q = Df(${Df.toFixed(2)}) × γ1_eff(${gamma1_eff.toFixed(2)}) = <strong>${q.toFixed(2)} kN/m²</strong><br><br>
 
-            <strong>[3] Terzaghi 기초형상계수 산정 (직사각형)</strong>[cite: 1]<br>
+            <strong>[3] Terzaghi 기초형상계수 산정 (직사각형)</strong><br>
             <div class="table-container">
                 <table class="result-table">
                     <tr>
@@ -270,7 +270,7 @@
                 </table>
             </div>
 
-            <strong>[4] 지지력계수 자동 보간 검증 (Φ = ${phi.toFixed(2)}°)</strong>[cite: 1]<br>
+            <strong>[4] 지지력계수 자동 보간 검증 (Φ = ${phi.toFixed(2)}°)</strong><br>
             <div class="table-container">
                 <table class="result-table" style="font-size: 0.75em;">
                     <tr>
@@ -296,12 +296,12 @@
                 </table>
             </div>
 
-            <strong>[5] Terzaghi 극한지지력 항별 세부내역</strong>[cite: 1]<br>
+            <strong>[5] Terzaghi 극한지지력 항별 세부내역</strong><br>
             - ① 점착력 항 (α·c·Nc): ${alpha.toFixed(2)} × ${c.toFixed(2)} × ${Nc.toFixed(2)} = <strong>${term1.toFixed(2)} kN/m²</strong><br>
             - ② 상재하중 항 (q·Nq): ${q.toFixed(2)} × ${Nq.toFixed(2)} = <strong>${term2.toFixed(2)} kN/m²</strong><br>
             - ③ 중량 항 (β·γ2·B·Nγ): ${beta.toFixed(2)} × ${gamma2_eff.toFixed(2)} × ${B.toFixed(2)} × ${Ng.toFixed(2)} = <strong>${term3.toFixed(2)} kN/m²</strong><br><br>
 
-            <strong>[6] 최종 지지력 검토 결과</strong>[cite: 1]<br>
+            <strong>[6] 최종 지지력 검토 결과</strong><br>
             - 극한지지력 (q_ult): <strong>${q_ult.toFixed(2)} kN/m²</strong><br>
             - 허용지지력 (q_all, FS=3): <strong>${q_all.toFixed(2)} kN/m²</strong>
         `;
@@ -309,7 +309,7 @@
 </script>
 
 <script>
-    if ('serviceWatcher' in navigator || 'serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js');
     }
 </script>
