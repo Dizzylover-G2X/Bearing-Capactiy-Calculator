@@ -36,3 +36,17 @@ export const modifiedTable = [
     { phi: 36, Nc: 42.2, Nq: 31.6, Ng: 30.5 },
     { phi: 40, Nc: 95.7, Nq: 81.2, Ng: 114.0 }
 ];
+
+// 구조계산서 기준 Meyerhof 지지력계수 표
+export const meyTable = [
+    { phi: 0,  Nc: 5.14, Nq: 1.0,   Ng: 0.0   },
+    { phi: 5,  Nc: 6.49, Nq: 1.57,  Ng: 0.07  },
+    { phi: 10, Nc: 8.35, Nq: 2.47,  Ng: 0.37  },
+    { phi: 15, Nc: 11.0, Nq: 3.94,  Ng: 1.13  },
+    { phi: 20, Nc: 14.8, Nq: 6.40,  Ng: 2.87  },
+    { phi: 25, Nc: 20.7, Nq: 10.66, Ng: 6.77  },
+    { phi: 30, Nc: 30.1, Nq: 18.40, Ng: 15.67 },
+    { phi: 35, Nc: 46.1, Nq: 33.30, Ng: 37.15 },
+    { phi: 40, Nc: 75.3, Nq: 64.20, Ng: 93.69 },
+    { phi: 45, Nc: 133.9,Nq: 134.9, Ng: 254.5 }
+];
