@@ -156,7 +156,7 @@
 </div>
 
 <script>
-    let currentMode = 'general'; // 기본값 전반전단파괴
+    let currentMode = 'general';
 
     function setMode(mode) {
         currentMode = mode;
@@ -171,11 +171,10 @@
         } else {
             locBtn.classList.add('active');
             genBtn.classList.remove('active');
-            desc.innerText = "※ 모드: 국부전단파괴 (Local Shear Failure - c'=2/3c, Φ'=tan⁻¹(2/3 tanΦ))[cite: 16]";
+            desc.innerText = "※ 모드: 국부전단파괴 (Local Shear Failure - c'=2/3c, Φ'=tan⁻¹(2/3 tanΦ))";
         }
     }
 
-    // 전반전단파괴 지지력계수 테이블
     const generalTable = [
         { phi: 0,  Nc: 5.7,   Nq: 1.0,   Ng: 0.0   },
         { phi: 5,  Nc: 7.3,   Nq: 1.6,   Ng: 0.5   },
@@ -189,7 +188,6 @@
         { phi: 45, Nc: 172.3, Nq: 173.3, Ng: 297.5 }
     ];
 
-    // 국부전단파괴 지지력계수 테이블 (구조계산서-국부.pdf 기준)[cite: 16]
     const localTable = [
         { phi: 0,  Nc: 5.7,   Nq: 1.0,   Ng: 0.0   },
         { phi: 5,  Nc: 6.7,   Nq: 1.4,   Ng: 0.2   },
@@ -238,22 +236,20 @@
         
         const gamma_w = 9.807;
 
-        // 국부전단파괴 모드일 때 전단강도 정수 변환 적용[cite: 16]
         let c_eff = c_in;
         let phi_eff = phi_in;
         let shearLog = "";
 
         if (currentMode === 'local') {
-            c_eff = (2.0 / 3.0) * c_in;[cite: 16]
+            c_eff = (2.0 / 3.0) * c_in;
             let phiRad = phi_in * (Math.PI / 180);
-            let tanPhiPrime = (2.0 / 3.0) * Math.tan(phiRad);[cite: 16]
-            phi_eff = Math.atan(tanPhiPrime) * (180 / Math.PI);[cite: 16]
+            let tanPhiPrime = (2.0 / 3.0) * Math.tan(phiRad);
+            phi_eff = Math.atan(tanPhiPrime) * (180 / Math.PI);
             shearLog = `<br><strong>[국부전단파괴 보정 적용]</strong><br>` +
-                       `- 점착력 c' = 2/3 × c = ${(2/3).toFixed(3)} × ${c_in.toFixed(2)} = <strong>${c_eff.toFixed(2)} kN/m²</strong>[cite: 16]<br>` +
-                       `- 내부마찰각 Φ' = tan⁻¹(2/3 × tanΦ) = <strong>${phi_eff.toFixed(2)}°</strong> (입력: ${phi_in.toFixed(2)}°)[cite: 16]<br>`;
+                       `- 점착력 c' = 2/3 × c = 0.667 × ${c_in.toFixed(2)} = <strong>${c_eff.toFixed(2)} kN/m²</strong><br>` +
+                       `- 내부마찰각 Φ' = tan⁻¹(2/3 × tanΦ) = <strong>${phi_eff.toFixed(2)}°</strong> (입력: ${phi_in.toFixed(2)}°)<br>`;
         }
 
-        // 상부층 단위중량 보간
         let gamma1_eff = gamma1_in;
         let log1 = "";
         const gamma1_sub = gamma1_in - gamma_w;
@@ -268,7 +264,6 @@
             log1 = "지하수위 지표~Df 사이 위치: 1차식 선형 보간 적용";
         }
 
-        // 지지층 단위중량 보간
         let gamma2_eff = gamma2_in;
         let log2 = "";
         const gamma2_sub = gamma2_in - gamma_w;
@@ -284,30 +279,24 @@
             log2 = "지하수위 Df~Df+B 사이 위치: 1차식 선형 보간 적용";
         }
 
-        // 유효 상재하중(q) 산정
         const q = Df * gamma1_eff;
 
-        // 기초형상계수 산정 (직사각형 기초)
         const alpha = 1 + 0.3 * (B / L);
         const beta = 0.5 - 0.1 * (B / L);
 
-        // 지지력계수 자동 보간 산정 (모드에 따라 테이블 선택)
         const activeTable = (currentMode === 'local') ? localTable : generalTable;
         const factors = interpolateFactors(phi_eff, activeTable);
         const Nc = factors.Nc;
         const Nq = factors.Nq;
         const Ng = factors.Ng;
 
-        // 극한지지력 항별 계산
         const term1 = alpha * c_eff * Nc;
         const term2 = q * Nq;
         const term3 = beta * gamma2_eff * B * Ng;
         const q_ult = term1 + term2 + term3;
 
-        // 허용지지력 산정 (안전율 FS = 3)
         const q_all = q_ult / 3;
 
-        // 테이블 렌더링용 데이터
         const tableTitle = (currentMode === 'local') ? "Terzaghi의 지지력계수 (국부전단파괴)" : "Terzaghi의 지지력계수 (전반전단파괴)";
 
         const resultDiv = document.getElementById('result');
