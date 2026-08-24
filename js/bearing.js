@@ -1,4 +1,4 @@
-import { generalTable, localTable, modifiedTable } from './data.js';
+import { generalTable, localTable, modifiedTable, meyTable } from './data.js';
 
 function interpolateFactors(phiInput, table) {
     if (phiInput <= table[0].phi) {
@@ -66,7 +66,6 @@ export function initBearingModule(container) {
         <div id="result" class="result-box"></div>
     `;
 
-    // 입력값 포커스 아웃 시 소수점 둘째 자리 자동 포맷팅
     container.querySelectorAll('.input-grid input').forEach(input => {
         input.addEventListener('blur', function() {
             let val = parseFloat(this.value);
@@ -128,7 +127,7 @@ function calculateAllBearingCapacities() {
     const phi_rad = phi_in * (Math.PI / 180);
     const phi_local = Math.atan((2.0 / 3.0) * Math.tan(phi_rad)) * (180 / Math.PI);
 
-    // 1. 전반전단파괴
+    // 1. 전반전단파괴 (Terzaghi)
     const f_gen = interpolateFactors(phi_in, generalTable);
     const term1_g = alpha * c_in * f_gen.Nc;
     const term2_g = q * f_gen.Nq;
@@ -136,7 +135,7 @@ function calculateAllBearingCapacities() {
     const q_ult_g = term1_g + term2_g + term3_g;
     const q_all_g = q_ult_g / 3.0;
 
-    // 2. 국부전단파괴
+    // 2. 국부전단파괴 (Terzaghi)
     const f_loc = interpolateFactors(phi_in, localTable);
     const term1_l = alpha * c_local * f_loc.Nc;
     const term2_l = q * f_loc.Nq;
@@ -151,6 +150,49 @@ function calculateAllBearingCapacities() {
     const term3_m = beta * gamma2_eff * B * f_mod.Ng;
     const q_ult_m = term1_m + term2_m + term3_m;
     const q_all_m = q_ult_m / 3.0;
+
+    // 4. Meyerhof 지지력 공식 (구조물기초설계기준 2018 기준 적용)
+    const f_mey = interpolateFactors(phi_in, meyTable);
+    const N_phi = Math.pow(Math.tan((45 + phi_in / 2) * (Math.PI / 180)), 2);
+    const D_over_B = Df / B;
+
+    let Fcs, Fqs, Fgs, Fcd, Fqd, Fgd;
+
+    // 형상계수 산정 (구조물기초설계기준 해설 식 4.2.8)
+    Fcs = 1.0 + 0.2 * N_phi * (B / L);
+    if (phi_in === 0) {
+        Fqs = 1.0;
+        Fgs = 1.0;
+    } else if (phi_in <= 10) {
+        let ratio = phi_in / 10.0;
+        let sq_10 = 1.0 + 0.1 * N_phi * (B / L);
+        Fqs = 1.0 + ratio * (sq_10 - 1.0);
+        Fgs = Fqs;
+    } else {
+        Fqs = 1.0 + 0.1 * N_phi * (B / L);
+        Fgs = Fqs;
+    }
+
+    // 심도계수 산정 (구조물기초설계기준 해설 식 4.2.9)
+    Fcd = 1.0 + 0.2 * Math.sqrt(N_phi) * D_over_B;
+    if (phi_in === 0) {
+        Fqd = 1.0;
+        Fgd = 1.0;
+    } else if (phi_in <= 10) {
+        let ratio = phi_in / 10.0;
+        let dq_10 = 1.0 + 0.1 * Math.sqrt(N_phi) * D_over_B;
+        Fqd = 1.0 + ratio * (dq_10 - 1.0);
+        Fgd = 1.0;
+    } else {
+        Fqd = 1.0 + 0.1 * Math.sqrt(N_phi) * D_over_B;
+        Fgd = 1.0;
+    }
+
+    const term1_mey = c_in * f_mey.Nc * Fcs * Fcd;
+    const term2_mey = q * f_mey.Nq * Fqs * Fqd;
+    const term3_mey = 0.5 * gamma2_eff * B * f_mey.Ng * Fgs * Fgd;
+    const q_ult_mey = term1_mey + term2_mey + term3_mey;
+    const q_all_mey = q_ult_mey / 3.0;
 
     const resultDiv = document.getElementById('result');
     resultDiv.style.display = 'block';
@@ -177,6 +219,11 @@ function calculateAllBearingCapacities() {
                     <td><strong>Terzaghi 수정 지지력공식</strong></td>
                     <td>${q_ult_m.toFixed(2)} kN/m²</td>
                     <td style="font-weight:bold; color:#2980b9;">${q_all_m.toFixed(2)} kN/m²</td>
+                </tr>
+                <tr>
+                    <td><strong>Meyerhof 지지력공식</strong></td>
+                    <td>${q_ult_mey.toFixed(2)} kN/m²</td>
+                    <td style="font-weight:bold; color:#e67e22;">${q_all_mey.toFixed(2)} kN/m²</td>
                 </tr>
             </table>
         </div>
@@ -315,6 +362,52 @@ function calculateAllBearingCapacities() {
             • 상재하중 항 (q &times; N<sub>q</sub>''): ${q.toFixed(2)} &times; ${f_mod.Nq.toFixed(2)} = <strong>${term2_m.toFixed(2)} kN/m²</strong><br>
             • 기초폭 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>''): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mod.Ng.toFixed(2)} = <strong>${term3_m.toFixed(2)} kN/m²</strong>
         </div>
-        - 극한지지력 (q<sub>ult</sub>): ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_m.toFixed(2)} kN/m²</strong>)
+        - 극한지지력 (q<sub>ult</sub>): ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_m.toFixed(2)} kN/m²</strong>)<br><br>
+
+        <div class="section-title">[검증 5] Meyerhof 지지력공식 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
+        <div class="table-container">
+            <table class="result-table" style="font-size: 0.75em;">
+                <tr>
+                    <th>계수</th>
+                    <th>0°</th><th>5°</th><th>10°</th><th>15°</th><th>20°</th><th>25°</th><th>30°</th><th>35°</th><th>40°</th><th>45°</th>
+                    <th style="background:#e8f8f5;">적용값</th>
+                </tr>
+                <tr>
+                    <td><strong>N<sub>c</sub></strong></td>
+                    <td>5.14</td><td>6.49</td><td>8.35</td><td>11.0</td><td>14.8</td><td>20.7</td><td>30.1</td><td>46.1</td><td>75.3</td><td>133.9</td>
+                    <td style="background:#e8f8f5; font-weight:bold; color:#e67e22;">${f_mey.Nc.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <td><strong>N<sub>q</sub></strong></td>
+                    <td>1.0</td><td>1.57</td><td>2.47</td><td>3.94</td><td>6.40</td><td>10.66</td><td>18.40</td><td>33.30</td><td>64.20</td><td>134.9</td>
+                    <td style="background:#e8f8f5; font-weight:bold; color:#e67e22;">${f_mey.Nq.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <td><strong>N<sub>&gamma;</sub></strong></td>
+                    <td>0.0</td><td>0.07</td><td>0.37</td><td>1.13</td><td>2.87</td><td>6.77</td><td>15.67</td><td>37.15</td><td>93.69</td><td>254.5</td>
+                    <td style="background:#e8f8f5; font-weight:bold; color:#e67e22;">${f_mey.Ng.toFixed(2)}</td>
+                </tr>
+            </table>
+        </div>
+        
+        - <strong>형상계수 산정 식 및 적용값 (구조물기초설계기준 해설 식 4.2.8):</strong>
+        <div class="calc-step">
+            • F<sub>cs</sub> = 1 + 0.2 &times; N<sub>&phi;</sub> &times; (B / L) = 1 + 0.2 &times; ${N_phi.toFixed(2)} &times; (${B.toFixed(2)} / ${L.toFixed(2)}) = <strong>${Fcs.toFixed(2)}</strong><br>
+            • F<sub>qs</sub> = F<sub>&gamma;s</sub> = 1 + 0.1 &times; N<sub>&phi;</sub> &times; (B / L) = 1 + 0.1 &times; ${N_phi.toFixed(2)} &times; (${B.toFixed(2)} / ${L.toFixed(2)}) = <strong>${Fqs.toFixed(2)}</strong>
+        </div>
+
+        - <strong>심도계수 산정 식 및 적용값 (구조물기초설계기준 해설 식 4.2.9):</strong>
+        <div class="calc-step">
+            • F<sub>cd</sub> = 1 + 0.2 &times; &radic;N<sub>&phi;</sub> &times; (D<sub>f</sub> / B) = 1 + 0.2 &times; ${Math.sqrt(N_phi).toFixed(2)} &times; (${Df.toFixed(2)} / ${B.toFixed(2)}) = <strong>${Fcd.toFixed(2)}</strong><br>
+            • F<sub>qd</sub> = F<sub>&gamma;d</sub> = 1 + 0.1 &times; &radic;N<sub>&phi;</sub> &times; (D<sub>f</sub> / B) = 1 + 0.1 &times; ${Math.sqrt(N_phi).toFixed(2)} &times; (${Df.toFixed(2)} / ${B.toFixed(2)}) = <strong>${Fqd.toFixed(2)}</strong>
+        </div>
+
+        - 항별 세부내역:
+        <div class="calc-step">
+            • 점착력 항 (c &times; N<sub>c</sub> &times; F<sub>cs</sub> &times; F<sub>cd</sub>): ${c_in.toFixed(2)} &times; ${f_mey.Nc.toFixed(2)} &times; ${Fcs.toFixed(2)} &times; ${Fcd.toFixed(2)} = <strong>${term1_mey.toFixed(2)} kN/m²</strong><br>
+            • 상재하중 항 (q &times; N<sub>q</sub> &times; F<sub>qs</sub> &times; F<sub>qd</sub>): ${q.toFixed(2)} &times; ${f_mey.Nq.toFixed(2)} &times; ${Fqs.toFixed(2)} &times; ${Fqd.toFixed(2)} = <strong>${term2_mey.toFixed(2)} kN/m²</strong><br>
+            • 기초폭 항 (0.5 &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub> &times; F<sub>&gamma;s</sub> &times; F<sub>&gamma;d</sub>): 0.5 &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mey.Ng.toFixed(2)} &times; ${Fgs.toFixed(2)} &times; ${Fgd.toFixed(2)} = <strong>${term3_mey.toFixed(2)} kN/m²</strong>
+        </div>
+        - 극한지지력 (q<sub>ult</sub>): ${term1_mey.toFixed(2)} + ${term2_mey.toFixed(2)} + ${term3_mey.toFixed(2)} = <strong>${q_ult_mey.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_mey.toFixed(2)} kN/m²</strong>)
     `;
 }
