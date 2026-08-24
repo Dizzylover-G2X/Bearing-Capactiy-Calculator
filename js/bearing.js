@@ -59,9 +59,13 @@ export function initBearingModule(container) {
                 <label>지지층 단위중량 γ2 (kN/m³)</label>
                 <input type="number" id="gamma2" value="18.00" step="0.01">
             </div>
+            <div class="input-group" style="background-color: #e8f8f5; border-color: #1abc9c;">
+                <label style="color: #16a085;">허용안전율 FS</label>
+                <input type="number" id="FS" value="3.00" step="0.01">
+            </div>
         </div>
         
-        <p style="font-size: 0.85em; color: #555;">※ 물의 단위중량 = 9.807 kN/m³ 적용. 안전율 FS = 3 적용.</p>
+        <p style="font-size: 0.85em; color: #555;">※ 물의 단위중량 = 9.807 kN/m³ 적용.</p>
         <button class="action-btn" id="calc-bearing-btn">모든 공식 한 번에 비교 계산하기</button>
         <div id="result" class="result-box"></div>
     `;
@@ -87,6 +91,7 @@ function calculateAllBearingCapacities() {
     const phi_in = parseFloat(document.getElementById('phi').value);
     const gamma1_in = parseFloat(document.getElementById('gamma1').value);
     const gamma2_in = parseFloat(document.getElementById('gamma2').value);
+    const FS = parseFloat(document.getElementById('FS').value);
     
     const gamma_w = 9.807;
 
@@ -133,7 +138,7 @@ function calculateAllBearingCapacities() {
     const term2_g = q * f_gen.Nq;
     const term3_g = beta * gamma2_eff * B * f_gen.Ng;
     const q_ult_g = term1_g + term2_g + term3_g;
-    const q_all_g = q_ult_g / 3.0;
+    const q_all_g = q_ult_g / FS;
 
     // 2. 국부전단파괴 (Terzaghi)
     const f_loc = interpolateFactors(phi_in, localTable);
@@ -141,7 +146,7 @@ function calculateAllBearingCapacities() {
     const term2_l = q * f_loc.Nq;
     const term3_l = beta * gamma2_eff * B * f_loc.Ng;
     const q_ult_l = term1_l + term2_l + term3_l;
-    const q_all_l = q_ult_l / 3.0;
+    const q_all_l = q_ult_l / FS;
 
     // 3. Terzaghi 수정 지지력 공식
     const f_mod = interpolateFactors(phi_in, modifiedTable);
@@ -149,7 +154,7 @@ function calculateAllBearingCapacities() {
     const term2_m = q * f_mod.Nq;
     const term3_m = beta * gamma2_eff * B * f_mod.Ng;
     const q_ult_m = term1_m + term2_m + term3_m;
-    const q_all_m = q_ult_m / 3.0;
+    const q_all_m = q_ult_m / FS;
 
     // 4. Meyerhof 지지력 공식 (구조물기초설계기준 해설 반영)
     const f_mey = interpolateFactors(phi_in, meyTable);
@@ -200,12 +205,12 @@ function calculateAllBearingCapacities() {
     const term2_mey = q * f_mey.Nq * Fqs * Fqd;
     const term3_mey = 0.5 * gamma2_eff * B * f_mey.Ng * Fgs * Fgd;
     const q_ult_mey = term1_mey + term2_mey + term3_mey;
-    const q_all_mey = q_ult_mey / 3.0;
+    const q_all_mey = q_ult_mey / FS;
 
     const resultDiv = document.getElementById('result');
     resultDiv.style.display = 'block';
     resultDiv.innerHTML = `
-        <div class="section-title">[종합 비교 요약 결과] (안전율 FS = 3)</div>
+        <div class="section-title">[종합 비교 요약 결과] (적용 안전율 FS = ${FS.toFixed(2)})</div>
         <div class="table-container">
             <table class="summary-table">
                 <tr>
@@ -302,7 +307,7 @@ function calculateAllBearingCapacities() {
             • 상재하중 항 (q &times; N<sub>q</sub>): ${q.toFixed(2)} &times; ${f_gen.Nq.toFixed(2)} = <strong>${term2_g.toFixed(2)} kN/m²</strong><br>
             • 기초폭 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_gen.Ng.toFixed(2)} = <strong>${term3_g.toFixed(2)} kN/m²</strong>
         </div>
-        - 극한지지력 (q<sub>ult</sub>): ${term1_g.toFixed(2)} + ${term2_g.toFixed(2)} + ${term3_g.toFixed(2)} = <strong>${q_ult_g.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_g.toFixed(2)} kN/m²</strong>)<br><br>
+        - 극한지지력 (q<sub>ult</sub>): ${term1_g.toFixed(2)} + ${term2_g.toFixed(2)} + ${term3_g.toFixed(2)} = <strong>${q_ult_g.toFixed(2)} kN/m²</strong> (허용: q<sub>ult</sub> / ${FS.toFixed(2)} = <strong>${q_all_g.toFixed(2)} kN/m²</strong>)<br><br>
 
         <div class="section-title">[검증 3] Terzaghi 국부전단파괴 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
         - 보정 강도 정수: c' = (2/3) &times; ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, 참조 &Phi;' = atan((2/3)&times;tan(${phi_in.toFixed(2)}°)) = <strong>${phi_local.toFixed(2)}°</strong>
@@ -336,7 +341,7 @@ function calculateAllBearingCapacities() {
             • 상재하중 항 (q &times; N<sub>q</sub>): ${q.toFixed(2)} &times; ${f_loc.Nq.toFixed(2)} = <strong>${term2_l.toFixed(2)} kN/m²</strong><br>
             • 기초폭 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_loc.Ng.toFixed(2)} = <strong>${term3_l.toFixed(2)} kN/m²</strong>
         </div>
-        - 극한지지력 (q<sub>ult</sub>): ${term1_l.toFixed(2)} + ${term2_l.toFixed(2)} + ${term3_l.toFixed(2)} = <strong>${q_ult_l.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_l.toFixed(2)} kN/m²</strong>)<br><br>
+        - 극한지지력 (q<sub>ult</sub>): ${term1_l.toFixed(2)} + ${term2_l.toFixed(2)} + ${term3_l.toFixed(2)} = <strong>${q_ult_l.toFixed(2)} kN/m²</strong> (허용: q<sub>ult</sub> / ${FS.toFixed(2)} = <strong>${q_all_l.toFixed(2)} kN/m²</strong>)<br><br>
 
         <div class="section-title">[검증 4] Terzaghi 수정 지지력공식 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
         - 보정 강도 정수: c' = (2/3) &times; ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, 참조 &Phi;' = atan((2/3)&times;tan(${phi_in.toFixed(2)}°)) = <strong>${phi_local.toFixed(2)}°</strong>
@@ -370,7 +375,7 @@ function calculateAllBearingCapacities() {
             • 상재하중 항 (q &times; N<sub>q</sub>''): ${q.toFixed(2)} &times; ${f_mod.Nq.toFixed(2)} = <strong>${term2_m.toFixed(2)} kN/m²</strong><br>
             • 기초폭 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>''): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mod.Ng.toFixed(2)} = <strong>${term3_m.toFixed(2)} kN/m²</strong>
         </div>
-        - 극한지지력 (q<sub>ult</sub>): ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_m.toFixed(2)} kN/m²</strong>)<br><br>
+        - 극한지지력 (q<sub>ult</sub>): ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong> (허용: q<sub>ult</sub> / ${FS.toFixed(2)} = <strong>${q_all_m.toFixed(2)} kN/m²</strong>)<br><br>
 
         <div class="section-title">[검증 5] Meyerhof 지지력공식 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
         <div class="table-container">
@@ -416,6 +421,6 @@ function calculateAllBearingCapacities() {
             • 상재하중 항 (q &times; N<sub>q</sub> &times; F<sub>qs</sub> &times; F<sub>qd</sub>): ${q.toFixed(2)} &times; ${f_mey.Nq.toFixed(2)} &times; ${Fqs.toFixed(2)} &times; ${Fqd.toFixed(2)} = <strong>${term2_mey.toFixed(2)} kN/m²</strong><br>
             • 기초폭 항 (0.5 &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub> &times; F<sub>&gamma;s</sub> &times; F<sub>&gamma;d</sub>): 0.5 &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mey.Ng.toFixed(2)} &times; ${Fgs.toFixed(2)} &times; ${Fgd.toFixed(2)} = <strong>${term3_mey.toFixed(2)} kN/m²</strong>
         </div>
-        - 극한지지력 (q<sub>ult</sub>): ${term1_mey.toFixed(2)} + ${term2_mey.toFixed(2)} + ${term3_mey.toFixed(2)} = <strong>${q_ult_mey.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_mey.toFixed(2)} kN/m²</strong>)
+        - 극한지지력 (q<sub>ult</sub>): ${term1_mey.toFixed(2)} + ${term2_mey.toFixed(2)} + ${term3_mey.toFixed(2)} = <strong>${q_ult_mey.toFixed(2)} kN/m²</strong> (허용: q<sub>ult</sub> / ${FS.toFixed(2)} = <strong>${q_all_mey.toFixed(2)} kN/m²</strong>)
     `;
 }
