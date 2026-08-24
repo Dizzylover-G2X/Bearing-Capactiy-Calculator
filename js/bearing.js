@@ -73,7 +73,118 @@ export function initBearingModule(container) {
             </div>
         </div>
         
-        <p style="font-size: 0.85em; color: #555;">※ 물의 단위중량 = 9.807 kN/m³ 적용.</p>
+        <p style="font-size: 0.85em; color: #555; margin-top: 8px;">※ 물의 단위중량 = 9.807 kN/m³ 적용.</p>
+
+        <!-- [참고] 확대기초의 지지력 경험치 (U.S. Navy, 1982) 표 -->
+        <div style="margin: 15px 0; background: #fdfefe; padding: 12px; border-radius: 6px; border: 1px solid #bdc3c7;">
+            <details>
+                <summary style="cursor: pointer; font-weight: bold; color: #2c3e50; font-size: 0.9em;">📋 [참고] 확대기초의 지지력 경험치 (U.S. Navy, 1982) 표 보기</summary>
+                <div class="table-container" style="margin-top: 10px;">
+                    <table class="result-table" style="font-size: 0.72em; text-align: center; width: 100%;">
+                        <thead>
+                            <tr style="background-color: #eaeded;">
+                                <th rowspan="2" style="padding:6px;">지지층</th>
+                                <th rowspan="2" style="padding:6px;">현장 연경도 상태</th>
+                                <th colspan="2" style="padding:6px;">허용지지력 (kN/m²)</th>
+                            </tr>
+                            <tr style="background-color: #eaeded;">
+                                <th style="padding:4px;">범위</th>
+                                <th style="padding:4px;">추천값</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="text-align:left; padding:5px;">입도분포가 양호한 세립토 모래자갈의 혼합물 : 빙하, 퇴적물, 하드팬(hardpan), 점성토 섞인 자갈 (GW-SC, GC, SC)</td>
+                                <td>매우 조밀함</td>
+                                <td>800 ~ 1,200</td>
+                                <td><strong>1,000</strong></td>
+                            </tr>
+                            <tr>
+                                <td rowspan="3" style="text-align:left; padding:5px;">자갈, 자갈-모래 혼합물, 호박돌-자갈 혼합물 (GW, GP, SW, SP)</td>
+                                <td>매우 조밀함</td>
+                                <td>600 ~ 1,000</td>
+                                <td><strong>700</strong></td>
+                            </tr>
+                            <tr>
+                                <td>중간정도 조밀</td>
+                                <td>400 ~ 700</td>
+                                <td><strong>500</strong></td>
+                            </tr>
+                            <tr>
+                                <td>느슨함</td>
+                                <td>200 ~ 600</td>
+                                <td><strong>300</strong></td>
+                            </tr>
+                            <tr>
+                                <td rowspan="3" style="text-align:left; padding:5px;">입자가 굵거나 중간정도의 모래, 자갈이 약간 섞인 모래 (SW, SP)</td>
+                                <td>매우 조밀함</td>
+                                <td>400 ~ 600</td>
+                                <td><strong>400</strong></td>
+                            </tr>
+                            <tr>
+                                <td>중간정도 조밀</td>
+                                <td>200 ~ 400</td>
+                                <td><strong>300</strong></td>
+                            </tr>
+                            <tr>
+                                <td>느슨함</td>
+                                <td>100 ~ 300</td>
+                                <td><strong>150</strong></td>
+                            </tr>
+                            <tr>
+                                <td rowspan="3" style="text-align:left; padding:5px;">가는 모래, 실트질이나 점토질 중간정도 입도가 굵은 모래 (SW, SM, SC)</td>
+                                <td>매우 조밀함</td>
+                                <td>300 ~ 500</td>
+                                <td><strong>300</strong></td>
+                            </tr>
+                            <tr>
+                                <td>중간정도 조밀</td>
+                                <td>200 ~ 400</td>
+                                <td><strong>250</strong></td>
+                            </tr>
+                            <tr>
+                                <td>느슨함</td>
+                                <td>100 ~ 200</td>
+                                <td><strong>150</strong></td>
+                            </tr>
+                            <tr>
+                                <td rowspan="3" style="text-align:left; padding:5px;">균일한 점토, 모래질이나 실트질, 점토</td>
+                                <td>굳음</td>
+                                <td>300 ~ 600</td>
+                                <td><strong>400</strong></td>
+                            </tr>
+                            <tr>
+                                <td>중간정도 굳음</td>
+                                <td>100 ~ 300</td>
+                                <td><strong>200</strong></td>
+                            </tr>
+                            <tr>
+                                <td>느슨함</td>
+                                <td>50 ~ 100</td>
+                                <td><strong>50</strong></td>
+                            </tr>
+                            <tr>
+                                <td rowspan="3" style="text-align:left; padding:5px;">실트, 모래질 실트, 점토질-실트, 교호된(varved) 실트-점토-세사층</td>
+                                <td>매우 굳음</td>
+                                <td>200 ~ 400</td>
+                                <td><strong>300</strong></td>
+                            </tr>
+                            <tr>
+                                <td>중간정도 굳음</td>
+                                <td>100 ~ 300</td>
+                                <td><strong>150</strong></td>
+                            </tr>
+                            <tr>
+                                <td>연함</td>
+                                <td>50 ~ 100</td>
+                                <td><strong>50</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        </div>
+
         <button class="action-btn" id="calc-bearing-btn">모든 공식 한 번에 비교 계산하기</button>
         <div id="result" class="result-box"></div>
     `;
@@ -470,39 +581,6 @@ function calculateAllBearingCapacities() {
         </div><br>
 
         <div class="section-title">[검증 7] 문헌참조 및 경험적 지지력 산정 (근입깊이 할증 반영)</div>
-        - 지반 분류별 표준 공칭지내력 참고 표:
-        <div class="table-container">
-            <table class="result-table" style="font-size: 0.8em;">
-                <tr>
-                    <th>지반 상태 / 분류</th>
-                    <th>공칭지내력 (q_base, kN/m²)</th>
-                </tr>
-                <tr>
-                    <td>경암 (Hard Rock)</td>
-                    <td>1,000 ~ 3,000</td>
-                </tr>
-                <tr>
-                    <td>연암 (Soft Rock)</td>
-                    <td>600 ~ 1,000</td>
-                </tr>
-                <tr>
-                    <td>풍화암 (Weathered Rock)</td>
-                    <td>300 ~ 600</td>
-                </tr>
-                <tr>
-                    <td>조밀한 모래 및 자갈 (Dense Sand/Gravel)</td>
-                    <td>300 ~ 500</td>
-                </tr>
-                <tr>
-                    <td>중간 모래 / 단단한 점토 (Medium Sand / Stiff Clay)</td>
-                    <td>150 ~ 300</td>
-                </tr>
-                <tr>
-                    <td>느슨한 모래 / 보통 점토 (Loose Sand / Firm Clay)</td>
-                    <td>100 ~ 150</td>
-                </tr>
-            </table>
-        </div>
         - 적용 기준 및 산정 과정:
         <div class="calc-step">
             • 기준 공칭지내력 (q<sub>base</sub>): <strong>${q_base.toFixed(2)} kN/m²</strong><br>
