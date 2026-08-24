@@ -153,39 +153,39 @@ function calculateAllBearingCapacities() {
 
     // 4. Meyerhof 지지력 공식 (구조물기초설계기준 2018 기준 적용)
     const f_mey = interpolateFactors(phi_in, meyTable);
-    const N_phi = Math.pow(Math.tan((45 + phi_in / 2) * (Math.PI / 180)), 2);
-    const D_over_B = Df / B;
+    const N_phi = Math.pow(Math.tan((45 + phi_in / 2) * (Math.PI / 180)), 2);[cite: 3]
+    const D_over_B = Df / B;[cite: 3]
 
     let Fcs, Fqs, Fgs, Fcd, Fqd, Fgd;
 
-    // 형상계수 산정 (구조물기초설계기준 해설 식 4.2.8)
-    Fcs = 1.0 + 0.2 * N_phi * (B / L);
+    // 형상계수 산정 (구조물기초설계기준 해설 식 4.2.8)[cite: 3]
+    Fcs = 1.0 + 0.2 * N_phi * (B / L);[cite: 3]
     if (phi_in === 0) {
-        Fqs = 1.0;
-        Fgs = 1.0;
+        Fqs = 1.0;[cite: 3]
+        Fgs = 1.0;[cite: 3]
     } else if (phi_in <= 10) {
         let ratio = phi_in / 10.0;
-        let sq_10 = 1.0 + 0.1 * N_phi * (B / L);
+        let sq_10 = 1.0 + 0.1 * N_phi * (B / L);[cite: 3]
         Fqs = 1.0 + ratio * (sq_10 - 1.0);
         Fgs = Fqs;
     } else {
-        Fqs = 1.0 + 0.1 * N_phi * (B / L);
-        Fgs = Fqs;
+        Fqs = 1.0 + 0.1 * N_phi * (B / L);[cite: 3]
+        Fgs = Fqs;[cite: 3]
     }
 
-    // 심도계수 산정 (구조물기초설계기준 해설 식 4.2.9)
-    Fcd = 1.0 + 0.2 * Math.sqrt(N_phi) * D_over_B;
+    // 심도계수 산정 (구조물기초설계기준 해설 식 4.2.9: d_q = d_gamma 반영)[cite: 3]
+    Fcd = 1.0 + 0.2 * Math.sqrt(N_phi) * D_over_B;[cite: 3]
     if (phi_in === 0) {
-        Fqd = 1.0;
-        Fgd = 1.0;
+        Fqd = 1.0;[cite: 3]
+        Fgd = 1.0;[cite: 3]
     } else if (phi_in <= 10) {
         let ratio = phi_in / 10.0;
-        let dq_10 = 1.0 + 0.1 * Math.sqrt(N_phi) * D_over_B;
+        let dq_10 = 1.0 + 0.1 * Math.sqrt(N_phi) * D_over_B;[cite: 3]
         Fqd = 1.0 + ratio * (dq_10 - 1.0);
-        Fgd = 1.0;
+        Fgd = Fqd; // d_q = d_gamma 반영[cite: 3]
     } else {
-        Fqd = 1.0 + 0.1 * Math.sqrt(N_phi) * D_over_B;
-        Fgd = 1.0;
+        Fqd = 1.0 + 0.1 * Math.sqrt(N_phi) * D_over_B;[cite: 3]
+        Fgd = Fqd; // d_q = d_gamma 반영[cite: 3]
     }
 
     const term1_mey = c_in * f_mey.Nc * Fcs * Fcd;
@@ -390,13 +390,13 @@ function calculateAllBearingCapacities() {
             </table>
         </div>
         
-        - <strong>형상계수 산정 식 및 적용값 (구조물기초설계기준 해설 식 4.2.8):</strong>
+        - <strong>형상계수 산정 식 및 적용값 (구조물기초설계기준 해설 식 4.2.8):</strong>[cite: 3]
         <div class="calc-step">
             • F<sub>cs</sub> = 1 + 0.2 &times; N<sub>&phi;</sub> &times; (B / L) = 1 + 0.2 &times; ${N_phi.toFixed(2)} &times; (${B.toFixed(2)} / ${L.toFixed(2)}) = <strong>${Fcs.toFixed(2)}</strong><br>
             • F<sub>qs</sub> = F<sub>&gamma;s</sub> = 1 + 0.1 &times; N<sub>&phi;</sub> &times; (B / L) = 1 + 0.1 &times; ${N_phi.toFixed(2)} &times; (${B.toFixed(2)} / ${L.toFixed(2)}) = <strong>${Fqs.toFixed(2)}</strong>
         </div>
 
-        - <strong>심도계수 산정 식 및 적용값 (구조물기초설계기준 해설 식 4.2.9):</strong>
+        - <strong>심도계수 산정 식 및 적용값 (구조물기초설계기준 해설 식 4.2.9: d<sub>q</sub> = d<sub>&gamma;</sub>):</strong>[cite: 3]
         <div class="calc-step">
             • F<sub>cd</sub> = 1 + 0.2 &times; &radic;N<sub>&phi;</sub> &times; (D<sub>f</sub> / B) = 1 + 0.2 &times; ${Math.sqrt(N_phi).toFixed(2)} &times; (${Df.toFixed(2)} / ${B.toFixed(2)}) = <strong>${Fcd.toFixed(2)}</strong><br>
             • F<sub>qd</sub> = F<sub>&gamma;d</sub> = 1 + 0.1 &times; &radic;N<sub>&phi;</sub> &times; (D<sub>f</sub> / B) = 1 + 0.1 &times; ${Math.sqrt(N_phi).toFixed(2)} &times; (${Df.toFixed(2)} / ${B.toFixed(2)}) = <strong>${Fqd.toFixed(2)}</strong>
