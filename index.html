@@ -8,7 +8,7 @@
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         h2, h3 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
         
-        /* 모바일 반응형 입력 그리드 스타일 (칸 넘침 방지 min-width 추가) */
+        /* 모바일 반응형 입력 그리드 스타일 */
         .input-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -28,7 +28,7 @@
             border-radius: 6px;
             padding: 10px;
             text-align: center;
-            min-width: 0; /* 그리드 내부 요소가 칸을 뚫고 나가는 현상 방지 */
+            min-width: 0;
         }
         .input-group label {
             font-size: 0.8em;
@@ -63,7 +63,7 @@
     
     <h3>1. 설계자료 입력</h3>
     
-    <!-- 소수점 둘째 자리까지 기본 표현되도록 값 수정 -->
+    <!-- 입력 항목에 내부마찰각(Φ) 추가 -->
     <div class="input-grid">
         <div class="input-group">
             <label>기초 길이 L (m)</label>
@@ -86,6 +86,10 @@
             <input type="number" id="c" value="3.00" step="0.01">
         </div>
         <div class="input-group">
+            <label>내부마찰각 Φ (°)</label>
+            <input type="number" id="phi" value="25.00" step="0.1">
+        </div>
+        <div class="input-group">
             <label>상부층 단위중량 γ1 (kN/m³)</label>
             <input type="number" id="gamma1" value="18.00" step="0.01">
         </div>
@@ -95,7 +99,7 @@
         </div>
     </div>
     
-    <p style="font-size: 0.85em; color: #555;">※ 물의 단위중량 = 9.807 kN/m³ 적용<br>※ 내부마찰각(Φ) = 25도 기준 (Nc=25.1, Nq=12.7, Nγ=9.7).</p>
+    <p style="font-size: 0.85em; color: #555;">※ 물의 단위중량 = 9.807 kN/m³ 적용.<br>※ Terzaghi 지지력계수 및 형상계수 자동 보간 적용.</p>
 
     <button onclick="calculateBearingCapacity()">지지력 계산하기</button>
 
@@ -103,73 +107,110 @@
 </div>
 
 <script>
+    // Terzaghi 지지력계수 테이블 데이터 (구조계산서.pdf 기준)
+    const terzaghiTable = [
+        { phi: 0,  Nc: 5.7,   Nq: 1.0,   Ng: 0.0   },
+        { phi: 5,  Nc: 7.3,   Nq: 1.6,   Ng: 0.5   },
+        { phi: 10, Nc: 9.6,   Nq: 2.7,   Ng: 1.2   },
+        { phi: 15, Nc: 12.9,  Nq: 4.5,   Ng: 2.5   },
+        { phi: 20, Nc: 17.7,  Nq: 7.4,   Ng: 4.0   },
+        { phi: 25, Nc: 25.1,  Nq: 12.7,  Ng: 9.7   },
+        { phi: 30, Nc: 37.2,  Nq: 22.5,  Ng: 19.7  },
+        { phi: 35, Nc: 57.8,  Nq: 41.4,  Ng: 42.5  },
+        { phi: 40, Nc: 95.7,  Nq: 81.3,  Ng: 100.4 },
+        { phi: 45, Nc: 172.3, Nq: 173.3, Ng: 297.5 }
+    ];
+
+    // 입력된 내부마찰각에 따른 지지력계수 1차식 선형 보간 함수
+    function interpolateFactors(phiInput) {
+        if (phiInput <= terzaghiTable[0].phi) {
+            return { Nc: terzaghiTable[0].Nc, Nq: terzaghiTable[0].Nq, Ng: terzaghiTable[0].Ng };
+        }
+        const last = terzaghiTable[terzaghiTable.length - 1];
+        if (phiInput >= last.phi) {
+            return { Nc: last.Nc, Nq: last.Nq, Ng: last.Ng };
+        }
+
+        for (let i = 0; i < terzaghiTable.length - 1; i++) {
+            let lower = terzaghiTable[i];
+            let upper = terzaghiTable[i + 1];
+            if (phiInput >= lower.phi && phiInput <= upper.phi) {
+                let ratio = (phiInput - lower.phi) / (upper.phi - lower.phi);
+                let Nc = lower.Nc + ratio * (upper.Nc - lower.Nc);
+                let Nq = lower.Nq + ratio * (upper.Nq - lower.Nq);
+                let Ng = lower.Ng + ratio * (upper.Ng - lower.Ng);
+                return { Nc, Nq, Ng };
+            }
+        }
+        return { Nc: 25.1, Nq: 12.7, Ng: 9.7 }; // 기본값 (25도)
+    }
+
     function calculateBearingCapacity() {
-        // 1. 입력값 가져오기
         const L = parseFloat(document.getElementById('L').value);
         const B = parseFloat(document.getElementById('B').value);
         const Df = parseFloat(document.getElementById('Df').value);
         const WL = parseFloat(document.getElementById('WL').value);
         const c = parseFloat(document.getElementById('c').value);
+        const phi = parseFloat(document.getElementById('phi').value);
         const gamma1_in = parseFloat(document.getElementById('gamma1').value);
         const gamma2_in = parseFloat(document.getElementById('gamma2').value);
         
         const gamma_w = 9.807;
 
-        // 2. 상부층 단위중량(γ1) 지하수위 보간 로직
+        // 상부층 단위중량 보간
         let gamma1_eff = gamma1_in;
         let log1 = "";
         const gamma1_sub = gamma1_in - gamma_w;
-
         if (WL <= 0) {
             gamma1_eff = gamma1_sub;
-            log1 = "지하수위가 지표면(0m)에 위치하여 전구간 수중단위중량 적용";
+            log1 = "지하수위 지표면(0m) 위치: 전구간 수중단위중량 적용";
         } else if (WL >= Df) {
             gamma1_eff = gamma1_in;
-            log1 = "지하수위가 근입깊이(Df)보다 아래에 위치하여 건조/습윤 단위중량 적용";
+            log1 = "지하수위 근입깊이(Df) 하부 위치: 건조/습윤 단위중량 적용";
         } else {
             gamma1_eff = gamma1_sub + gamma_w * (WL / Df);
-            log1 = "지하수위가 지표~Df 사이에 위치 (1차식 보간 적용)";
+            log1 = "지하수위 지표~Df 사이 위치: 1차식 선형 보간 적용";
         }
 
-        // 3. 지지층 단위중량(γ2) 지하수위 보간 로직
+        // 지지층 단위중량 보간
         let gamma2_eff = gamma2_in;
         let log2 = "";
         const gamma2_sub = gamma2_in - gamma_w;
         const Df_plus_B = Df + B;
-
         if (WL <= Df) {
             gamma2_eff = gamma2_sub;
-            log2 = "지하수위가 기초 저면(Df)보다 위에 위치하여 전구간 수중단위중량 적용";
+            log2 = "지하수위 기초저면(Df) 상부 위치: 전구간 수중단위중량 적용";
         } else if (WL >= Df_plus_B) {
             gamma2_eff = gamma2_in;
-            log2 = "지하수위가 기초저면+폭(Df+B)보다 아래에 위치하여 전구간 원 단위중량 적용";
+            log2 = "지하수위 기초저면+폭(Df+B) 하부 위치: 전구간 원 단위중량 적용";
         } else {
             gamma2_eff = gamma2_sub + gamma_w * ((WL - Df) / B);
-            log2 = "지하수위가 Df~Df+B 사이에 위치 (1차식 보간 적용)";
+            log2 = "지하수위 Df~Df+B 사이 위치: 1차식 선형 보간 적용";
         }
 
-        // 4. 유효 상재하중(q) 산정
+        // 유효 상재하중(q) 산정
         const q = Df * gamma1_eff;
 
-        // 5. 형상계수 산정 (직사각형 기초)
+        // Terzaghi 기초형상계수 산정 (직사각형 기초 기준)[cite: 1]
         const alpha = 1 + 0.3 * (B / L);
         const beta = 0.5 - 0.1 * (B / L);
 
-        // 6. 지지력 계수 (Φ=25도 기준)
-        const Nc = 25.1;
-        const Nq = 12.7;
-        const Ng = 9.7;
+        // 지지력계수 자동 보간 산정
+        const factors = interpolateFactors(phi);
+        const Nc = factors.Nc;
+        const Nq = factors.Nq;
+        const Ng = factors.Ng;
 
-        // 7. Terzaghi 극한지지력 산정 항별 계산
+        // 극한지지력 항별 계산[cite: 1]
         const term1 = alpha * c * Nc;
         const term2 = q * Nq;
         const term3 = beta * gamma2_eff * B * Ng;
         const q_ult = term1 + term2 + term3;
 
-        // 8. 허용지지력 산정 (안전율 FS = 3)
+        // 허용지지력 산정 (안전율 FS = 3)[cite: 1]
         const q_all = q_ult / 3;
 
-        // 9. 결과 출력 HTML 구성 (소수점 둘째 자리 통일)
+        // 결과 출력 구성
         const resultDiv = document.getElementById('result');
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = `
@@ -182,16 +223,23 @@
             <strong>[2] 유효 상재하중(q) 산정</strong><br>
             - q = Df(${Df.toFixed(2)}) × γ1_eff(${gamma1_eff.toFixed(2)}) = <strong>${q.toFixed(2)} kN/m²</strong><br><br>
 
-            <strong>[3] 형상계수 산정</strong><br>
-            - α = 1 + 0.3(B/L) = <strong>${alpha.toFixed(2)}</strong><br>
-            - β = 0.5 - 0.1(B/L) = <strong>${beta.toFixed(2)}</strong><br><br>
+            <strong>[3] Terzaghi 기초형상계수 산정 (직사각형)</strong><br>
+            - 공식 기준: 연속(α=1.0, β=0.5), 원형(α=1.3, β=0.3), 정사각형(α=1.3, β=0.4), 직사각형(α=1+0.3B/L, β=0.5-0.1B/L)[cite: 1]<br>
+            - 적용 형상계수: α = 1 + 0.3(${B.toFixed(2)}/${L.toFixed(2)}) = <strong>${alpha.toFixed(2)}</strong><br>
+            - 적용 형상계수: β = 0.5 - 0.1(${B.toFixed(2)}/${L.toFixed(2)}) = <strong>${beta.toFixed(2)}</strong><br><br>
 
-            <strong>[4] Terzaghi 극한지지력 항별 세부내역</strong><br>
-            - ① 점착력 항 (α·c·Nc): ${alpha.toFixed(2)} × ${c.toFixed(2)} × ${Nc} = <strong>${term1.toFixed(2)} kN/m²</strong><br>
-            - ② 상재하중 항 (q·Nq): ${q.toFixed(2)} × ${Nq} = <strong>${term2.toFixed(2)} kN/m²</strong><br>
-            - ③ 중량 항 (β·γ2·B·Nγ): ${beta.toFixed(2)} × ${gamma2_eff.toFixed(2)} × ${B.toFixed(2)} × ${Ng} = <strong>${term3.toFixed(2)} kN/m²</strong><br><br>
+            <strong>[4] 지지력계수 자동 보간 검증 (Φ = ${phi.toFixed(2)}°)</strong><br>
+            - 구조계산서 표준 테이블 기준 선형 보간 결과[cite: 1]:<br>
+            &nbsp;&nbsp;· Nc = <strong>${Nc.toFixed(2)}</strong><br>
+            &nbsp;&nbsp;· Nq = <strong>${Nq.toFixed(2)}</strong><br>
+            &nbsp;&nbsp;· Nγ = <strong>${Ng.toFixed(2)}</strong><br><br>
 
-            <strong>[5] 최종 지지력 결과</strong><br>
+            <strong>[5] Terzaghi 극한지지력 항별 세부내역</strong><br>
+            - ① 점착력 항 (α·c·Nc): ${alpha.toFixed(2)} × ${c.toFixed(2)} × ${Nc.toFixed(2)} = <strong>${term1.toFixed(2)} kN/m²</strong><br>
+            - ② 상재하중 항 (q·Nq): ${q.toFixed(2)} × ${Nq.toFixed(2)} = <strong>${term2.toFixed(2)} kN/m²</strong><br>
+            - ③ 중량 항 (β·γ2·B·Nγ): ${beta.toFixed(2)} × ${gamma2_eff.toFixed(2)} × ${B.toFixed(2)} × ${Ng.toFixed(2)} = <strong>${term3.toFixed(2)} kN/m²</strong><br><br>
+
+            <strong>[6] 최종 지지력 검토 결과</strong><br>
             - 극한지지력 (q_ult): <strong>${q_ult.toFixed(2)} kN/m²</strong><br>
             - 허용지지력 (q_all, FS=3): <strong>${q_all.toFixed(2)} kN/m²</strong>
         `;
