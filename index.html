@@ -122,7 +122,7 @@
             <input type="number" id="c" value="3.00" step="0.01">
         </div>
         <div class="input-group">
-            <label>내부마찰각 Φ (°)</label>
+            <label>지지층 내부마찰각 Φ (°)</label>
             <input type="number" id="phi" value="25.00" step="0.1">
         </div>
         <div class="input-group">
@@ -135,7 +135,7 @@
         </div>
     </div>
     
-    <p style="font-size: 0.85em; color: #555;">※ 물의 단위중량 = 9.807 kN/m³ 적용. 안전율 FS = 3 적용[cite: 15].</p>
+    <p style="font-size: 0.85em; color: #555;">※ 물의 단위중량 = 9.807 kN/m³ 적용. 안전율 FS = 3 적용.</p>
 
     <button onclick="calculateAllBearingCapacities()">모든 공식 한 번에 비교 계산하기</button>
 
@@ -143,7 +143,6 @@
 </div>
 
 <script>
-    // 1. 전반전단파괴 지지력계수 테이블
     const generalTable = [
         { phi: 0,  Nc: 5.7,   Nq: 1.0,   Ng: 0.0   },
         { phi: 5,  Nc: 7.3,   Nq: 1.6,   Ng: 0.5   },
@@ -157,7 +156,6 @@
         { phi: 45, Nc: 172.3, Nq: 173.3, Ng: 297.5 }
     ];
 
-    // 2. 국부전단파괴 지지력계수 테이블[cite: 15]
     const localTable = [
         { phi: 0,  Nc: 5.7,   Nq: 1.0,   Ng: 0.0   },
         { phi: 5,  Nc: 6.7,   Nq: 1.4,   Ng: 0.2   },
@@ -171,7 +169,6 @@
         { phi: 45, Nc: 51.2,  Nq: 35.1,  Ng: 37.7  }
     ];
 
-    // 3. Terzaghi 수정지지력계수 테이블 (구조계산서 PDF 2페이지 기준)[cite: 15]
     const modifiedTable = [
         { phi: 0,  Nc: 5.3,  Nq: 1.0,  Ng: 0.0  },
         { phi: 5,  Nc: 5.3,  Nq: 1.4,  Ng: 0.0  },
@@ -220,7 +217,6 @@
         
         const gamma_w = 9.807;
 
-        // 1. 상부층 단위중량 지하수위 보간
         let gamma1_eff = gamma1_in;
         let log1 = "";
         const gamma1_sub = gamma1_in - gamma_w;
@@ -235,7 +231,6 @@
             log1 = "지하수위 지표~Df 사이 위치: 1차식 선형 보간 적용";
         }
 
-        // 2. 지지층 단위중량 지하수위 보간
         let gamma2_eff = gamma2_in;
         let log2 = "";
         const gamma2_sub = gamma2_in - gamma_w;
@@ -251,14 +246,11 @@
             log2 = "지하수위 Df~Df+B 사이 위치: 1차식 선형 보간 적용";
         }
 
-        // 3. 유효 상재하중(q) 산정
         const q = Df * gamma1_eff;
-
-        // 4. 기초형상계수 산정 (직사각형 기초)
         const alpha = 1 + 0.3 * (B / L);
         const beta = 0.5 - 0.1 * (B / L);
 
-        // --- [Method 1] Terzaghi 전반전단파괴 ---
+        // 1. Terzaghi 전반전단파괴
         const f_gen = interpolateFactors(phi_in, generalTable);
         const term1_g = alpha * c_in * f_gen.Nc;
         const term2_g = q * f_gen.Nq;
@@ -266,10 +258,10 @@
         const q_ult_g = term1_g + term2_g + term3_g;
         const q_all_g = q_ult_g / 3.0;
 
-        // --- [Method 2] Terzaghi 국부전단파괴 ---
-        const c_local = (2.0 / 3.0) * c_in;[cite: 15]
+        // 2. Terzaghi 국부전단파괴
+        const c_local = (2.0 / 3.0) * c_in;
         const phi_rad = phi_in * (Math.PI / 180);
-        const phi_local = Math.atan((2.0 / 3.0) * Math.tan(phi_rad)) * (180 / Math.PI);[cite: 15]
+        const phi_local = Math.atan((2.0 / 3.0) * Math.tan(phi_rad)) * (180 / Math.PI);
         const f_loc = interpolateFactors(phi_local, localTable);
         const term1_l = alpha * c_local * f_loc.Nc;
         const term2_l = q * f_loc.Nq;
@@ -277,9 +269,7 @@
         const q_ult_l = term1_l + term2_l + term3_l;
         const q_all_l = q_ult_l / 3.0;
 
-        // --- [Method 3] Terzaghi 수정 지지력 공식 ---
-        // 수정 지지력 공식도 국부 shear 성격과 유사하게 c'와 phi'를 쓰거나 기본 phi를 쓸 수 있음. 
-        // 구조계산서 PDF 기준 예시(phi=25도, c=3 -> c'=2)에서는 c'와 phi'를 반영하여 산정하므로 동일하게 c_local, phi_local 적용
+        // 3. Terzaghi 수정 지지력 공식
         const f_mod = interpolateFactors(phi_local, modifiedTable);
         const term1_m = alpha * c_local * f_mod.Nc;
         const term2_m = q * f_mod.Nq;
@@ -287,7 +277,6 @@
         const q_ult_m = term1_m + term2_m + term3_m;
         const q_all_m = q_ult_m / 3.0;
 
-        // 결과 출력 대시보드 렌더링
         const resultDiv = document.getElementById('result');
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = `
@@ -323,12 +312,12 @@
             - 유효 상재하중 (q = Df × γ1): <strong>${q.toFixed(2)} kN/m²</strong><br>
             - 형상계수: α = <strong>${alpha.toFixed(2)}</strong>, β = <strong>${beta.toFixed(2)}</strong><br><br>
 
-            <div class="section-title"><strong>[상세 검토 내역 1] Terzaghi 수정 지지력공식 상세</strong></div>
-            - 보정 강도 정수: c' = 2/3 × ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>[cite: 15], Φ' = <strong>${phi_local.toFixed(2)}°</strong>[cite: 15]<br>
-            - 수정 지지력계수 (Φ'=${phi_local.toFixed(2)}° 보간): Nc'' = <strong>${f_mod.Nc.toFixed(2)}</strong>, Nq'' = <strong>${f_mod.Nq.toFixed(2)}</strong>, Nγ'' = <strong>${f_mod.Ng.toFixed(2)}</strong>[cite: 15]<br>
+            <div class="section-title"><strong>[상세 검토 내역] Terzaghi 수정 지지력공식 상세</strong></div>
+            - 보정 강도 정수: c' = 2/3 × ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, Φ' = <strong>${phi_local.toFixed(2)}°</strong><br>
+            - 수정 지지력계수 (Φ'=${phi_local.toFixed(2)}° 보간): Nc'' = <strong>${f_mod.Nc.toFixed(2)}</strong>, Nq'' = <strong>${f_mod.Nq.toFixed(2)}</strong>, Nγ'' = <strong>${f_mod.Ng.toFixed(2)}</strong><br>
             - 항별 계산: (${alpha.toFixed(2)} × ${c_local.toFixed(2)} × ${f_mod.Nc.toFixed(2)}) + (${q.toFixed(2)} × ${f_mod.Nq.toFixed(2)}) + (${beta.toFixed(2)} × ${gamma2_eff.toFixed(2)} × ${B.toFixed(2)} × ${f_mod.Ng.toFixed(2)})<br>
-            = ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong>[cite: 15]<br>
-            - 허용지지력 (FS=3): ${q_ult_m.toFixed(2)} / 3 = <strong>${q_all_m.toFixed(2)} kN/m²</strong>[cite: 15]
+            = ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong><br>
+            - 허용지지력 (FS=3): ${q_ult_m.toFixed(2)} / 3 = <strong>${q_all_m.toFixed(2)} kN/m²</strong>
         `;
     }
 </script>
