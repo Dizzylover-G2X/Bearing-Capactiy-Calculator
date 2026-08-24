@@ -28,12 +28,12 @@ export function initBearingModule(container) {
         <h3>1. 설계자료 입력</h3>
         <div class="input-grid">
             <div class="input-group">
-                <label>기초 길이 L (m)</label>
-                <input type="number" id="L" value="2.00" step="0.01">
-            </div>
-            <div class="input-group">
                 <label>기초 폭 B (m)</label>
                 <input type="number" id="B" value="1.82" step="0.01">
+            </div>
+            <div class="input-group">
+                <label>기초 길이 L (m)</label>
+                <input type="number" id="L" value="2.00" step="0.01">
             </div>
             <div class="input-group">
                 <label>근입 깊이 Df (m)</label>
@@ -60,7 +60,7 @@ export function initBearingModule(container) {
                 <input type="number" id="gamma2" value="18.00" step="0.01">
             </div>
             <div class="input-group">
-                <label>표준관입시험 N치</label>
+                <label>지지층 N치</label>
                 <input type="number" id="N_val" value="25.00" step="1">
             </div>
             <div class="input-group">
@@ -339,7 +339,7 @@ function calculateAllBearingCapacities() {
         mod_mey_formula = `q_a = 12 &times; N &times; (1 + 0.3 / B)<sup>2</sup> &times; K_d = 12 &times; ${N_val} &times; (1 + 0.3 / ${B.toFixed(2)})<sup>2</sup> &times; ${Kd.toFixed(2)}`;
     }
 
-    // 6. 문헌참조 및 경험적 지지력 산정 (근입깊이 할증 반영: 0.3m당 5% 할증, 몫만 취하고 나머지 버림)
+    // 6. 문헌참조 및 경험적 지지력 산정 (근입깊이 할증 반영)
     let excess_Df = Math.max(0, Df - 0.5);
     let depth_increment_count = Math.floor(excess_Df / 0.3);
     let surcharge_rate = depth_increment_count * 0.05;
