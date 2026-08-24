@@ -1,4 +1,5 @@
-const CACHE_NAME = 'bearing-calc-v3'; // 버전을 v3으로 올립니다.
+// 기존 v3을 v4로 변경합니다. (이 숫자만 바뀌어도 앱이 새 디자인을 자동으로 다운로드합니다)
+const CACHE_NAME = 'bearing-calc-v4'; 
 const FILES_TO_CACHE = [
     './',
     './index.html',
