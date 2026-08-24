@@ -34,7 +34,7 @@
             margin-bottom: 8px;
             font-weight: bold;
             color: #333;
-            word-break: keep-all; /* 단어 단위로 줄바꿈되어 깔끔하게 표시 */
+            word-break: keep-all;
         }
         .input-group input {
             width: 100%;
@@ -42,7 +42,7 @@
             text-align: center;
             border: 1px solid #ccc;
             border-radius: 4px;
-            box-sizing: border-box; /* 패딩 밖으로 삐져나가지 않도록 고정 */
+            box-sizing: border-box;
             font-size: 1.1em;
         }
         
@@ -63,7 +63,7 @@
     
     <h3>1. 설계자료 입력</h3>
     
-    <!-- 수정된 반응형 입력 박스 -->
+    <!-- 수정된 입력 항목 (6개 그리드) -->
     <div class="input-grid">
         <div class="input-group">
             <label>기초 길이 L (m)</label>
@@ -78,20 +78,20 @@
             <input type="number" id="Df" value="2.20" step="0.01">
         </div>
         <div class="input-group">
-            <label>점착력 c (kN/m²)</label>
+            <label>지지층 점착력 c (kN/m²)</label>
             <input type="number" id="c" value="3.0" step="0.1">
         </div>
         <div class="input-group">
-            <label>상재하중 q (kN/m²)</label>
-            <input type="number" id="q" value="39.6" step="0.1">
+            <label>상부층 단위중량 γ1 (kN/m³)</label>
+            <input type="number" id="gamma1" value="18.0" step="0.1">
         </div>
         <div class="input-group">
-            <label>단위중량 γ2 (kN/m²)</label>
+            <label>지지층 단위중량 γ2 (kN/m³)</label>
             <input type="number" id="gamma2" value="14.48" step="0.01">
         </div>
     </div>
     
-    <p style="font-size: 0.85em; color: #555;">※ 현재 프로토타입은 내부마찰각(Φ) = 25도를 기준으로 세팅되어 있습니다 (Nc=25.1, Nq=12.7, Nγ=9.7).</p>
+    <p style="font-size: 0.85em; color: #555;">※ 상재하중(q)은 근입 깊이($D_f$) × 상부층 단위중량($\gamma_1$)으로 자동 계산됩니다.<br>※ 현재 프로토타입은 내부마찰각(Φ) = 25도를 기준으로 세팅되어 있습니다 (Nc=25.1, Nq=12.7, Nγ=9.7).</p>
 
     <button onclick="calculateBearingCapacity()">지지력 계산하기</button>
 
@@ -100,29 +100,41 @@
 
 <script>
     function calculateBearingCapacity() {
+        // 1. 입력값 가져오기
         const L = parseFloat(document.getElementById('L').value);
         const B = parseFloat(document.getElementById('B').value);
+        const Df = parseFloat(document.getElementById('Df').value);
         const c = parseFloat(document.getElementById('c').value);
-        const q = parseFloat(document.getElementById('q').value);
+        const gamma1 = parseFloat(document.getElementById('gamma1').value);
         const gamma2 = parseFloat(document.getElementById('gamma2').value);
         
+        // 2. 상재하중(q) 자동 계산 (q = Df * γ1)
+        const q = Df * gamma1;
+
+        // 3. 형상계수 계산 (직사각형 기준)
         const alpha = 1 + 0.3 * (B / L);
         const beta = 0.5 - 0.1 * (B / L);
 
+        // 4. 지지력 계수 (Φ=25도 고정값)
         const Nc = 25.1;
         const Nq = 12.7;
         const Ng = 9.7;
 
+        // 5. 극한지지력 계산 (q_ult = α*c*Nc + q*Nq + β*γ2*B*Nγ)
         const term1 = alpha * c * Nc;
         const term2 = q * Nq;
         const term3 = beta * gamma2 * B * Ng;
         const q_ult = term1 + term2 + term3;
 
+        // 6. 허용지지력 계산 (안전율 3)
         const q_all = q_ult / 3;
 
+        // 7. 화면에 결과 출력
         const resultDiv = document.getElementById('result');
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = `
+            <strong>[상재하중 산정]</strong><br>
+            q = Df(${Df}) × γ1(${gamma1}) = <strong>${q.toFixed(2)} kN/m²</strong><br><br>
             <strong>[형상계수 산정]</strong><br>
             α = ${alpha.toFixed(2)}, β = ${beta.toFixed(2)}<br><br>
             <strong>[Terzaghi 극한지지력]</strong><br>
