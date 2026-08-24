@@ -404,7 +404,7 @@ function calculateAllBearingCapacities() {
             • F<sub>qs</sub> = F<sub>&gamma;s</sub> = ${fqs_desc}
         </div>
 
-        - <strong>심도계수 산정 식 및 적용값 (구조물기초설계기준 해설 식 4.2.9: d<sub>q</sub> = d<sub>&gamma;</sub>):</strong>
+        - <strong>심도계수 산정 식 및 적용값 (구조물기초설계기준 해설 식 4.2.9):</strong>
         <div class="calc-step">
             • F<sub>cd</sub> = 1 + 0.2 &times; &radic;N<sub>&phi;</sub> &times; (D<sub>f</sub> / B) = 1 + 0.2 &times; ${Math.sqrt(N_phi).toFixed(2)} &times; (${Df.toFixed(2)} / ${B.toFixed(2)}) = <strong>${Fcd.toFixed(2)}</strong><br>
             • F<sub>qd</sub> = F<sub>&gamma;d</sub> = ${fqd_desc}
