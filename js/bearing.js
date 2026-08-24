@@ -228,9 +228,9 @@ function calculateAllBearingCapacities() {
         mod_mey_formula = `q_a = 12 &times; N &times; (1 + 0.3 / B)<sup>2</sup> &times; K_d = 12 &times; ${N_val} &times; (1 + 0.3 / ${B.toFixed(2)})<sup>2</sup> &times; ${Kd.toFixed(2)}`;
     }
 
-    // 6. 문헌참조 및 경험적 지지력 산정 (근입깊이 할증 반영)
+    // 6. 문헌참조 및 경험적 지지력 산정 (근입깊이 할증 반영: 0.3m당 5% 할증, 몫만 취하고 나머지 버림)
     let excess_Df = Math.max(0, Df - 0.5);
-    let depth_increment_count = excess_Df / 0.3;
+    let depth_increment_count = Math.floor(excess_Df / 0.3);
     let surcharge_rate = depth_increment_count * 0.05;
     let K_depth_emp = 1.0 + surcharge_rate;
     let q_all_emp = q_base * K_depth_emp;
@@ -470,12 +470,46 @@ function calculateAllBearingCapacities() {
         </div><br>
 
         <div class="section-title">[검증 7] 문헌참조 및 경험적 지지력 산정 (근입깊이 할증 반영)</div>
+        - 지반 분류별 표준 공칭지내력 참고 표:
+        <div class="table-container">
+            <table class="result-table" style="font-size: 0.8em;">
+                <tr>
+                    <th>지반 상태 / 분류</th>
+                    <th>공칭지내력 (q_base, kN/m²)</th>
+                </tr>
+                <tr>
+                    <td>경암 (Hard Rock)</td>
+                    <td>1,000 ~ 3,000</td>
+                </tr>
+                <tr>
+                    <td>연암 (Soft Rock)</td>
+                    <td>600 ~ 1,000</td>
+                </tr>
+                <tr>
+                    <td>풍화암 (Weathered Rock)</td>
+                    <td>300 ~ 600</td>
+                </tr>
+                <tr>
+                    <td>조밀한 모래 및 자갈 (Dense Sand/Gravel)</td>
+                    <td>300 ~ 500</td>
+                </tr>
+                <tr>
+                    <td>중간 모래 / 단단한 점토 (Medium Sand / Stiff Clay)</td>
+                    <td>150 ~ 300</td>
+                </tr>
+                <tr>
+                    <td>느슨한 모래 / 보통 점토 (Loose Sand / Firm Clay)</td>
+                    <td>100 ~ 150</td>
+                </tr>
+            </table>
+        </div>
         - 적용 기준 및 산정 과정:
         <div class="calc-step">
             • 기준 공칭지내력 (q<sub>base</sub>): <strong>${q_base.toFixed(2)} kN/m²</strong><br>
-            • 근입깊이 할증 조건 (최소 근입 0.5m 초과 분에 대해 0.3m당 5% 할증):<br>
+            • 근입깊이 할증 조건 (최소 근입 0.5m 초과 분에 대해 0.3m당 5% 할증, 소수점 이하 절사):<br>
             &nbsp;&nbsp;- 초과 근입깊이 (&Delta;D<sub>f</sub> = max(0, D<sub>f</sub> - 0.5)): max(0, ${Df.toFixed(2)} - 0.5) = <strong>${excess_Df.toFixed(2)} m</strong><br>
-            &nbsp;&nbsp;- 근입할증계수 (K<sub>depth_emp</sub> = 1 + (&Delta;D<sub>f</sub> / 0.3) &times; 0.05): 1 + (${excess_Df.toFixed(2)} / 0.3) &times; 0.05 = <strong>${K_depth_emp.toFixed(2)}</strong><br>
+            &nbsp;&nbsp;- 할증 단위 횟수 (정수 몫 적용: floor(&Delta;D<sub>f</sub> / 0.3)): floor(${excess_Df.toFixed(2)} / 0.3) = <strong>${depth_increment_count} 회</strong><br>
+            &nbsp;&nbsp;- 근입할증계수 (K<sub>depth_emp</sub> = 1 + 회수 &times; 0.05): 1 + ${depth_increment_count} &times; 0.05 = <strong>${K_depth_emp.toFixed(2)}</strong><br>
             • <strong>최종 허용지지력 (q<sub>all</sub>): q<sub>base</sub> &times; K<sub>depth_emp</sub> = ${q_base.toFixed(2)} &times; ${K_depth_emp.toFixed(2)} = ${q_all_emp.toFixed(2)} kN/m²</strong>
         </div>
     `;
