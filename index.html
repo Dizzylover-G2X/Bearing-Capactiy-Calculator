@@ -8,7 +8,7 @@
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         h2, h3 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
         
-        /* 모바일 반응형 입력 그리드 스타일 */
+        /* 모바일 반응형 입력 그리드 스타일 (칸 넘침 방지 min-width 추가) */
         .input-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -26,24 +26,25 @@
             background-color: #f8f9fa;
             border: 1px solid #bdc3c7;
             border-radius: 6px;
-            padding: 12px;
+            padding: 10px;
             text-align: center;
+            min-width: 0; /* 그리드 내부 요소가 칸을 뚫고 나가는 현상 방지 */
         }
         .input-group label {
-            font-size: 0.85em;
-            margin-bottom: 8px;
+            font-size: 0.8em;
+            margin-bottom: 6px;
             font-weight: bold;
             color: #333;
             word-break: keep-all;
         }
         .input-group input {
             width: 100%;
-            padding: 8px;
+            padding: 8px 4px;
             text-align: center;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
-            font-size: 1.1em;
+            font-size: 1.05em;
         }
         
         button { width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; }
@@ -62,6 +63,7 @@
     
     <h3>1. 설계자료 입력</h3>
     
+    <!-- 소수점 둘째 자리까지 기본 표현되도록 값 수정 -->
     <div class="input-grid">
         <div class="input-group">
             <label>기초 길이 L (m)</label>
@@ -77,19 +79,19 @@
         </div>
         <div class="input-group">
             <label>지하수위 WL (GL.-m)</label>
-            <input type="number" id="WL" value="3.38" step="0.01">
+            <input type="number" id="WL" value="4.10" step="0.01">
         </div>
         <div class="input-group">
             <label>지지층 점착력 c (kN/m²)</label>
-            <input type="number" id="c" value="3.0" step="0.1">
+            <input type="number" id="c" value="3.00" step="0.01">
         </div>
         <div class="input-group">
             <label>상부층 단위중량 γ1 (kN/m³)</label>
-            <input type="number" id="gamma1" value="18.0" step="0.1">
+            <input type="number" id="gamma1" value="18.00" step="0.01">
         </div>
         <div class="input-group">
             <label>지지층 단위중량 γ2 (kN/m³)</label>
-            <input type="number" id="gamma2" value="14.48" step="0.01">
+            <input type="number" id="gamma2" value="18.00" step="0.01">
         </div>
     </div>
     
@@ -125,9 +127,8 @@
             gamma1_eff = gamma1_in;
             log1 = "지하수위가 근입깊이(Df)보다 아래에 위치하여 건조/습윤 단위중량 적용";
         } else {
-            // 지표 ~ Df 사이 보간 (WL이 깊어질수록 건조중량 비율 증가)
             gamma1_eff = gamma1_sub + gamma_w * (WL / Df);
-            log1 = `지하수위가 지표~Df 사이에 위치 (1차식 보간 적용)`;
+            log1 = "지하수위가 지표~Df 사이에 위치 (1차식 보간 적용)";
         }
 
         // 3. 지지층 단위중량(γ2) 지하수위 보간 로직
@@ -143,19 +144,18 @@
             gamma2_eff = gamma2_in;
             log2 = "지하수위가 기초저면+폭(Df+B)보다 아래에 위치하여 전구간 원 단위중량 적용";
         } else {
-            // Df ~ Df+B 사이 보간
             gamma2_eff = gamma2_sub + gamma_w * ((WL - Df) / B);
-            log2 = `지하수위가 Df~Df+B 사이에 위치 (1차식 보간 적용)`;
+            log2 = "지하수위가 Df~Df+B 사이에 위치 (1차식 보간 적용)";
         }
 
-        // 4. 유효 상재하중(q) 산정 (q = Df * γ1_eff)
+        // 4. 유효 상재하중(q) 산정
         const q = Df * gamma1_eff;
 
         // 5. 형상계수 산정 (직사각형 기초)
         const alpha = 1 + 0.3 * (B / L);
         const beta = 0.5 - 0.1 * (B / L);
 
-        // 6. 지지력 계수 (Φ=25도 기준)[cite: 1]
+        // 6. 지지력 계수 (Φ=25도 기준)
         const Nc = 25.1;
         const Nq = 12.7;
         const Ng = 9.7;
@@ -166,10 +166,10 @@
         const term3 = beta * gamma2_eff * B * Ng;
         const q_ult = term1 + term2 + term3;
 
-        // 8. 허용지지력 산정 (안전율 FS = 3)[cite: 1]
+        // 8. 허용지지력 산정 (안전율 FS = 3)
         const q_all = q_ult / 3;
 
-        // 9. 결과 출력 HTML 구성
+        // 9. 결과 출력 HTML 구성 (소수점 둘째 자리 통일)
         const resultDiv = document.getElementById('result');
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = `
@@ -180,19 +180,19 @@
               &nbsp;&nbsp;(${log2})<br><br>
 
             <strong>[2] 유효 상재하중(q) 산정</strong><br>
-            - q = Df(${Df}) × γ1_eff(${gamma1_eff.toFixed(2)}) = <strong>${q.toFixed(2)} kN/m²</strong><br><br>
+            - q = Df(${Df.toFixed(2)}) × γ1_eff(${gamma1_eff.toFixed(2)}) = <strong>${q.toFixed(2)} kN/m²</strong><br><br>
 
             <strong>[3] 형상계수 산정</strong><br>
             - α = 1 + 0.3(B/L) = <strong>${alpha.toFixed(2)}</strong><br>
             - β = 0.5 - 0.1(B/L) = <strong>${beta.toFixed(2)}</strong><br><br>
 
             <strong>[4] Terzaghi 극한지지력 항별 세부내역</strong><br>
-            - ① 점착력 항 (α·c·Nc): ${alpha.toFixed(2)} × ${c} × ${Nc} = <strong>${term1.toFixed(1)} kN/m²</strong><br>
-            - ② 상재하중 항 (q·Nq): ${q.toFixed(2)} × ${Nq} = <strong>${term2.toFixed(1)} kN/m²</strong><br>
-            - ③ 중량 항 (β·γ2·B·Nγ): ${beta.toFixed(2)} × ${gamma2_eff.toFixed(2)} × ${B} × ${Ng} = <strong>${term3.toFixed(1)} kN/m²</strong><br><br>
+            - ① 점착력 항 (α·c·Nc): ${alpha.toFixed(2)} × ${c.toFixed(2)} × ${Nc} = <strong>${term1.toFixed(2)} kN/m²</strong><br>
+            - ② 상재하중 항 (q·Nq): ${q.toFixed(2)} × ${Nq} = <strong>${term2.toFixed(2)} kN/m²</strong><br>
+            - ③ 중량 항 (β·γ2·B·Nγ): ${beta.toFixed(2)} × ${gamma2_eff.toFixed(2)} × ${B.toFixed(2)} × ${Ng} = <strong>${term3.toFixed(2)} kN/m²</strong><br><br>
 
             <strong>[5] 최종 지지력 결과</strong><br>
-            - 극한지지력 (q_ult): <strong>${q_ult.toFixed(1)} kN/m²</strong><br>
+            - 극한지지력 (q_ult): <strong>${q_ult.toFixed(2)} kN/m²</strong><br>
             - 허용지지력 (q_all, FS=3): <strong>${q_all.toFixed(2)} kN/m²</strong>
         `;
     }
