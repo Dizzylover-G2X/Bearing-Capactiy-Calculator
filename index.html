@@ -260,9 +260,9 @@
         const q_all_g = q_ult_g / 3.0;
 
         // 2. 국부전단파괴
-        const c_local = (2.0 / 3.0) * c_in;
+        const c_local = (2.0 / 3.0) * c_in;[cite: 15]
         const phi_rad = phi_in * (Math.PI / 180);
-        const phi_local = Math.atan((2.0 / 3.0) * Math.tan(phi_rad)) * (180 / Math.PI);
+        const phi_local = Math.atan((2.0 / 3.0) * Math.tan(phi_rad)) * (180 / Math.PI);[cite: 15]
         const f_loc = interpolateFactors(phi_local, localTable);
         const term1_l = alpha * c_local * f_loc.Nc;
         const term2_l = q * f_loc.Nq;
@@ -271,7 +271,7 @@
         const q_all_l = q_ult_l / 3.0;
 
         // 3. Terzaghi 수정 지지력 공식
-        const f_mod = interpolateFactors(phi_local, modifiedTable);
+        const f_mod = interpolateFactors(phi_local, modifiedTable);[cite: 15]
         const term1_m = alpha * c_local * f_mod.Nc;
         const term2_m = q * f_mod.Nq;
         const term3_m = beta * gamma2_eff * B * f_mod.Ng;
@@ -308,9 +308,9 @@
             </div>
 
             <div class="section-title">[공통 지반 및 기초 검증 데이터]</div>
-            - 상부층 보간 적용치 (gamma1): <strong>${gamma1_eff.toFixed(2)} kN/m³</strong> (${log1})<br>
-            - 지지층 보간 적용치 (gamma2): <strong>${gamma2_eff.toFixed(2)} kN/m³</strong> (${log2})<br>
-            - 유효 상재하중 (q = Df x gamma1): <strong>${q.toFixed(2)} kN/m²</strong><br><br>
+            - 상부층 보간 적용치 (&gamma;<sub>1</sub>): <strong>${gamma1_eff.toFixed(2)} kN/m³</strong> (${log1})<br>
+            - 지지층 보간 적용치 (&gamma;<sub>2</sub>): <strong>${gamma2_eff.toFixed(2)} kN/m³</strong> (${log2})<br>
+            - 유효 상재하중 (q = D<sub>f</sub> &times; &gamma;<sub>1</sub>): <strong>${q.toFixed(2)} kN/m²</strong><br><br>
 
             <div class="section-title">[검증 1] Terzaghi 기초형상계수 표</div>
             <div class="table-container">
@@ -324,7 +324,7 @@
                         <th>적용값</th>
                     </tr>
                     <tr>
-                        <td><strong>alpha</strong></td>
+                        <td><strong>&alpha;</strong></td>
                         <td>1.0</td>
                         <td>1.3</td>
                         <td>1.3</td>
@@ -332,7 +332,7 @@
                         <td style="background:#e8f8f5; font-weight:bold;">${alpha.toFixed(2)}</td>
                     </tr>
                     <tr>
-                        <td><strong>beta</strong></td>
+                        <td><strong>&beta;</strong></td>
                         <td>0.5</td>
                         <td>0.3</td>
                         <td>0.4</td>
@@ -342,41 +342,91 @@
                 </table>
             </div>
 
-            <div class="section-title">[검증 2] Terzaghi 수정 지지력계수 표 (적용 phi' = ${phi_local.toFixed(2)} deg)</div>
+            <div class="section-title">[검증 2] Terzaghi 전반전단파괴 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
             <div class="table-container">
                 <table class="result-table" style="font-size: 0.75em;">
                     <tr>
                         <th>계수</th>
-                        <th>0 deg</th><th>5 deg</th><th>10 deg</th><th>15 deg</th><th>20 deg</th><th>25 deg</th><th>28 deg</th><th>32 deg</th><th>36 deg</th><th>40 deg 이상</th>
+                        <th>0°</th><th>5°</th><th>10°</th><th>15°</th><th>20°</th><th>25°</th><th>30°</th><th>35°</th><th>40°</th><th>45°</th>
                         <th style="background:#e8f8f5;">적용값</th>
                     </tr>
                     <tr>
-                        <td><strong>Nc''</strong></td>
+                        <td><strong>N<sub>c</sub></strong></td>
+                        <td>5.7</td><td>7.3</td><td>9.6</td><td>12.9</td><td>17.7</td><td>25.1</td><td>37.2</td><td>57.8</td><td>95.7</td><td>172.3</td>
+                        <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_gen.Nc.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>N<sub>q</sub></strong></td>
+                        <td>1.0</td><td>1.6</td><td>2.7</td><td>4.5</td><td>7.4</td><td>12.7</td><td>22.5</td><td>41.4</td><td>81.3</td><td>173.3</td>
+                        <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_gen.Nq.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>N<sub>&gamma;</sub></strong></td>
+                        <td>0.0</td><td>0.5</td><td>1.2</td><td>2.5</td><td>4.0</td><td>9.7</td><td>19.7</td><td>42.5</td><td>100.4</td><td>297.5</td>
+                        <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_gen.Ng.toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section-title">[검증 3] Terzaghi 국부전단파괴 지지력계수 표 (적용 &Phi;' = ${phi_local.toFixed(2)}°)</div>[cite: 15]
+            <div class="table-container">
+                <table class="result-table" style="font-size: 0.75em;">
+                    <tr>
+                        <th>계수</th>
+                        <th>0°</th><th>5°</th><th>10°</th><th>15°</th><th>20°</th><th>25°</th><th>30°</th><th>35°</th><th>40°</th><th>45°</th>
+                        <th style="background:#e8f8f5;">적용값</th>
+                    </tr>
+                    <tr>
+                        <td><strong>N<sub>c</sub></strong></td>
+                        <td>5.7</td><td>6.7</td><td>8.0</td><td>9.7</td><td>11.8</td><td>14.8</td><td>19.0</td><td>25.2</td><td>34.9</td><td>51.2</td>
+                        <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_loc.Nc.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>N<sub>q</sub></strong></td>
+                        <td>1.0</td><td>1.4</td><td>1.9</td><td>2.7</td><td>3.9</td><td>5.6</td><td>8.3</td><td>12.6</td><td>20.5</td><td>35.1</td>
+                        <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_loc.Nq.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>N<sub>&gamma;</sub></strong></td>
+                        <td>0.0</td><td>0.2</td><td>0.5</td><td>0.9</td><td>1.7</td><td>3.2</td><td>5.7</td><td>10.1</td><td>18.8</td><td>37.7</td>
+                        <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_loc.Ng.toFixed(2)}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section-title">[검증 4] Terzaghi 수정 지지력계수 표 (적용 &Phi;' = ${phi_local.toFixed(2)}°)</div>[cite: 15]
+            <div class="table-container">
+                <table class="result-table" style="font-size: 0.75em;">
+                    <tr>
+                        <th>계수</th>
+                        <th>0°</th><th>5°</th><th>10°</th><th>15°</th><th>20°</th><th>25°</th><th>28°</th><th>32°</th><th>36°</th><th>40° 이상</th>
+                        <th style="background:#e8f8f5;">적용값</th>
+                    </tr>
+                    <tr>
+                        <td><strong>N<sub>c</sub>''</strong></td>
                         <td>5.3</td><td>5.3</td><td>6.5</td><td>7.9</td><td>9.9</td><td>11.4</td><td>20.9</td><td>42.2</td><td>95.7</td><td>95.7</td>
                         <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_mod.Nc.toFixed(2)}</td>
                     </tr>
                     <tr>
-                        <td><strong>Nq''</strong></td>
+                        <td><strong>N<sub>q</sub>''</strong></td>
                         <td>1.0</td><td>1.4</td><td>1.9</td><td>2.7</td><td>3.9</td><td>5.6</td><td>7.1</td><td>14.1</td><td>31.6</td><td>81.2</td>
                         <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_mod.Nq.toFixed(2)}</td>
                     </tr>
                     <tr>
-                        <td><strong>Ny''</strong></td>
+                        <td><strong>N<sub>&gamma;</sub>''</strong></td>
                         <td>0.0</td><td>0.0</td><td>0.0</td><td>1.2</td><td>2.0</td><td>3.3</td><td>4.4</td><td>10.6</td><td>30.5</td><td>114.0</td>
                         <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${f_mod.Ng.toFixed(2)}</td>
                     </tr>
                 </table>
             </div>
 
-            <div class="section-title">[검증 3] Terzaghi 수정 지지력공식 항별 세부내역</div>
-            - 보정 강도 정수: c' = (2/3) x ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, phi' = atan((2/3)*tan(${phi_in.toFixed(2)} deg)) = <strong>${phi_local.toFixed(2)} deg</strong><br>
-            - ① 점착력 항 (alpha x c' x Nc''): ${alpha.toFixed(2)} x ${c_local.toFixed(2)} x ${f_mod.Nc.toFixed(2)} = <strong>${term1_m.toFixed(2)} kN/m²</strong><br>
-            - ② 상재하중 항 (q x Nq''): ${q.toFixed(2)} x ${f_mod.Nq.toFixed(2)} = <strong>${term2_m.toFixed(2)} kN/m²</strong><br>
-            - ③ 중량 항 (beta x gamma2 x B x Ny''): ${beta.toFixed(2)} x ${gamma2_eff.toFixed(2)} x ${B.toFixed(2)} x ${f_mod.Ng.toFixed(2)} = <strong>${term3_m.toFixed(2)} kN/m²</strong><br><br>
-
-            <div class="section-title">[검증 4] 수정 지지력 공식 최종 결과</div>
-            - 극한지지력 (q_ult): ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong><br>
-            - 허용지지력 (q_all, FS=3): ${q_ult_m.toFixed(2)} / 3 = <strong>${q_all_m.toFixed(2)} kN/m²</strong>
+            <div class="section-title">[검증 5] Terzaghi 수정 지지력공식 최종 결과</div>[cite: 15]
+            - 보정 강도 정수: c' = (2/3) &times; ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, &Phi;' = atan((2/3)&times;tan(${phi_in.toFixed(2)}°)) = <strong>${phi_local.toFixed(2)}°</strong>[cite: 15]<br>
+            - ① 점착력 항 (&alpha; &times; c' &times; N<sub>c</sub>''): ${alpha.toFixed(2)} &times; ${c_local.toFixed(2)} &times; ${f_mod.Nc.toFixed(2)} = <strong>${term1_m.toFixed(2)} kN/m²</strong><br>
+            - ② 상재하중 항 (q &times; N<sub>q</sub>''): ${q.toFixed(2)} &times; ${f_mod.Nq.toFixed(2)} = <strong>${term2_m.toFixed(2)} kN/m²</strong><br>
+            - ③ 중량 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>''): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mod.Ng.toFixed(2)} = <strong>${term3_m.toFixed(2)} kN/m²</strong><br><br>
+            - 극한지지력 (q<sub>ult</sub>): ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong>[cite: 15]<br>
+            - 허용지지력 (q<sub>all</sub>, FS=3): ${q_ult_m.toFixed(2)} / 3 = <strong>${q_all_m.toFixed(2)} kN/m²</strong>[cite: 15]
         `;
     }
 </script>
