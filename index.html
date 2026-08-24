@@ -8,6 +8,28 @@
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         h2, h3 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
         
+        /* 탭 메뉴 스타일 */
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background-color: #ecf0f1;
+            border: none;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            color: #7f8c8d;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background-color: #3498db;
+            color: white;
+        }
+
         /* 모바일 반응형 입력 그리드 스타일 */
         .input-grid {
             display: grid;
@@ -83,6 +105,12 @@
 <div class="container">
     <h2>◎ 기초 지지력 산정 (Terzaghi)</h2>
     
+    <!-- 전단파괴 모드 선택 탭 -->
+    <div class="tab-container">
+        <button class="tab-btn active" id="tab-general" onclick="setMode('general')">전반전단파괴</button>
+        <button class="tab-btn" id="tab-local" onclick="setMode('local')">국부전단파괴</button>
+    </div>
+    
     <h3>1. 설계자료 입력</h3>
     
     <div class="input-grid">
@@ -100,7 +128,7 @@
         </div>
         <div class="input-group">
             <label>지하수위 WL (GL.-m)</label>
-            <input type="number" id="WL" value="4.10" step="0.01">
+            <input type="number" id="WL" value="3.38" step="0.01">
         </div>
         <div class="input-group">
             <label>지지층 점착력 c (kN/m²)</label>
@@ -120,7 +148,7 @@
         </div>
     </div>
     
-    <p style="font-size: 0.85em; color: #555;">※ 물의 단위중량 = 9.807 kN/m³ 적용.<br>※ Terzaghi 지지력계수 및 형상계수 자동 보간 적용.</p>
+    <p style="font-size: 0.85em; color: #555;" id="mode-desc">※ 모드: 전반전단파괴 (General Shear Failure)</p>
 
     <button onclick="calculateBearingCapacity()">지지력 계산하기</button>
 
@@ -128,7 +156,27 @@
 </div>
 
 <script>
-    const terzaghiTable = [
+    let currentMode = 'general'; // 기본값 전반전단파괴
+
+    function setMode(mode) {
+        currentMode = mode;
+        const genBtn = document.getElementById('tab-general');
+        const locBtn = document.getElementById('tab-local');
+        const desc = document.getElementById('mode-desc');
+
+        if (mode === 'general') {
+            genBtn.classList.add('active');
+            locBtn.classList.remove('active');
+            desc.innerText = "※ 모드: 전반전단파괴 (General Shear Failure)";
+        } else {
+            locBtn.classList.add('active');
+            genBtn.classList.remove('active');
+            desc.innerText = "※ 모드: 국부전단파괴 (Local Shear Failure - c'=2/3c, Φ'=tan⁻¹(2/3 tanΦ))[cite: 16]";
+        }
+    }
+
+    // 전반전단파괴 지지력계수 테이블
+    const generalTable = [
         { phi: 0,  Nc: 5.7,   Nq: 1.0,   Ng: 0.0   },
         { phi: 5,  Nc: 7.3,   Nq: 1.6,   Ng: 0.5   },
         { phi: 10, Nc: 9.6,   Nq: 2.7,   Ng: 1.2   },
@@ -141,18 +189,32 @@
         { phi: 45, Nc: 172.3, Nq: 173.3, Ng: 297.5 }
     ];
 
-    function interpolateFactors(phiInput) {
-        if (phiInput <= terzaghiTable[0].phi) {
-            return { Nc: terzaghiTable[0].Nc, Nq: terzaghiTable[0].Nq, Ng: terzaghiTable[0].Ng };
+    // 국부전단파괴 지지력계수 테이블 (구조계산서-국부.pdf 기준)[cite: 16]
+    const localTable = [
+        { phi: 0,  Nc: 5.7,   Nq: 1.0,   Ng: 0.0   },
+        { phi: 5,  Nc: 6.7,   Nq: 1.4,   Ng: 0.2   },
+        { phi: 10, Nc: 8.0,   Nq: 1.9,   Ng: 0.5   },
+        { phi: 15, Nc: 9.7,   Nq: 2.7,   Ng: 0.9   },
+        { phi: 20, Nc: 11.8,  Nq: 3.9,   Ng: 1.7   },
+        { phi: 25, Nc: 14.8,  Nq: 5.6,   Ng: 3.2   },
+        { phi: 30, Nc: 19.0,  Nq: 8.3,   Ng: 5.7   },
+        { phi: 35, Nc: 25.2,  Nq: 12.6,  Ng: 10.1  },
+        { phi: 40, Nc: 34.9,  Nq: 20.5,  Ng: 18.8  },
+        { phi: 45, Nc: 51.2,  Nq: 35.1,  Ng: 37.7  }
+    ];
+
+    function interpolateFactors(phiInput, table) {
+        if (phiInput <= table[0].phi) {
+            return { Nc: table[0].Nc, Nq: table[0].Nq, Ng: table[0].Ng };
         }
-        const last = terzaghiTable[terzaghiTable.length - 1];
+        const last = table[table.length - 1];
         if (phiInput >= last.phi) {
             return { Nc: last.Nc, Nq: last.Nq, Ng: last.Ng };
         }
 
-        for (let i = 0; i < terzaghiTable.length - 1; i++) {
-            let lower = terzaghiTable[i];
-            let upper = terzaghiTable[i + 1];
+        for (let i = 0; i < table.length - 1; i++) {
+            let lower = table[i];
+            let upper = table[i + 1];
             if (phiInput >= lower.phi && phiInput <= upper.phi) {
                 let ratio = (phiInput - lower.phi) / (upper.phi - lower.phi);
                 let Nc = lower.Nc + ratio * (upper.Nc - lower.Nc);
@@ -161,7 +223,7 @@
                 return { Nc, Nq, Ng };
             }
         }
-        return { Nc: 25.1, Nq: 12.7, Ng: 9.7 };
+        return { Nc: table[5].Nc, Nq: table[5].Nq, Ng: table[5].Ng };
     }
 
     function calculateBearingCapacity() {
@@ -169,12 +231,27 @@
         const B = parseFloat(document.getElementById('B').value);
         const Df = parseFloat(document.getElementById('Df').value);
         const WL = parseFloat(document.getElementById('WL').value);
-        const c = parseFloat(document.getElementById('c').value);
-        const phi = parseFloat(document.getElementById('phi').value);
+        let c_in = parseFloat(document.getElementById('c').value);
+        let phi_in = parseFloat(document.getElementById('phi').value);
         const gamma1_in = parseFloat(document.getElementById('gamma1').value);
         const gamma2_in = parseFloat(document.getElementById('gamma2').value);
         
         const gamma_w = 9.807;
+
+        // 국부전단파괴 모드일 때 전단강도 정수 변환 적용[cite: 16]
+        let c_eff = c_in;
+        let phi_eff = phi_in;
+        let shearLog = "";
+
+        if (currentMode === 'local') {
+            c_eff = (2.0 / 3.0) * c_in;[cite: 16]
+            let phiRad = phi_in * (Math.PI / 180);
+            let tanPhiPrime = (2.0 / 3.0) * Math.tan(phiRad);[cite: 16]
+            phi_eff = Math.atan(tanPhiPrime) * (180 / Math.PI);[cite: 16]
+            shearLog = `<br><strong>[국부전단파괴 보정 적용]</strong><br>` +
+                       `- 점착력 c' = 2/3 × c = ${(2/3).toFixed(3)} × ${c_in.toFixed(2)} = <strong>${c_eff.toFixed(2)} kN/m²</strong>[cite: 16]<br>` +
+                       `- 내부마찰각 Φ' = tan⁻¹(2/3 × tanΦ) = <strong>${phi_eff.toFixed(2)}°</strong> (입력: ${phi_in.toFixed(2)}°)[cite: 16]<br>`;
+        }
 
         // 상부층 단위중량 보간
         let gamma1_eff = gamma1_in;
@@ -214,14 +291,15 @@
         const alpha = 1 + 0.3 * (B / L);
         const beta = 0.5 - 0.1 * (B / L);
 
-        // 지지력계수 자동 보간 산정
-        const factors = interpolateFactors(phi);
+        // 지지력계수 자동 보간 산정 (모드에 따라 테이블 선택)
+        const activeTable = (currentMode === 'local') ? localTable : generalTable;
+        const factors = interpolateFactors(phi_eff, activeTable);
         const Nc = factors.Nc;
         const Nq = factors.Nq;
         const Ng = factors.Ng;
 
         // 극한지지력 항별 계산
-        const term1 = alpha * c * Nc;
+        const term1 = alpha * c_eff * Nc;
         const term2 = q * Nq;
         const term3 = beta * gamma2_eff * B * Ng;
         const q_ult = term1 + term2 + term3;
@@ -229,13 +307,16 @@
         // 허용지지력 산정 (안전율 FS = 3)
         const q_all = q_ult / 3;
 
-        // 결과 출력 구성 (표 형식 적용)
+        // 테이블 렌더링용 데이터
+        const tableTitle = (currentMode === 'local') ? "Terzaghi의 지지력계수 (국부전단파괴)" : "Terzaghi의 지지력계수 (전반전단파괴)";
+
         const resultDiv = document.getElementById('result');
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = `
             <strong>[1] 지하수위 및 단위중량 보간 검증</strong><br>
             - 상부층 보간 적용치(γ1): <strong>${gamma1_eff.toFixed(2)} kN/m³</strong> (${log1})<br>
-            - 지지층 보간 적용치(γ2): <strong>${gamma2_eff.toFixed(2)} kN/m³</strong> (${log2})<br><br>
+            - 지지층 보간 적용치(γ2): <strong>${gamma2_eff.toFixed(2)} kN/m³</strong> (${log2})<br>
+            ${shearLog}<br>
 
             <strong>[2] 유효 상재하중(q) 산정</strong><br>
             - q = Df(${Df.toFixed(2)}) × γ1_eff(${gamma1_eff.toFixed(2)}) = <strong>${q.toFixed(2)} kN/m²</strong><br><br>
@@ -270,7 +351,7 @@
                 </table>
             </div>
 
-            <strong>[4] 지지력계수 자동 보간 검증 (Φ = ${phi.toFixed(2)}°)</strong><br>
+            <strong>[4] ${tableTitle} 자동 보간 검증 (적용 Φ = ${phi_eff.toFixed(2)}°)</strong><br>
             <div class="table-container">
                 <table class="result-table" style="font-size: 0.75em;">
                     <tr>
@@ -280,24 +361,24 @@
                     </tr>
                     <tr>
                         <td><strong>Nc</strong></td>
-                        <td>5.7</td><td>7.3</td><td>9.6</td><td>12.9</td><td>17.7</td><td>25.1</td><td>37.2</td><td>57.8</td><td>95.7</td><td>172.3</td>
+                        <td>${activeTable[0].Nc}</td><td>${activeTable[1].Nc}</td><td>${activeTable[2].Nc}</td><td>${activeTable[3].Nc}</td><td>${activeTable[4].Nc}</td><td>${activeTable[5].Nc}</td><td>${activeTable[6].Nc}</td><td>${activeTable[7].Nc}</td><td>${activeTable[8].Nc}</td><td>${activeTable[9].Nc}</td>
                         <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${Nc.toFixed(2)}</td>
                     </tr>
                     <tr>
                         <td><strong>Nq</strong></td>
-                        <td>1.0</td><td>1.6</td><td>2.7</td><td>4.5</td><td>7.4</td><td>12.7</td><td>22.5</td><td>41.4</td><td>81.3</td><td>173.3</td>
+                        <td>${activeTable[0].Nq}</td><td>${activeTable[1].Nq}</td><td>${activeTable[2].Nq}</td><td>${activeTable[3].Nq}</td><td>${activeTable[4].Nq}</td><td>${activeTable[5].Nq}</td><td>${activeTable[6].Nq}</td><td>${activeTable[7].Nq}</td><td>${activeTable[8].Nq}</td><td>${activeTable[9].Nq}</td>
                         <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${Nq.toFixed(2)}</td>
                     </tr>
                     <tr>
                         <td><strong>Nγ</strong></td>
-                        <td>0.0</td><td>0.5</td><td>1.2</td><td>2.5</td><td>4.0</td><td>9.7</td><td>19.7</td><td>42.5</td><td>100.4</td><td>297.5</td>
+                        <td>${activeTable[0].Ng}</td><td>${activeTable[1].Ng}</td><td>${activeTable[2].Ng}</td><td>${activeTable[3].Ng}</td><td>${activeTable[4].Ng}</td><td>${activeTable[5].Ng}</td><td>${activeTable[6].Ng}</td><td>${activeTable[7].Ng}</td><td>${activeTable[8].Ng}</td><td>${activeTable[9].Ng}</td>
                         <td style="background:#e8f8f5; font-weight:bold; color:#2980b9;">${Ng.toFixed(2)}</td>
                     </tr>
                 </table>
             </div>
 
             <strong>[5] Terzaghi 극한지지력 항별 세부내역</strong><br>
-            - ① 점착력 항 (α·c·Nc): ${alpha.toFixed(2)} × ${c.toFixed(2)} × ${Nc.toFixed(2)} = <strong>${term1.toFixed(2)} kN/m²</strong><br>
+            - ① 점착력 항 (α·c·Nc): ${alpha.toFixed(2)} × ${c_eff.toFixed(2)} × ${Nc.toFixed(2)} = <strong>${term1.toFixed(2)} kN/m²</strong><br>
             - ② 상재하중 항 (q·Nq): ${q.toFixed(2)} × ${Nq.toFixed(2)} = <strong>${term2.toFixed(2)} kN/m²</strong><br>
             - ③ 중량 항 (β·γ2·B·Nγ): ${beta.toFixed(2)} × ${gamma2_eff.toFixed(2)} × ${B.toFixed(2)} × ${Ng.toFixed(2)} = <strong>${term3.toFixed(2)} kN/m²</strong><br><br>
 
