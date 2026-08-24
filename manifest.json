@@ -1,7 +1,7 @@
 {
   "name": "지지력 계산",
   "short_name": "지지력 계산",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#c8c8c8",
   "theme_color": "#c8c8c8",
