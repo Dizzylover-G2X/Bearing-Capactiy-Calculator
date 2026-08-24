@@ -59,8 +59,16 @@ export function initBearingModule(container) {
                 <label>지지층 단위중량 γ2 (kN/m³)</label>
                 <input type="number" id="gamma2" value="18.00" step="0.01">
             </div>
-            <div class="input-group" style="background-color: #e8f8f5; border-color: #1abc9c;">
-                <label style="color: #16a085;">허용안전율 FS</label>
+            <div class="input-group">
+                <label>표준관입시험 N치</label>
+                <input type="number" id="N_val" value="25.00" step="1">
+            </div>
+            <div class="input-group">
+                <label>문헌참조 공칭지내력 (kN/m²)</label>
+                <input type="number" id="q_base" value="300.00" step="10">
+            </div>
+            <div class="input-group" style="background-color: #e8f8f5; border-color: #1abc9c; grid-column: span 2;">
+                <label style="color: #16a085;">허용안전율 FS (이론식 적용)</label>
                 <input type="number" id="FS" value="3.00" step="0.01">
             </div>
         </div>
@@ -91,6 +99,8 @@ function calculateAllBearingCapacities() {
     const phi_in = parseFloat(document.getElementById('phi').value);
     const gamma1_in = parseFloat(document.getElementById('gamma1').value);
     const gamma2_in = parseFloat(document.getElementById('gamma2').value);
+    const N_val = parseFloat(document.getElementById('N_val').value);
+    const q_base = parseFloat(document.getElementById('q_base').value);
     const FS = parseFloat(document.getElementById('FS').value);
     
     const gamma_w = 9.807;
@@ -163,7 +173,6 @@ function calculateAllBearingCapacities() {
 
     let Fcs, Fqs, Fgs, Fcd, Fqd, Fgd;
 
-    // 형상계수 산정 (구조물기초설계기준 해설 식 4.2.8)
     Fcs = 1.0 + 0.2 * N_phi * (B / L);
     let fqs_desc = "";
     if (phi_in === 0) {
@@ -182,7 +191,6 @@ function calculateAllBearingCapacities() {
         fqs_desc = `1 + 0.1 &times; N<sub>&phi;</sub> &times; (B / L) = 1 + 0.1 &times; ${N_phi.toFixed(2)} &times; (${B.toFixed(2)} / ${L.toFixed(2)}) = <strong>${Fqs.toFixed(2)}</strong>`;
     }
 
-    // 심도계수 산정 (구조물기초설계기준 해설 식 4.2.9: d_q = d_gamma)
     Fcd = 1.0 + 0.2 * Math.sqrt(N_phi) * D_over_B;
     let fqd_desc = "";
     if (phi_in === 0) {
@@ -206,6 +214,26 @@ function calculateAllBearingCapacities() {
     const term3_mey = 0.5 * gamma2_eff * B * f_mey.Ng * Fgs * Fgd;
     const q_ult_mey = term1_mey + term2_mey + term3_mey;
     const q_all_mey = q_ult_mey / FS;
+
+    // 5. 수정 Meyerhof 공식 (N치 기반 허용지지력 경험식)
+    let Kd = 1.0 + 0.33 * D_over_B;
+    if (Kd > 1.33) Kd = 1.33;
+    let q_all_mod_mey = 0;
+    let mod_mey_formula = "";
+    if (B < 1.2) {
+        q_all_mod_mey = 19 * N_val * Kd;
+        mod_mey_formula = `q_a = 19 &times; N &times; K_d = 19 &times; ${N_val} &times; ${Kd.toFixed(2)}`;
+    } else {
+        q_all_mod_mey = 12 * N_val * Math.pow(1 + 0.3 / B, 2) * Kd;
+        mod_mey_formula = `q_a = 12 &times; N &times; (1 + 0.3 / B)<sup>2</sup> &times; K_d = 12 &times; ${N_val} &times; (1 + 0.3 / ${B.toFixed(2)})<sup>2</sup> &times; ${Kd.toFixed(2)}`;
+    }
+
+    // 6. 문헌참조 및 경험적 지지력 산정 (근입깊이 할증 반영)
+    let excess_Df = Math.max(0, Df - 0.5);
+    let depth_increment_count = excess_Df / 0.3;
+    let surcharge_rate = depth_increment_count * 0.05;
+    let K_depth_emp = 1.0 + surcharge_rate;
+    let q_all_emp = q_base * K_depth_emp;
 
     const resultDiv = document.getElementById('result');
     resultDiv.style.display = 'block';
@@ -237,6 +265,16 @@ function calculateAllBearingCapacities() {
                     <td><strong>Meyerhof 지지력공식</strong></td>
                     <td>${q_ult_mey.toFixed(2)} kN/m²</td>
                     <td style="font-weight:bold; color:#e67e22;">${q_all_mey.toFixed(2)} kN/m²</td>
+                </tr>
+                <tr>
+                    <td><strong>수정 Meyerhof 공식 (N치 기반)</strong></td>
+                    <td>- (직접 허용산정)</td>
+                    <td style="font-weight:bold; color:#27ae60;">${q_all_mod_mey.toFixed(2)} kN/m²</td>
+                </tr>
+                <tr>
+                    <td><strong>문헌참조 및 경험적 지지력 (근입할증)</strong></td>
+                    <td>- (직접 허용산정)</td>
+                    <td style="font-weight:bold; color:#8e44ad;">${q_all_emp.toFixed(2)} kN/m²</td>
                 </tr>
             </table>
         </div>
@@ -421,6 +459,24 @@ function calculateAllBearingCapacities() {
             • 상재하중 항 (q &times; N<sub>q</sub> &times; F<sub>qs</sub> &times; F<sub>qd</sub>): ${q.toFixed(2)} &times; ${f_mey.Nq.toFixed(2)} &times; ${Fqs.toFixed(2)} &times; ${Fqd.toFixed(2)} = <strong>${term2_mey.toFixed(2)} kN/m²</strong><br>
             • 기초폭 항 (0.5 &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub> &times; F<sub>&gamma;s</sub> &times; F<sub>&gamma;d</sub>): 0.5 &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mey.Ng.toFixed(2)} &times; ${Fgs.toFixed(2)} &times; ${Fgd.toFixed(2)} = <strong>${term3_mey.toFixed(2)} kN/m²</strong>
         </div>
-        - 극한지지력 (q<sub>ult</sub>): ${term1_mey.toFixed(2)} + ${term2_mey.toFixed(2)} + ${term3_mey.toFixed(2)} = <strong>${q_ult_mey.toFixed(2)} kN/m²</strong> (허용: q<sub>ult</sub> / ${FS.toFixed(2)} = <strong>${q_all_mey.toFixed(2)} kN/m²</strong>)
+        - 극한지지력 (q<sub>ult</sub>): ${term1_mey.toFixed(2)} + ${term2_mey.toFixed(2)} + ${term3_mey.toFixed(2)} = <strong>${q_ult_mey.toFixed(2)} kN/m²</strong> (허용: q<sub>ult</sub> / ${FS.toFixed(2)} = <strong>${q_all_mey.toFixed(2)} kN/m²</strong>)<br><br>
+
+        <div class="section-title">[검증 6] 수정 Meyerhof 지지력 공식 (N치 기반 경험식)</div>
+        - 적용 공식 및 산정 과정:
+        <div class="calc-step">
+            • 근입깊이 계수 (K<sub>d</sub> = min(1 + 0.33 &times; D<sub>f</sub> / B, 1.33)): min(1 + 0.33 &times; ${Df.toFixed(2)} / ${B.toFixed(2)}, 1.33) = <strong>${Kd.toFixed(2)}</strong><br>
+            • 허용지지력 산정식: ${mod_mey_formula}<br>
+            • <strong>산정된 허용지지력 (q<sub>all</sub>): ${q_all_mod_mey.toFixed(2)} kN/m²</strong>
+        </div><br>
+
+        <div class="section-title">[검증 7] 문헌참조 및 경험적 지지력 산정 (근입깊이 할증 반영)</div>
+        - 적용 기준 및 산정 과정:
+        <div class="calc-step">
+            • 기준 공칭지내력 (q<sub>base</sub>): <strong>${q_base.toFixed(2)} kN/m²</strong><br>
+            • 근입깊이 할증 조건 (최소 근입 0.5m 초과 분에 대해 0.3m당 5% 할증):<br>
+            &nbsp;&nbsp;- 초과 근입깊이 (&Delta;D<sub>f</sub> = max(0, D<sub>f</sub> - 0.5)): max(0, ${Df.toFixed(2)} - 0.5) = <strong>${excess_Df.toFixed(2)} m</strong><br>
+            &nbsp;&nbsp;- 근입할증계수 (K<sub>depth_emp</sub> = 1 + (&Delta;D<sub>f</sub> / 0.3) &times; 0.05): 1 + (${excess_Df.toFixed(2)} / 0.3) &times; 0.05 = <strong>${K_depth_emp.toFixed(2)}</strong><br>
+            • <strong>최종 허용지지력 (q<sub>all</sub>): q<sub>base</sub> &times; K<sub>depth_emp</sub> = ${q_base.toFixed(2)} &times; ${K_depth_emp.toFixed(2)} = ${q_all_emp.toFixed(2)} kN/m²</strong>
+        </div>
     `;
 }
