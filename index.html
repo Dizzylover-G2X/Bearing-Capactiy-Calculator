@@ -88,6 +88,11 @@
             font-size: 1.1em;
             font-weight: bold;
         }
+        .calc-step {
+            margin-left: 15px;
+            font-size: 0.92em;
+            line-height: 1.6;
+        }
     </style>
     
     <link rel="manifest" href="manifest.json">
@@ -123,8 +128,8 @@
             <input type="number" id="c" value="3.00" step="0.01">
         </div>
         <div class="input-group">
-            <label>내부마찰각 Φ (°)</label>
-            <input type="number" id="phi" value="25.00" step="0.1">
+            <label>지지층 내부마찰각 Φ (°)</label>
+            <input type="number" id="phi" value="25.00" step="0.01">
         </div>
         <div class="input-group">
             <label>상부층 단위중량 γ1 (kN/m³)</label>
@@ -144,6 +149,16 @@
 </div>
 
 <script>
+    // 입력값 포커스 아웃 시 소수점 둘째 자리 자동 포맷팅
+    document.querySelectorAll('.input-grid input').forEach(input => {
+        input.addEventListener('blur', function() {
+            let val = parseFloat(this.value);
+            if (!isNaN(val)) {
+                this.value = val.toFixed(2);
+            }
+        });
+    });
+
     const generalTable = [
         { phi: 0,  Nc: 5.7,   Nq: 1.0,   Ng: 0.0   },
         { phi: 5,  Nc: 7.3,   Nq: 1.6,   Ng: 0.5   },
@@ -170,7 +185,6 @@
         { phi: 45, Nc: 51.2,  Nq: 35.1,  Ng: 37.7  }
     ];
 
-    // 구조계산서 PDF 기준 수정지지력계수 표 (0, 5, 10도 모두 Nc = 5.3)[cite: 17]
     const modifiedTable = [
         { phi: 0,  Nc: 5.3,  Nq: 1.0,  Ng: 0.0  },
         { phi: 5,  Nc: 5.3,  Nq: 1.4,  Ng: 0.0  },
@@ -369,8 +383,13 @@
                     </tr>
                 </table>
             </div>
-            - 항별 세부내역: (${alpha.toFixed(2)} &times; ${c_in.toFixed(2)} &times; ${f_gen.Nc.toFixed(2)}) + (${q.toFixed(2)} &times; ${f_gen.Nq.toFixed(2)}) + (${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_gen.Ng.toFixed(2)})<br>
-            = ${term1_g.toFixed(2)} + ${term2_g.toFixed(2)} + ${term3_g.toFixed(2)} = <strong>${q_ult_g.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_g.toFixed(2)} kN/m²</strong>)<br><br>
+            - 항별 세부내역:
+            <div class="calc-step">
+                • 점착력 항 (&alpha; &times; c &times; N<sub>c</sub>): ${alpha.toFixed(2)} &times; ${c_in.toFixed(2)} &times; ${f_gen.Nc.toFixed(2)} = <strong>${term1_g.toFixed(2)} kN/m²</strong><br>
+                • 상재하중 항 (q &times; N<sub>q</sub>): ${q.toFixed(2)} &times; ${f_gen.Nq.toFixed(2)} = <strong>${term2_g.toFixed(2)} kN/m²</strong><br>
+                • 기초폭 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_gen.Ng.toFixed(2)} = <strong>${term3_g.toFixed(2)} kN/m²</strong>
+            </div>
+            - 극한지지력 (q<sub>ult</sub>): ${term1_g.toFixed(2)} + ${term2_g.toFixed(2)} + ${term3_g.toFixed(2)} = <strong>${q_ult_g.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_g.toFixed(2)} kN/m²</strong>)<br><br>
 
             <div class="section-title">[검증 3] Terzaghi 국부전단파괴 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
             - 보정 강도 정수: c' = (2/3) &times; ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, 참조 &Phi;' = atan((2/3)&times;tan(${phi_in.toFixed(2)}°)) = <strong>${phi_local.toFixed(2)}°</strong>
@@ -398,8 +417,13 @@
                     </tr>
                 </table>
             </div>
-            - 항별 세부내역: (${alpha.toFixed(2)} &times; ${c_local.toFixed(2)} &times; ${f_loc.Nc.toFixed(2)}) + (${q.toFixed(2)} &times; ${f_loc.Nq.toFixed(2)}) + (${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_loc.Ng.toFixed(2)})<br>
-            = ${term1_l.toFixed(2)} + ${term2_l.toFixed(2)} + ${term3_l.toFixed(2)} = <strong>${q_ult_l.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_l.toFixed(2)} kN/m²</strong>)<br><br>
+            - 항별 세부내역:
+            <div class="calc-step">
+                • 점착력 항 (&alpha; &times; c' &times; N<sub>c</sub>): ${alpha.toFixed(2)} &times; ${c_local.toFixed(2)} &times; ${f_loc.Nc.toFixed(2)} = <strong>${term1_l.toFixed(2)} kN/m²</strong><br>
+                • 상재하중 항 (q &times; N<sub>q</sub>): ${q.toFixed(2)} &times; ${f_loc.Nq.toFixed(2)} = <strong>${term2_l.toFixed(2)} kN/m²</strong><br>
+                • 기초폭 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_loc.Ng.toFixed(2)} = <strong>${term3_l.toFixed(2)} kN/m²</strong>
+            </div>
+            - 극한지지력 (q<sub>ult</sub>): ${term1_l.toFixed(2)} + ${term2_l.toFixed(2)} + ${term3_l.toFixed(2)} = <strong>${q_ult_l.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_l.toFixed(2)} kN/m²</strong>)<br><br>
 
             <div class="section-title">[검증 4] Terzaghi 수정 지지력공식 상세 및 지지력계수 표 (적용 &Phi; = ${phi_in.toFixed(2)}°)</div>
             - 보정 강도 정수: c' = (2/3) &times; ${c_in.toFixed(2)} = <strong>${c_local.toFixed(2)} kN/m²</strong>, 참조 &Phi;' = atan((2/3)&times;tan(${phi_in.toFixed(2)}°)) = <strong>${phi_local.toFixed(2)}°</strong>
@@ -427,8 +451,13 @@
                     </tr>
                 </table>
             </div>
-            - 항별 세부내역: (${alpha.toFixed(2)} &times; ${c_local.toFixed(2)} &times; ${f_mod.Nc.toFixed(2)}) + (${q.toFixed(2)} &times; ${f_mod.Nq.toFixed(2)}) + (${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mod.Ng.toFixed(2)})<br>
-            = ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_m.toFixed(2)} kN/m²</strong>)
+            - 항별 세부내역:
+            <div class="calc-step">
+                • 점착력 항 (&alpha; &times; c' &times; N<sub>c</sub>''): ${alpha.toFixed(2)} &times; ${c_local.toFixed(2)} &times; ${f_mod.Nc.toFixed(2)} = <strong>${term1_m.toFixed(2)} kN/m²</strong><br>
+                • 상재하중 항 (q &times; N<sub>q</sub>''): ${q.toFixed(2)} &times; ${f_mod.Nq.toFixed(2)} = <strong>${term2_m.toFixed(2)} kN/m²</strong><br>
+                • 기초폭 항 (&beta; &times; &gamma;<sub>2</sub> &times; B &times; N<sub>&gamma;</sub>''): ${beta.toFixed(2)} &times; ${gamma2_eff.toFixed(2)} &times; ${B.toFixed(2)} &times; ${f_mod.Ng.toFixed(2)} = <strong>${term3_m.toFixed(2)} kN/m²</strong>
+            </div>
+            - 극한지지력 (q<sub>ult</sub>): ${term1_m.toFixed(2)} + ${term2_m.toFixed(2)} + ${term3_m.toFixed(2)} = <strong>${q_ult_m.toFixed(2)} kN/m²</strong> (허용: <strong>${q_all_m.toFixed(2)} kN/m²</strong>)
         `;
     }
 </script>
