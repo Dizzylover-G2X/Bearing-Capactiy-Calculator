@@ -30,7 +30,7 @@ export function initSettlementModule(container) {
                 <input type="number" id="set_gamma2" value="${getVal('gamma2', '18.00')}" step="0.01">
             </div>
             <div class="input-group" style="background-color: #eaf2f8; border-color: #3498db;">
-                <label style="color: #2980b9;">기초지반 평균 변형계수 E (kN/m²)</label>
+                <label style="color: #2980b9;">평균 변형계수 E (kN/m²)</label>
                 <input type="number" id="set_E" value="${getVal('E', '31401.00')}" step="100">
             </div>
             <div class="input-group" style="background-color: #eaf2f8; border-color: #3498db;">
@@ -158,7 +158,7 @@ function calculateSettlement() {
                     <td style="font-weight:bold; color:${pass_si === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_si}</td>
                 </tr>
                 <tr>
-                    <td><strong>[검증 2] 탄성이론에 의한 산정법</strong></td>
+                    <td><strong>탄성이론에 의한 산정법</strong></td>
                     <td style="font-weight:bold; color:#e67e22;">${Se_mm.toFixed(2)} mm</td>
                     <td>${allow_settle.toFixed(2)} mm</td>
                     <td style="font-weight:bold; color:${pass_se === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se}</td>
@@ -217,69 +217,76 @@ function calculateSettlement() {
             ⑤ Is : 탄성침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (L/B = ${L_over_B.toFixed(2)})
         </div>
 
-        <div class="section-title">■ 탄성침하의 영향계수 Is (구조물기초설계기준 해설 표 4.3.2)</div>
-        <div class="table-container">
-            <table class="result-table" style="font-size: 0.78em; text-align: center;">
-                <thead>
-                    <tr style="background-color: #eaeded;">
-                        <th rowspan="2" style="padding:6px;">탄성침하의 영향계수 Is</th>
-                        <th rowspan="2" style="padding:6px;">강성기초</th>
-                        <th colspan="4" style="padding:6px;">연성기초</th>
-                        <th rowspan="2" style="padding:6px;">비고</th>
-                    </tr>
-                    <tr style="background-color: #eaeded;">
-                        <th style="padding:4px;">중심점</th>
-                        <th style="padding:4px;">외변의 중점</th>
-                        <th style="padding:4px;">모서리점</th>
-                        <th style="padding:4px;">평 균</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>원형기초</td>
-                        <td>0.79</td>
-                        <td>1.00</td>
-                        <td>0.64</td>
-                        <td>-</td>
-                        <td>0.85</td>
-                        <td rowspan="5" style="text-align:left; padding:5px; font-size:0.9em;">
-                            연성기초의 중심점의 영향치는 모서리점의 영향치의 2배임. 즉, 중심점의 침하량은 모서리점의 침하량의 2배임.
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>정방형기초</td>
-                        <td>0.88</td>
-                        <td>1.12</td>
-                        <td>0.76</td>
-                        <td>0.56</td>
-                        <td>0.95</td>
-                    </tr>
-                    <tr>
-                        <td>구형기초 (L/B=2)</td>
-                        <td>1.12</td>
-                        <td>1.53</td>
-                        <td>1.12</td>
-                        <td>0.76</td>
-                        <td>1.30</td>
-                    </tr>
-                    <tr>
-                        <td>구형기초 (L/B=5)</td>
-                        <td>1.60</td>
-                        <td>2.10</td>
-                        <td>1.68</td>
-                        <td>1.05</td>
-                        <td>1.82</td>
-                    </tr>
-                    <tr>
-                        <td>구형기초 (L/B=10)</td>
-                        <td>2.00</td>
-                        <td>2.56</td>
-                        <td>2.10</td>
-                        <td>1.28</td>
-                        <td>2.24</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="section-title">■ 탄성침하의 영향계수 Is (구조물기초설계기준 해설 표 4.3.2 및 그림 4.3.7)</div>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-start; justify-content: center; margin-top: 8px;">
+            <div style="flex: 1.4; min-width: 320px;" class="table-container">
+                <table class="result-table" style="font-size: 0.75em; text-align: center; width: 100%; table-layout: fixed;">
+                    <thead>
+                        <tr style="background-color: #eaeded;">
+                            <th rowspan="2" style="padding:5px; width: 22%;">영향계수 Is</th>
+                            <th rowspan="2" style="padding:5px; width: 11%;">강성기초</th>
+                            <th colspan="4" style="padding:5px; width: 32%;">연성기초</th>
+                            <th rowspan="2" style="padding:5px; width: 35%;">비고</th>
+                        </tr>
+                        <tr style="background-color: #eaeded;">
+                            <th style="padding:3px;">중심점</th>
+                            <th style="padding:3px;">외변중점</th>
+                            <th style="padding:3px;">모서리</th>
+                            <th style="padding:3px;">평균</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>원형기초</td>
+                            <td>0.79</td>
+                            <td>1.00</td>
+                            <td>0.64</td>
+                            <td>-</td>
+                            <td>0.85</td>
+                            <td rowspan="5" style="text-align:left; padding:4px; font-size:0.78em; word-break: keep-all;">
+                                연성기초 중심점 영향치는 모서리점의 2배임. 즉, 중심점 침하는 모서리점 침하의 2배임.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>정방형기초</td>
+                            <td>0.88</td>
+                            <td>1.12</td>
+                            <td>0.76</td>
+                            <td>0.56</td>
+                            <td>0.95</td>
+                        </tr>
+                        <tr>
+                            <td>구형기초 (L/B=2)</td>
+                            <td>1.12</td>
+                            <td>1.53</td>
+                            <td>1.12</td>
+                            <td>0.76</td>
+                            <td>1.30</td>
+                        </tr>
+                        <tr>
+                            <td>구형기초 (L/B=5)</td>
+                            <td>1.60</td>
+                            <td>2.10</td>
+                            <td>1.68</td>
+                            <td>1.05</td>
+                            <td>1.82</td>
+                        </tr>
+                        <tr>
+                            <td>구형기초 (L/B=10)</td>
+                            <td>2.00</td>
+                            <td>2.56</td>
+                            <td>2.10</td>
+                            <td>1.28</td>
+                            <td>2.24</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="flex: 1; min-width: 260px; text-align: center; background: #fdfefe; padding: 8px; border: 1px solid #d5d8dc; border-radius: 4px;">
+                <img src="images/is_graph.png" alt="해설 그림 4.3.7 탄성침하의 영향계수 Is 그래프" style="max-width: 100%; height: auto; border-radius: 2px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div style="display: none; padding: 20px; font-size: 0.8em; color: #7f8c8d; border: 1px dashed #bdc3c7;">[이미지 경로: images/is_graph.png 파일이 필요합니다]</div>
+                <p style="font-size: 0.75em; color: #555; margin-top: 6px; font-weight: bold;">해설 그림 4.3.7 탄성침하의 영향계수 I<sub>s</sub></p>
+            </div>
         </div>
     `;
 }
