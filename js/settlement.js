@@ -125,7 +125,7 @@ function calculateSettlement() {
     const Si_m = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz;
     const Si_mm = Si_m * 1000;
 
-    // 2. 탄성이론에 의한 산정 (구조물기초설계기준해설 2018, P.235)
+    // 2. 탄성이론에 의한 산정 (구조물기초설계기준해설 2018, P.235)[cite: 6]
     const L_over_B = L / B;
     let Is = 0.90; 
     if (L_over_B <= 1.0) Is = 0.95;
@@ -201,83 +201,83 @@ function calculateSettlement() {
             </table>
         </div><br>
 
-        <div class="section-title">[검증 2] 탄성이론에 의한 침하량 산정 (구조물기초설계기준해설. 2018. P235)</div>
+        <div class="section-title">[검증 2] 탄성이론에 의한 침하량 산정 (구조물기초설계기준해설. 2018. P235)[cite: 6]</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
-            ▶ 탄성이론에 의한 침하량 산정 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;<strong>Se = q &times; B &times; [ (1 - &nu;&sup2;) / E ] &times; Is</strong><br><br>
+            ▶ 탄성이론에 의한 침하량 산정 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)[cite: 6]<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<strong>Se = q &times; B &times; [ (1 - &nu;&sup2;) / E ] &times; Is</strong>[cite: 6]<br><br>
             &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toExponential(2)} ) / ${E.toFixed(1)} &times; ${Is.toFixed(2)}<br>
             &nbsp;&nbsp;&nbsp;&nbsp;= <strong>${Se_mm.toFixed(2)} mm</strong>
         </div>
 
         <div class="calc-step">
-            ① q : 기초작용 하중 = <strong>${qb.toFixed(1)} kN/m²</strong><br>
-            ② B : 기초 폭 = <strong>${B.toFixed(2)} m</strong><br>
-            ③ E : 지반의 탄성계수 = <strong>${E.toLocaleString()} kN/m²</strong><br>
-            ④ &nu; : 지반의 포아송 비 = <strong>${u.toFixed(3)}</strong><br>
-            ⑤ Is : 탄성침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (L/B = ${L_over_B.toFixed(2)})
+            ① q : 기초작용 하중 = <strong>${qb.toFixed(1)} kN/m²</strong>[cite: 6]<br>
+            ② B : 기초 폭 = <strong>${B.toFixed(2)} m</strong>[cite: 6]<br>
+            ③ E : 지반의 탄성계수 = <strong>${E.toLocaleString()} kN/m²</strong>[cite: 6]<br>
+            ④ &nu; : 지반의 포아송 비 = <strong>${u.toFixed(3)}</strong>[cite: 6]<br>
+            ⑤ Is : 탄성침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (L/B = ${L_over_B.toFixed(2)})[cite: 6]
         </div>
 
-        <div class="section-title">■ 탄성침하의 영향계수 Is (구조물기초설계기준 해설 표 4.3.2 및 그림 4.3.7)</div>
+        <div class="section-title">■ 탄성침하의 영향계수 Is (구조물기초설계기준 해설 표 4.3.2 및 그림 4.3.7)[cite: 6]</div>
         <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch; justify-content: center; margin-top: 8px;">
             <div style="flex: 1.5; min-width: 320px;" class="table-container">
-                <table class="result-table" style="font-size: 0.72em; text-align: center; width: 100%; table-layout: fixed;">
+                <table class="result-table" style="font-size: 0.75em; text-align: center; width: 100%; table-layout: fixed; height: 100%;">
                     <thead>
                         <tr style="background-color: #eaeded;">
-                            <th rowspan="2" style="padding:4px 2px; width: 22%; vertical-align: middle;">영향계수 Is</th>
-                            <th rowspan="2" style="padding:4px 2px; width: 9%; vertical-align: middle;">강성기초</th>
-                            <th colspan="4" style="padding:3px 2px; width: 45%; vertical-align: middle;">연성기초</th>
-                            <th rowspan="2" style="padding:4px 2px; width: 24%; vertical-align: middle;">비고</th>
+                            <th rowspan="2" style="padding:9px 2px; width: 22%; vertical-align: middle;">영향계수 Is</th>
+                            <th rowspan="2" style="padding:9px 2px; width: 9%; vertical-align: middle;">강성기초</th>
+                            <th colspan="4" style="padding:6px 2px; width: 45%; vertical-align: middle;">연성기초[cite: 6]</th>
+                            <th rowspan="2" style="padding:9px 2px; width: 24%; vertical-align: middle;">비고</th>
                         </tr>
                         <tr style="background-color: #eaeded;">
-                            <th style="padding:3px 1px; vertical-align: middle; font-size: 0.85em;">중심점</th>
-                            <th style="padding:3px 1px; vertical-align: middle; font-size: 0.85em;">외변중점</th>
-                            <th style="padding:3px 1px; vertical-align: middle; font-size: 0.85em;">모서리</th>
-                            <th style="padding:3px 1px; vertical-align: middle; font-size: 0.85em;">평균</th>
+                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em;">중심점[cite: 6]</th>
+                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em;">외변중점[cite: 6]</th>
+                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em;">모서리[cite: 6]</th>
+                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em;">평균[cite: 6]</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td style="padding: 4px 2px; vertical-align: middle;">원형기초</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.79</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.00</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.64</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">-</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.85</td>
-                            <td rowspan="5" style="text-align:left; padding:3px; font-size:0.68em; word-break: keep-all; vertical-align: middle;">
-                                연성기초 중심점 영향치는 모서리점의 2배임. 즉, 중심점 침하는 모서리점 침하의 2배임.
+                            <td style="padding: 10px 2px; vertical-align: middle;">원형기초[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.79[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.00[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.64[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">-[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.85[cite: 6]</td>
+                            <td rowspan="5" style="text-align:left; padding:6px; font-size:0.75em; word-break: keep-all; vertical-align: middle;">
+                                연성기초 중심점 영향치는 모서리점의 2배임. 즉, 중심점 침하는 모서리점 침하의 2배임[cite: 6].
                             </td>
                         </tr>
                         <tr>
-                            <td style="padding: 4px 2px; vertical-align: middle;">정방형기초</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.88</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.76</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.56</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.95</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">정방형기초[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.88[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.12[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.76[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.56[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.95[cite: 6]</td>
                         </tr>
                         <tr>
-                            <td style="padding: 4px 2px; vertical-align: middle;">구형기초 (L/B=2)</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.53</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.76</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.30</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">구형기초 (L/B=2)[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.12[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.53[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.12[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.76[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.30[cite: 6]</td>
                         </tr>
                         <tr>
-                            <td style="padding: 4px 2px; vertical-align: middle;">구형기초 (L/B=5)</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.60</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.10</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.68</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.05</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.82</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">구형기초 (L/B=5)[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.60[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.10[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.68[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.05[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.82[cite: 6]</td>
                         </tr>
                         <tr>
-                            <td style="padding: 4px 2px; vertical-align: middle;">구형기초 (L/B=10)</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.00</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.56</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.10</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.28</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.24</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">구형기초 (L/B=10)[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.00[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.56[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.10[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.28[cite: 6]</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.24[cite: 6]</td>
                         </tr>
                     </tbody>
                 </table>
