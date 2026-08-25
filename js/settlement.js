@@ -1,6 +1,20 @@
 export function initSettlementModule(container) {
-    // localStorage에서 기존 입력값 불러오기 (없으면 기본값 적용)
     const getVal = (id, defaultVal) => localStorage.getItem('geo_' + id) ?? defaultVal;
+
+    // Schmertmann 지층 데이터 초기화
+    let schLayers = JSON.parse(localStorage.getItem('geo_sch_layers'));
+    if (!schLayers || !Array.isArray(schLayers) || schLayers.length === 0) {
+        schLayers = [
+            { name: "매립층", dz: 0.30, e_val: 7000 },
+            { name: "매립층", dz: 0.30, e_val: 7000 },
+            { name: "매립층", dz: 0.32, e_val: 7000 },
+            { name: "매립층", dz: 1.26, e_val: 7000 },
+            { name: "퇴적층(자갈)", dz: 0.60, e_val: 60000 },
+            { name: "퇴적층(자갈)", dz: 0.60, e_val: 60000 },
+            { name: "퇴적층(자갈)", dz: 0.66, e_val: 60000 }
+        ];
+        localStorage.setItem('geo_sch_layers', JSON.stringify(schLayers));
+    }
 
     container.innerHTML = `
         <h3>1. 설계자료 입력 (침하량 검토)</h3>
@@ -43,8 +57,8 @@ export function initSettlementModule(container) {
         </div>
 
         <!-- 탄성침하 전용 옵션 -->
-        <div style="font-weight: bold; margin-bottom: 8px; color: #2980b9; font-size: 0.95em;">■ 탄성침하 산정 전용 옵션</div>
-        <div class="input-grid" style="background-color: #ebf5fb; padding: 12px; border-radius: 6px; border: 1px solid #aed6f1; margin-bottom: 10px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: #2980b9; font-size: 0.95em;">■ 탄성&#8203;침하 산정 전용 옵션</div>
+        <div class="input-grid" style="background-color: #ebf5fb; padding: 12px; border-radius: 6px; border: 1px solid #aed6f1; margin-bottom: 15px;">
             <div class="input-group" style="background-color: #fff;">
                 <label style="color: #2980b9;">평균 변형계수 E (kN/m²)</label>
                 <input type="number" id="set_E" value="${getVal('E', '31401.00')}" step="100">
@@ -68,13 +82,61 @@ export function initSettlementModule(container) {
                 </select>
             </div>
         </div>
+
+        <!-- Schmertmann 전용 옵션 -->
+        <div style="font-weight: bold; margin-bottom: 8px; color: #8e44ad; font-size: 0.95em;">■ Schmert&#8203;mann 제안식 전용 옵션</div>
+        <div style="background-color: #f5eef8; padding: 12px; border-radius: 6px; border: 1px solid #d7bde2; margin-bottom: 10px;">
+            <div class="input-grid" style="margin-bottom: 12px;">
+                <div class="input-group" style="background-color: #fff;">
+                    <label style="color: #8e44ad;">경과년수 t (년) - C₂ 보정용</label>
+                    <input type="number" id="set_t_years" value="${getVal('t_years', '20.0')}" step="0.1">
+                </div>
+            </div>
+            <div style="font-size: 0.85em; color: #555; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <span>※ 기초 저면 하부 지층 정보 입력 (최대 심도 Z<sub>f0</sub>까지만 자동 적분됨)</span>
+                <button type="button" id="sch_layer_add" style="padding: 3px 8px; background: #8e44ad; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 0.9em;">+ 지층 추가</button>
+            </div>
+            <div class="table-container" style="margin: 0;">
+                <table class="result-table" style="font-size: 0.85em; text-align: center; margin: 0; table-layout: fixed; width: 100%;">
+                    <thead>
+                        <tr style="background-color: #e8daef;">
+                            <th style="padding: 6px; width: 35%;">지층명</th>
+                            <th style="padding: 6px; width: 25%;">두께 &Delta;z (m)</th>
+                            <th style="padding: 6px; width: 30%;">변형계수 E (kN/m²)</th>
+                            <th style="padding: 6px; width: 10%;">삭제</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sch_layers_body">
+                        <!-- 동적 생성 렌더링 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
         
         <p style="font-size: 0.85em; color: #555; margin-top: 8px;">※ 지지력 탭의 공통 설계자료(B, L, Df, WL, 단위중량)와 실시간 연동됩니다. 물의 단위중량 = 9.807 kN/m³ 적용.</p>
-        <button class="action-btn" id="calc-settlement-btn">침하량 산정 및 검토하기</button>
+        <button class="action-btn" id="calc-settlement-btn" style="margin-top: 15px;">침하량 산정 및 검토하기</button>
         <div id="settlement-result" class="result-box"></div>
     `;
 
-    // 입력값 변경 시 localStorage 저장
+    // Schmertmann 지층 렌더링 함수
+    function renderSchLayers() {
+        const tbody = document.getElementById('sch_layers_body');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        schLayers.forEach((layer, idx) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td style="padding: 4px;"><input type="text" value="${layer.name}" data-idx="${idx}" class="sch-layer-name" style="width:100%; box-sizing:border-box; padding:4px; border: 1px solid #ccc; border-radius: 2px;"></td>
+                    <td style="padding: 4px;"><input type="number" value="${layer.dz.toFixed(2)}" data-idx="${idx}" class="sch-layer-dz" step="0.01" style="width:100%; box-sizing:border-box; padding:4px; border: 1px solid #ccc; border-radius: 2px;"></td>
+                    <td style="padding: 4px;"><input type="number" value="${layer.e_val}" data-idx="${idx}" class="sch-layer-e" step="100" style="width:100%; box-sizing:border-box; padding:4px; border: 1px solid #ccc; border-radius: 2px;"></td>
+                    <td style="padding: 4px; text-align:center;"><button type="button" class="sch-layer-del" data-idx="${idx}" style="padding:4px 8px; background:#e74c3c; color:white; border:none; border-radius:3px; cursor:pointer;">-</button></td>
+                </tr>
+            `;
+        });
+    }
+    renderSchLayers();
+
+    // 일반 입력값 변경 이벤트
     const inputs = container.querySelectorAll('.input-grid input, .input-grid select');
     inputs.forEach(input => {
         input.addEventListener('change', function() {
@@ -93,10 +155,39 @@ export function initSettlementModule(container) {
         }
     });
 
+    // 지층 테이블 동적 이벤트 (이벤트 위임)
+    container.addEventListener('change', (e) => {
+        if (e.target.classList.contains('sch-layer-name')) {
+            schLayers[e.target.dataset.idx].name = e.target.value;
+            localStorage.setItem('geo_sch_layers', JSON.stringify(schLayers));
+        }
+        if (e.target.classList.contains('sch-layer-dz')) {
+            schLayers[e.target.dataset.idx].dz = parseFloat(e.target.value) || 0;
+            localStorage.setItem('geo_sch_layers', JSON.stringify(schLayers));
+        }
+        if (e.target.classList.contains('sch-layer-e')) {
+            schLayers[e.target.dataset.idx].e_val = parseFloat(e.target.value) || 0;
+            localStorage.setItem('geo_sch_layers', JSON.stringify(schLayers));
+        }
+    });
+
+    container.addEventListener('click', (e) => {
+        if (e.target.id === 'sch_layer_add') {
+            schLayers.push({ name: "신규지층", dz: 1.00, e_val: 20000 });
+            localStorage.setItem('geo_sch_layers', JSON.stringify(schLayers));
+            renderSchLayers();
+        }
+        if (e.target.classList.contains('sch-layer-del')) {
+            const idx = e.target.dataset.idx;
+            schLayers.splice(idx, 1);
+            localStorage.setItem('geo_sch_layers', JSON.stringify(schLayers));
+            renderSchLayers();
+        }
+    });
+
     container.querySelector('#calc-settlement-btn').addEventListener('click', calculateSettlement);
 }
 
-// 영향계수 Is 보간 함수 (표 4.3.2 데이터 기반)
 function getInfluenceFactor(shape, rigidity, position, ratio) {
     if (shape === 'circular') {
         if (rigidity === 'rigid') return 0.79;
@@ -150,9 +241,11 @@ function calculateSettlement() {
 
     const rigidity = document.getElementById('set_rigidity').value;
     const shape = document.getElementById('set_shape').value;
+    const t_years = parseFloat(document.getElementById('set_t_years').value);
 
     const gamma_w = 9.807;
 
+    // 공통 유효응력 산정 로직
     let gamma1_eff = gamma1_in;
     let log1 = "";
     const gamma1_sub = gamma1_in - gamma_w;
@@ -169,7 +262,9 @@ function calculateSettlement() {
 
     const sigma_v0 = Df * gamma1_eff;
 
-    // 1. 탄성이론에 의한 침하량 (Case별 산정)
+    // ---------------------------------------------------------
+    // [검증 1] 탄성이론에 의한 침하량 산정
+    // ---------------------------------------------------------
     const L_over_B = L / B;
     const u_sq = Math.pow(u, 2);
     const factor_base = qb * B * ((1.0 - u_sq) / E) * 1000;
@@ -186,39 +281,84 @@ function calculateSettlement() {
     const Se_corner_mm = factor_base * Is_corner;
     const Se_average_mm = factor_base * Is_average;
 
-    // 2. Schmertmann 제안식 산정
-    let C1 = 1.0 - 0.5 * (sigma_v0 / (qb - sigma_v0));
-    if (C1 < 0.5) C1 = 0.5;
-    const years = 100;
-    const C2 = 1.0 + 0.2 * Math.log10(10 * years);
-
-    const layers = [
-        { name: "매립층", dz: 0.30, e_val: 7000, iz: 0.268 },
-        { name: "매립층", dz: 0.30, e_val: 7000, iz: 0.435 },
-        { name: "매립층", dz: 0.32, e_val: 7000, iz: 0.613 },
-        { name: "매립층", dz: 1.26, e_val: 7000, iz: 0.365 },
-        { name: "퇴적층(자갈)", dz: 0.60, e_val: 60000, iz: 0.248 },
-        { name: "퇴적층(자갈)", dz: 0.60, e_val: 60000, iz: 0.198 },
-        { name: "퇴적층(자갈)", dz: 0.66, e_val: 60000, iz: 0.099 }
-    ];
-
-    let sum_iz_e_dz = 0;
-    layers.forEach(layer => {
-        sum_iz_e_dz += (layer.iz / layer.e_val) * layer.dz;
-    });
-
-    const Si_m = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz;
-    const Si_mm = Si_m * 1000;
-
-    // O.K / N.G 판정
-    const pass_si = Si_mm <= allow_settle ? "O.K" : "N.G";
     const pass_se_rigid = Se_rigid_mm <= allow_settle ? "O.K" : "N.G";
     const pass_se_center = Se_center_mm <= allow_settle ? "O.K" : "N.G";
     const pass_se_corner = Se_corner_mm <= allow_settle ? "O.K" : "N.G";
-
     const shapeLabel = shape === 'circular' ? '원형기초' : '구형/정방형기초';
 
-    // 요약 결과 테이블 탄성이론 행 동적 구성 (탄성침하 먼저)
+    // ---------------------------------------------------------
+    // [검증 2] Schmertmann 제안식 산정
+    // ---------------------------------------------------------
+    const sch_ratio = Math.max(1.0, Math.min(10.0, Math.max(L/B, B/L))); // L/B는 1.0 이상으로 정규화
+    
+    // 심도 및 기초 영향계수 산정 (구조물기초설계기준)
+    const zf0 = B * (2.0 + 0.222 * (sch_ratio - 1.0));
+    const zfp = B * (0.5 + 0.0555 * (sch_ratio - 1.0));
+    const Iz0 = 0.1 + 0.0111 * (sch_ratio - 1.0);
+
+    // zfp 위치(최대변형영향심도)의 유효응력(sigma_vp_prime) 산정
+    let sigma_vp_prime = sigma_v0;
+    const water_depth_below_df = Math.max(0, WL - Df);
+    if (zfp <= water_depth_below_df) {
+        sigma_vp_prime += zfp * gamma2_in;
+    } else {
+        sigma_vp_prime += water_depth_below_df * gamma2_in;
+        sigma_vp_prime += (zfp - water_depth_below_df) * (gamma2_in - gamma_w);
+    }
+
+    const Izp = 0.5 + 0.1 * Math.sqrt(Math.max(0, qb - sigma_v0) / sigma_vp_prime);
+
+    let C1 = 1.0 - 0.5 * (sigma_v0 / (qb - sigma_v0));
+    if (C1 < 0.5) C1 = 0.5;
+    const C2 = 1.0 + 0.2 * Math.log10(t_years / 0.1);
+
+    // 지층별 적분
+    let schLayers = JSON.parse(localStorage.getItem('geo_sch_layers')) || [];
+    let sum_iz_e_dz = 0;
+    let current_z = 0;
+    let layer_results = [];
+
+    for (let i = 0; i < schLayers.length; i++) {
+        let l = schLayers[i];
+        let z_start = current_z;
+        let z_end = current_z + l.dz;
+
+        if (z_start >= zf0) break; // 최대 영향심도(zf0) 초과 시 적분 중단
+
+        let clipped_end = Math.min(z_end, zf0);
+        let dz_prime = clipped_end - z_start;
+        let z_mid = z_start + dz_prime / 2.0;
+
+        let Iz_mid = 0;
+        if (z_mid <= zfp) {
+            Iz_mid = Iz0 + (Izp - Iz0) * (z_mid / zfp);
+        } else {
+            Iz_mid = Izp * (1.0 - (z_mid - zfp) / (zf0 - zfp));
+        }
+
+        let val = (Iz_mid / l.e_val) * dz_prime;
+        sum_iz_e_dz += val;
+
+        layer_results.push({
+            name: l.name,
+            dz: dz_prime, // 실제 계산에 사용된(잘려진) 두께
+            e_val: l.e_val,
+            z_mid: z_mid,
+            iz: Iz_mid,
+            val: val,
+            is_clipped: (z_end > zf0)
+        });
+
+        current_z = z_end;
+        if (current_z >= zf0) break;
+    }
+
+    const Si_mm = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz * 1000;
+    const pass_si = Si_mm <= allow_settle ? "O.K" : "N.G";
+
+    // ---------------------------------------------------------
+    // 결과 출력부 구성
+    // ---------------------------------------------------------
     let elasticSummaryRows = '';
     if (rigidity === 'rigid') {
         elasticSummaryRows = `
@@ -260,14 +400,15 @@ function calculateSettlement() {
                 </tr>
                 ${elasticSummaryRows}
                 <tr>
-                    <td><strong>Schmertmann 제안식 (변형영향계수법)</strong></td>
-                    <td style="font-weight:bold; color:#2980b9;">${Si_mm.toFixed(2)} mm</td>
+                    <td><strong>Schmert&#8203;mann 제안식 (변형영향계수법)</strong></td>
+                    <td style="font-weight:bold; color:#8e44ad;">${Si_mm.toFixed(2)} mm</td>
                     <td>${allow_settle.toFixed(2)} mm</td>
                     <td style="font-weight:bold; color:${pass_si === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_si}</td>
                 </tr>
             </table>
         </div>
 
+        <!-- 검증 1: 탄성이론 -->
         <div class="section-title">[검증 1] 탄성&#8203;이론에 의한 침하량 산정 (구조물&#8203;기초설계기준 해설. 2018. P235)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             ▶ 탄성&#8203;이론 기본 계산식 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
@@ -406,38 +547,64 @@ function calculateSettlement() {
             </div>
         </div>
 
-        <div class="section-title">[검증 2] Schmertmann 제안식 상세 산정 과정</div>
-        <div class="calc-step">
-            • 기초 근입깊이 유효상재하중 (&sigma;<sub>v0</sub>* = D<sub>f</sub> &times; &gamma;<sub>1,eff</sub>): ${Df.toFixed(2)} &times; ${gamma1_eff.toFixed(2)} = <strong>${sigma_v0.toFixed(2)} kN/m²</strong> (${log1})<br>
-            • 근입깊이 보정계수 (C<sub>1</sub> = 1 - 0.5 &times; [&sigma;<sub>v0</sub>* / (q<sub>b</sub> - &sigma;<sub>v0</sub>*)]): max(0.5, 1 - 0.5 &times; [${sigma_v0.toFixed(2)} / (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)})]) = <strong>${C1.toFixed(2)}</strong><br>
-            • Creep 보정계수 (C<sub>2</sub> = 1 + 0.2 &times; log<sub>10</sub>(10 &times; ${years}년)): <strong>${C2.toFixed(2)}</strong><br>
-            • 지층별 변형영향계수 적분값 (&sum; (I<sub>z</sub> / E) &Delta;z): <strong>${sum_iz_e_dz.toExponential(3)} m²/kN</strong><br>
-            • <strong>최종 탄성침하량 (S<sub>i</sub>): C<sub>1</sub> &times; C<sub>2</sub> &times; (q<sub>b</sub> - &sigma;<sub>v0</sub>*) &times; &sum; (I<sub>z</sub> / E) &Delta;z = ${Si_mm.toFixed(2)} mm</strong>
+        <!-- 검증 2: Schmertmann 제안식 -->
+        <div class="section-title">[검증 2] Schmert&#8203;mann 제안식 상세 산정 과정 (구조물&#8203;기초설계기준. 2018. P241)</div>
+        
+        <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
+            ▶ Schmert&#8203;mann 침하량 기본 산정식<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<strong>S<sub>i</sub> = C<sub>1</sub> &times; C<sub>2</sub> &times; (q<sub>b</sub> - &sigma;<sub>v0</sub>') &times; &sum; [ (I<sub>zi</sub> / E<sub>i</sub>) &times; &Delta;z<sub>i</sub> ]</strong><br>
         </div>
 
-        <div class="section-title">■ Schmertmann 지층별 적분 상세 표</div>
+        <div class="calc-step">
+            <strong>1. 기초 및 지반 조건 산정 (L/B = ${sch_ratio.toFixed(2)} 적용)</strong><br>
+            • 최대 영향심도 (Z<sub>f0</sub>) : <strong>${zf0.toFixed(2)} m</strong> (2B ~ 4B 구간 보간)<br>
+            • 최대 변형영향심도 (Z<sub>fp</sub>) : <strong>${zfp.toFixed(2)} m</strong><br>
+            • 기초바닥 변형영향계수 (I<sub>z0</sub>) : <strong>${Iz0.toFixed(3)}</strong><br>
+            • Z<sub>fp</sub> 위치의 유효응력 (&sigma;<sub>vp</sub>') : <strong>${sigma_vp_prime.toFixed(2)} kN/m²</strong><br>
+            • 최대 변형영향계수 (I<sub>zp</sub> = 0.5 + 0.1 &times; &radic;[(q<sub>b</sub>-&sigma;<sub>v0</sub>')/&sigma;<sub>vp</sub>']) : <strong>${Izp.toFixed(3)}</strong><br><br>
+            
+            <strong>2. 보정계수 산정</strong><br>
+            • 근입깊이 보정계수 C<sub>1</sub> (1 - 0.5 &times; [&sigma;<sub>v0</sub>' / (q<sub>b</sub> - &sigma;<sub>v0</sub>')]) : max(0.5, 1 - 0.5 &times; [${sigma_v0.toFixed(2)} / (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)})]) = <strong>${C1.toFixed(3)}</strong><br>
+            • Creep 보정계수 C<sub>2</sub> (1 + 0.2 &times; log<sub>10</sub>(t / 0.1)) : 1 + 0.2 &times; log<sub>10</sub>(${t_years} / 0.1) = <strong>${C2.toFixed(3)}</strong><br><br>
+
+            <strong>3. 최종 침하량 산정</strong><br>
+            • 지층별 변형영향계수 적분 합계 (&sum; (I<sub>z</sub> / E) &Delta;z) : <strong>${sum_iz_e_dz.toExponential(4)} m²/kN</strong><br>
+            • <strong>발생 침하량 S<sub>i</sub> : ${C1.toFixed(3)} &times; ${C2.toFixed(3)} &times; (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)}) &times; ${sum_iz_e_dz.toExponential(4)} &times; 1000 = <span style="color:#8e44ad;">${Si_mm.toFixed(2)} mm</span></strong>
+        </div>
+
+        <div class="section-title">■ Schmert&#8203;mann 지층별 영향계수 적분 상세 표 (최대 심도 Z<sub>f0</sub> = ${zf0.toFixed(2)} m)</div>
         <div class="table-container">
             <table class="result-table" style="font-size: 0.78em; text-align: center;">
-                <tr>
-                    <th>지층명</th>
-                    <th>두께 &Delta;z (m)</th>
-                    <th>변형계수 E (kN/m²)</th>
-                    <th>영향계수 I<sub>z</sub></th>
-                    <th>(I<sub>z</sub> / E) &times; &Delta;z</th>
-                </tr>
-                ${layers.map(l => `
-                    <tr>
+                <thead>
+                    <tr style="background-color: #f5eef8;">
+                        <th>지층명</th>
+                        <th>두께 &Delta;z (m)</th>
+                        <th>중앙심도 Z_mid (m)</th>
+                        <th>변형계수 E (kN/m²)</th>
+                        <th>영향계수 I<sub>z</sub></th>
+                        <th>(I<sub>z</sub> / E) &times; &Delta;z</th>
+                        <th>비고</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ${layer_results.map(l => `
+                    <tr style="${l.is_clipped ? 'background-color: #fdf2e9;' : ''}">
                         <td>${l.name}</td>
-                        <td>${l.dz.toFixed(2)}</td>
+                        <td style="${l.is_clipped ? 'font-weight:bold; color:#e67e22;' : ''}">${l.dz.toFixed(2)}</td>
+                        <td>${l.z_mid.toFixed(2)}</td>
                         <td>${l.e_val.toLocaleString()}</td>
                         <td>${l.iz.toFixed(3)}</td>
-                        <td>${((l.iz / l.e_val) * l.dz).toExponential(5)}</td>
+                        <td>${l.val.toExponential(4)}</td>
+                        <td style="font-size: 0.85em; color: #7f8c8d;">${l.is_clipped ? '한계심도 초과 두께 절삭' : '-'}</td>
                     </tr>
                 `).join('')}
-                <tr style="background-color: #eaeded; font-weight: bold;">
-                    <td colspan="4">합계 (&sum;)</td>
-                    <td>${sum_iz_e_dz.toExponential(4)}</td>
-                </tr>
+                </tbody>
+                <tfoot>
+                    <tr style="background-color: #eaeded; font-weight: bold;">
+                        <td colspan="5">적분 합계 (&sum;)</td>
+                        <td colspan="2" style="color: #8e44ad;">${sum_iz_e_dz.toExponential(4)}</td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     `;
