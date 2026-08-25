@@ -4,7 +4,10 @@ export function initSettlementModule(container) {
 
     container.innerHTML = `
         <h3>1. 설계자료 입력 (침하량 검토)</h3>
-        <div class="input-grid">
+        
+        <!-- 공통 및 지반 설계자료 -->
+        <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.95em;">■ 공통 및 지반 설계자료</div>
+        <div class="input-grid" style="margin-bottom: 15px;">
             <div class="input-group">
                 <label>기초 폭 B (m)</label>
                 <input type="number" id="set_B" value="${getVal('B', '1.82')}" step="0.01">
@@ -29,35 +32,40 @@ export function initSettlementModule(container) {
                 <label>지지층 단위중량 γ2 (kN/m³)</label>
                 <input type="number" id="set_gamma2" value="${getVal('gamma2', '18.00')}" step="0.01">
             </div>
-            <div class="input-group" style="background-color: #eaf2f8; border-color: #3498db;">
+            <div class="input-group">
+                <label>설계 반력 q_b (kN/m²)</label>
+                <input type="number" id="set_qb" value="${getVal('qb', '60.05')}" step="0.01">
+            </div>
+            <div class="input-group" style="background-color: #fcf3cf; border-color: #f1c40f;">
+                <label style="color: #d4ac0d;">허용 기준 침하량 (mm)</label>
+                <input type="number" id="set_allow_settlement" value="${getVal('allow_settlement', '25.00')}" step="0.1">
+            </div>
+        </div>
+
+        <!-- 탄성침하 전용 옵션 -->
+        <div style="font-weight: bold; margin-bottom: 8px; color: #2980b9; font-size: 0.95em;">■ 탄성침하 산정 전용 옵션</div>
+        <div class="input-grid" style="background-color: #ebf5fb; padding: 12px; border-radius: 6px; border: 1px solid #aed6f1; margin-bottom: 10px;">
+            <div class="input-group" style="background-color: #fff;">
                 <label style="color: #2980b9;">평균 변형계수 E (kN/m²)</label>
                 <input type="number" id="set_E" value="${getVal('E', '31401.00')}" step="100">
             </div>
-            <div class="input-group" style="background-color: #eaf2f8; border-color: #3498db;">
+            <div class="input-group" style="background-color: #fff;">
                 <label style="color: #2980b9;">평균 포아송비 ν</label>
                 <input type="number" id="set_u" value="${getVal('u', '0.345')}" step="0.001">
             </div>
-            <div class="input-group" style="background-color: #f4f6f7; border-color: #bdc3c7;">
+            <div class="input-group" style="background-color: #fff;">
                 <label>기초 강성 구분</label>
                 <select id="set_rigidity">
                     <option value="rigid" ${getVal('rigidity', 'rigid') === 'rigid' ? 'selected' : ''}>강성기초</option>
                     <option value="flexible" ${getVal('rigidity', 'rigid') === 'flexible' ? 'selected' : ''}>연성기초</option>
                 </select>
             </div>
-            <div class="input-group" style="background-color: #f4f6f7; border-color: #bdc3c7;">
+            <div class="input-group" style="background-color: #fff;">
                 <label>기초 형상 구분</label>
                 <select id="set_shape">
                     <option value="rectangular" ${getVal('shape', 'rectangular') === 'rectangular' ? 'selected' : ''}>구형 / 정방형</option>
                     <option value="circular" ${getVal('shape', 'rectangular') === 'circular' ? 'selected' : ''}>원형기초</option>
                 </select>
-            </div>
-            <div class="input-group" style="background-color: #eaf2f8; border-color: #3498db;">
-                <label style="color: #2980b9;">설계 반력 q_b (kN/m²)</label>
-                <input type="number" id="set_qb" value="${getVal('qb', '60.05')}" step="0.01">
-            </div>
-            <div class="input-group" style="background-color: #fcf3cf; border-color: #f1c40f;">
-                <label style="color: #d4ac0d;">허용 기준 침하량 (mm)</label>
-                <input type="number" id="set_allow_settlement" value="${getVal('allow_settlement', '25.00')}" step="0.1">
             </div>
         </div>
         
@@ -161,7 +169,24 @@ function calculateSettlement() {
 
     const sigma_v0 = Df * gamma1_eff;
 
-    // 1. Schmertmann 제안식 산정
+    // 1. 탄성이론에 의한 침하량 (Case별 산정)
+    const L_over_B = L / B;
+    const u_sq = Math.pow(u, 2);
+    const factor_base = qb * B * ((1.0 - u_sq) / E) * 1000;
+
+    const Is_rigid = getInfluenceFactor(shape, 'rigid', 'rigid', L_over_B);
+    const Is_center = getInfluenceFactor(shape, 'flexible', 'center', L_over_B);
+    const Is_midside = getInfluenceFactor(shape, 'flexible', 'midside', L_over_B);
+    const Is_corner = getInfluenceFactor(shape, 'flexible', 'corner', L_over_B);
+    const Is_average = getInfluenceFactor(shape, 'flexible', 'average', L_over_B);
+
+    const Se_rigid_mm = factor_base * Is_rigid;
+    const Se_center_mm = factor_base * Is_center;
+    const Se_midside_mm = factor_base * Is_midside;
+    const Se_corner_mm = factor_base * Is_corner;
+    const Se_average_mm = factor_base * Is_average;
+
+    // 2. Schmertmann 제안식 산정
     let C1 = 1.0 - 0.5 * (sigma_v0 / (qb - sigma_v0));
     if (C1 < 0.5) C1 = 0.5;
     const years = 100;
@@ -185,25 +210,6 @@ function calculateSettlement() {
     const Si_m = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz;
     const Si_mm = Si_m * 1000;
 
-    // 2. 탄성이론에 의한 침하량 (Case별 산정)
-    const L_over_B = L / B;
-    const u_sq = Math.pow(u, 2);
-    const factor_base = qb * B * ((1.0 - u_sq) / E) * 1000;
-
-    // Is 값 산정
-    const Is_rigid = getInfluenceFactor(shape, 'rigid', 'rigid', L_over_B);
-    const Is_center = getInfluenceFactor(shape, 'flexible', 'center', L_over_B);
-    const Is_midside = getInfluenceFactor(shape, 'flexible', 'midside', L_over_B);
-    const Is_corner = getInfluenceFactor(shape, 'flexible', 'corner', L_over_B);
-    const Is_average = getInfluenceFactor(shape, 'flexible', 'average', L_over_B);
-
-    // 침하량 산정 (mm)
-    const Se_rigid_mm = factor_base * Is_rigid;
-    const Se_center_mm = factor_base * Is_center;
-    const Se_midside_mm = factor_base * Is_midside;
-    const Se_corner_mm = factor_base * Is_corner;
-    const Se_average_mm = factor_base * Is_average;
-
     // O.K / N.G 판정
     const pass_si = Si_mm <= allow_settle ? "O.K" : "N.G";
     const pass_se_rigid = Se_rigid_mm <= allow_settle ? "O.K" : "N.G";
@@ -212,7 +218,7 @@ function calculateSettlement() {
 
     const shapeLabel = shape === 'circular' ? '원형기초' : '구형/정방형기초';
 
-    // 요약 결과 테이블 탄성이론 행 동적 구성
+    // 요약 결과 테이블 탄성이론 행 동적 구성 (탄성침하 먼저)
     let elasticSummaryRows = '';
     if (rigidity === 'rigid') {
         elasticSummaryRows = `
@@ -252,52 +258,17 @@ function calculateSettlement() {
                     <th>허용 기준 침하량</th>
                     <th>판정</th>
                 </tr>
+                ${elasticSummaryRows}
                 <tr>
                     <td><strong>Schmertmann 제안식 (변형영향계수법)</strong></td>
                     <td style="font-weight:bold; color:#2980b9;">${Si_mm.toFixed(2)} mm</td>
                     <td>${allow_settle.toFixed(2)} mm</td>
                     <td style="font-weight:bold; color:${pass_si === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_si}</td>
                 </tr>
-                ${elasticSummaryRows}
             </table>
         </div>
 
-        <div class="section-title">[검증 1] Schmertmann 제안식 상세 산정 과정</div>
-        <div class="calc-step">
-            • 기초 근입깊이 유효상재하중 (&sigma;<sub>v0</sub>* = D<sub>f</sub> &times; &gamma;<sub>1,eff</sub>): ${Df.toFixed(2)} &times; ${gamma1_eff.toFixed(2)} = <strong>${sigma_v0.toFixed(2)} kN/m²</strong> (${log1})<br>
-            • 근입깊이 보정계수 (C<sub>1</sub> = 1 - 0.5 &times; [&sigma;<sub>v0</sub>* / (q<sub>b</sub> - &sigma;<sub>v0</sub>*)]): max(0.5, 1 - 0.5 &times; [${sigma_v0.toFixed(2)} / (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)})]) = <strong>${C1.toFixed(2)}</strong><br>
-            • Creep 보정계수 (C<sub>2</sub> = 1 + 0.2 &times; log<sub>10</sub>(10 &times; ${years}년)): <strong>${C2.toFixed(2)}</strong><br>
-            • 지층별 변형영향계수 적분값 (&sum; (I<sub>z</sub> / E) &Delta;z): <strong>${sum_iz_e_dz.toExponential(3)} m²/kN</strong><br>
-            • <strong>최종 탄성침하량 (S<sub>i</sub>): C<sub>1</sub> &times; C<sub>2</sub> &times; (q<sub>b</sub> - &sigma;<sub>v0</sub>*) &times; &sum; (I<sub>z</sub> / E) &Delta;z = ${Si_mm.toFixed(2)} mm</strong>
-        </div>
-
-        <div class="section-title">■ Schmertmann 지층별 적분 상세 표</div>
-        <div class="table-container">
-            <table class="result-table" style="font-size: 0.78em; text-align: center;">
-                <tr>
-                    <th>지층명</th>
-                    <th>두께 &Delta;z (m)</th>
-                    <th>변형계수 E (kN/m²)</th>
-                    <th>영향계수 I<sub>z</sub></th>
-                    <th>(I<sub>z</sub> / E) &times; &Delta;z</th>
-                </tr>
-                ${layers.map(l => `
-                    <tr>
-                        <td>${l.name}</td>
-                        <td>${l.dz.toFixed(2)}</td>
-                        <td>${l.e_val.toLocaleString()}</td>
-                        <td>${l.iz.toFixed(3)}</td>
-                        <td>${((l.iz / l.e_val) * l.dz).toExponential(5)}</td>
-                    </tr>
-                `).join('')}
-                <tr style="background-color: #eaeded; font-weight: bold;">
-                    <td colspan="4">합계 (&sum;)</td>
-                    <td>${sum_iz_e_dz.toExponential(4)}</td>
-                </tr>
-            </table>
-        </div><br>
-
-        <div class="section-title">[검증 2] 탄성&#8203;이론에 의한 침하량 산정 (구조물&#8203;기초설계기준 해설. 2018. P235)</div>
+        <div class="section-title">[검증 1] 탄성&#8203;이론에 의한 침하량 산정 (구조물&#8203;기초설계기준 해설. 2018. P235)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             ▶ 탄성&#8203;이론 기본 계산식 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
             &nbsp;&nbsp;&nbsp;&nbsp;<strong>Se = q &times; B &times; [ (1 - &nu;&sup2;) / E ] &times; Is</strong><br><br>
@@ -365,8 +336,7 @@ function calculateSettlement() {
         </div>
 
         <div class="section-title">■ 탄성&#8203;침하의 영향&#8203;계수 Is (구조물&#8203;기초설계기준 해설 표 4.3.2 및 그림 4.3.7)</div>
-        
-        <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 15px; align-items: stretch; margin-top: 8px;">
+        <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 15px; align-items: stretch; margin-top: 8px; margin-bottom: 25px;">
             <div class="table-container" style="margin: 0;">
                 <table class="result-table" style="font-size: 0.75em; text-align: center; width: 100%; table-layout: fixed; height: 100%; margin: 0;">
                     <thead>
@@ -434,6 +404,41 @@ function calculateSettlement() {
                 <img src="images/is_graph.png" alt="탄성침하 영향계수 그래프" style="width: 100%; height: 100%; object-fit: contain; border-radius: 2px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                 <div style="display: none; padding: 20px; font-size: 0.8em; color: #7f8c8d; border: 1px dashed #bdc3c7; width: 100%; text-align: center;">[이미지 경로: images/is_graph.png 필요]</div>
             </div>
+        </div>
+
+        <div class="section-title">[검증 2] Schmertmann 제안식 상세 산정 과정</div>
+        <div class="calc-step">
+            • 기초 근입깊이 유효상재하중 (&sigma;<sub>v0</sub>* = D<sub>f</sub> &times; &gamma;<sub>1,eff</sub>): ${Df.toFixed(2)} &times; ${gamma1_eff.toFixed(2)} = <strong>${sigma_v0.toFixed(2)} kN/m²</strong> (${log1})<br>
+            • 근입깊이 보정계수 (C<sub>1</sub> = 1 - 0.5 &times; [&sigma;<sub>v0</sub>* / (q<sub>b</sub> - &sigma;<sub>v0</sub>*)]): max(0.5, 1 - 0.5 &times; [${sigma_v0.toFixed(2)} / (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)})]) = <strong>${C1.toFixed(2)}</strong><br>
+            • Creep 보정계수 (C<sub>2</sub> = 1 + 0.2 &times; log<sub>10</sub>(10 &times; ${years}년)): <strong>${C2.toFixed(2)}</strong><br>
+            • 지층별 변형영향계수 적분값 (&sum; (I<sub>z</sub> / E) &Delta;z): <strong>${sum_iz_e_dz.toExponential(3)} m²/kN</strong><br>
+            • <strong>최종 탄성침하량 (S<sub>i</sub>): C<sub>1</sub> &times; C<sub>2</sub> &times; (q<sub>b</sub> - &sigma;<sub>v0</sub>*) &times; &sum; (I<sub>z</sub> / E) &Delta;z = ${Si_mm.toFixed(2)} mm</strong>
+        </div>
+
+        <div class="section-title">■ Schmertmann 지층별 적분 상세 표</div>
+        <div class="table-container">
+            <table class="result-table" style="font-size: 0.78em; text-align: center;">
+                <tr>
+                    <th>지층명</th>
+                    <th>두께 &Delta;z (m)</th>
+                    <th>변형계수 E (kN/m²)</th>
+                    <th>영향계수 I<sub>z</sub></th>
+                    <th>(I<sub>z</sub> / E) &times; &Delta;z</th>
+                </tr>
+                ${layers.map(l => `
+                    <tr>
+                        <td>${l.name}</td>
+                        <td>${l.dz.toFixed(2)}</td>
+                        <td>${l.e_val.toLocaleString()}</td>
+                        <td>${l.iz.toFixed(3)}</td>
+                        <td>${((l.iz / l.e_val) * l.dz).toExponential(5)}</td>
+                    </tr>
+                `).join('')}
+                <tr style="background-color: #eaeded; font-weight: bold;">
+                    <td colspan="4">합계 (&sum;)</td>
+                    <td>${sum_iz_e_dz.toExponential(4)}</td>
+                </tr>
+            </table>
         </div>
     `;
 }
