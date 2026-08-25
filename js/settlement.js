@@ -220,64 +220,64 @@ function calculateSettlement() {
         <div class="section-title">■ 탄성침하의 영향계수 Is (구조물기초설계기준 해설 표 4.3.2 및 그림 4.3.7)</div>
         <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: stretch; justify-content: center; margin-top: 8px;">
             <div style="flex: 1.5; min-width: 320px;" class="table-container">
-                <table class="result-table" style="font-size: 0.72em; text-align: center; width: 100%; table-layout: fixed; height: 100%;">
+                <table class="result-table" style="font-size: 0.72em; text-align: center; width: 100%; table-layout: fixed;">
                     <thead>
                         <tr style="background-color: #eaeded;">
-                            <th rowspan="2" style="padding:8px 2px; width: 22%; vertical-align: middle;">영향계수 Is</th>
-                            <th rowspan="2" style="padding:8px 2px; width: 9%; vertical-align: middle;">강성기초</th>
-                            <th colspan="4" style="padding:6px 2px; width: 43%; vertical-align: middle;">연성기초</th>
-                            <th rowspan="2" style="padding:8px 2px; width: 26%; vertical-align: middle;">비고</th>
+                            <th rowspan="2" style="padding:4px 2px; width: 22%; vertical-align: middle;">영향계수 Is</th>
+                            <th rowspan="2" style="padding:4px 2px; width: 9%; vertical-align: middle;">강성기초</th>
+                            <th colspan="4" style="padding:3px 2px; width: 45%; vertical-align: middle;">연성기초</th>
+                            <th rowspan="2" style="padding:4px 2px; width: 24%; vertical-align: middle;">비고</th>
                         </tr>
                         <tr style="background-color: #eaeded;">
-                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em;">중심점</th>
-                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em;">외변중점</th>
-                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em;">모서리</th>
-                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em;">평균</th>
+                            <th style="padding:3px 1px; vertical-align: middle; font-size: 0.85em;">중심점</th>
+                            <th style="padding:3px 1px; vertical-align: middle; font-size: 0.85em;">외변중점</th>
+                            <th style="padding:3px 1px; vertical-align: middle; font-size: 0.85em;">모서리</th>
+                            <th style="padding:3px 1px; vertical-align: middle; font-size: 0.85em;">평균</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td style="padding: 7px 2px; vertical-align: middle;">원형기초</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">0.79</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.00</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">0.64</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">-</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">0.85</td>
-                            <td rowspan="5" style="text-align:left; padding:4px; font-size:0.72em; word-break: keep-all; vertical-align: middle;">
+                            <td style="padding: 4px 2px; vertical-align: middle;">원형기초</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">0.79</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.00</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">0.64</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">-</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">0.85</td>
+                            <td rowspan="5" style="text-align:left; padding:3px; font-size:0.68em; word-break: keep-all; vertical-align: middle;">
                                 연성기초 중심점 영향치는 모서리점의 2배임. 즉, 중심점 침하는 모서리점 침하의 2배임.
                             </td>
                         </tr>
                         <tr>
-                            <td style="padding: 7px 2px; vertical-align: middle;">정방형기초</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">0.88</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">0.76</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">0.56</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">0.95</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">정방형기초</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">0.88</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">0.76</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">0.56</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">0.95</td>
                         </tr>
                         <tr>
-                            <td style="padding: 7px 2px; vertical-align: middle;">구형기초 (L/B=2)</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.53</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">0.76</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.30</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">구형기초 (L/B=2)</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.53</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">0.76</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.30</td>
                         </tr>
                         <tr>
-                            <td style="padding: 7px 2px; vertical-align: middle;">구형기초 (L/B=5)</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.60</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">2.10</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.68</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.05</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.82</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">구형기초 (L/B=5)</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.60</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">2.10</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.68</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.05</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.82</td>
                         </tr>
                         <tr>
-                            <td style="padding: 7px 2px; vertical-align: middle;">구형기초 (L/B=10)</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">2.00</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">2.56</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">2.10</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">1.28</td>
-                            <td style="padding: 7px 2px; vertical-align: middle;">2.24</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">구형기초 (L/B=10)</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">2.00</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">2.56</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">2.10</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">1.28</td>
+                            <td style="padding: 4px 2px; vertical-align: middle;">2.24</td>
                         </tr>
                     </tbody>
                 </table>
