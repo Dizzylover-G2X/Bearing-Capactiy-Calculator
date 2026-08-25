@@ -37,17 +37,11 @@ export function initSettlementModule(container) {
                 <label style="color: #2980b9;">평균 포아송비 ν</label>
                 <input type="number" id="set_u" value="${getVal('u', '0.345')}" step="0.001">
             </div>
-            <div class="input-group" style="background-color: #eaf2f8; border-color: #3498db; grid-column: span 2;">
-                <label style="color: #2980b9;">설계 반력 q_b (kN/m²)</label>
-                <input type="number" id="set_qb" value="${getVal('qb', '60.05')}" step="0.01">
-            </div>
-            
-            <!-- 기초 조건 및 연성기초 위치 선택 옵션 -->
             <div class="input-group" style="background-color: #f4f6f7; border-color: #bdc3c7;">
                 <label>기초 강성 구분</label>
                 <select id="set_rigidity">
-                    <option value="flexible" ${getVal('rigidity', 'flexible') === 'flexible' ? 'selected' : ''}>연성기초</option>
-                    <option value="rigid" ${getVal('rigidity', 'flexible') === 'rigid' ? 'selected' : ''}>강성기초</option>
+                    <option value="rigid" ${getVal('rigidity', 'rigid') === 'rigid' ? 'selected' : ''}>강성기초</option>
+                    <option value="flexible" ${getVal('rigidity', 'rigid') === 'flexible' ? 'selected' : ''}>연성기초</option>
                 </select>
             </div>
             <div class="input-group" style="background-color: #f4f6f7; border-color: #bdc3c7;">
@@ -57,17 +51,11 @@ export function initSettlementModule(container) {
                     <option value="circular" ${getVal('shape', 'rectangular') === 'circular' ? 'selected' : ''}>원형기초</option>
                 </select>
             </div>
-            <div class="input-group" style="background-color: #f4f6f7; border-color: #bdc3c7; grid-column: span 2;">
-                <label>연성기초 검토 위치</label>
-                <select id="set_flex_pos">
-                    <option value="center" ${getVal('flex_pos', 'center') === 'center' ? 'selected' : ''}>중심점</option>
-                    <option value="midside" ${getVal('flex_pos', 'center') === 'midside' ? 'selected' : ''}>외변의 중점</option>
-                    <option value="corner" ${getVal('flex_pos', 'center') === 'corner' ? 'selected' : ''}>모서리점</option>
-                    <option value="average" ${getVal('flex_pos', 'center') === 'average' ? 'selected' : ''}>평균</option>
-                </select>
+            <div class="input-group" style="background-color: #eaf2f8; border-color: #3498db;">
+                <label style="color: #2980b9;">설계 반력 q_b (kN/m²)</label>
+                <input type="number" id="set_qb" value="${getVal('qb', '60.05')}" step="0.01">
             </div>
-
-            <div class="input-group" style="background-color: #fcf3cf; border-color: #f1c40f; grid-column: span 2;">
+            <div class="input-group" style="background-color: #fcf3cf; border-color: #f1c40f;">
                 <label style="color: #d4ac0d;">허용 기준 침하량 (mm)</label>
                 <input type="number" id="set_allow_settlement" value="${getVal('allow_settlement', '25.00')}" step="0.1">
             </div>
@@ -77,15 +65,6 @@ export function initSettlementModule(container) {
         <button class="action-btn" id="calc-settlement-btn">침하량 산정 및 검토하기</button>
         <div id="settlement-result" class="result-box"></div>
     `;
-
-    // 강성기초 선택 시 연성기초 위치 선택창 비활성화 처리
-    const rigiditySelect = container.querySelector('#set_rigidity');
-    const posSelect = container.querySelector('#set_flex_pos');
-    const togglePosSelect = () => {
-        posSelect.disabled = (rigiditySelect.value === 'rigid');
-    };
-    rigiditySelect.addEventListener('change', togglePosSelect);
-    togglePosSelect();
 
     // 입력값 변경 시 localStorage 저장
     const inputs = container.querySelectorAll('.input-grid input, .input-grid select');
@@ -116,13 +95,12 @@ function getInfluenceFactor(shape, rigidity, position, ratio) {
         switch (position) {
             case 'center': return 1.00;
             case 'midside': return 0.64;
-            case 'corner': return 0.64; // 원형기초는 모서리가 없으므로 외변중점 적용
+            case 'corner': return 0.64;
             case 'average': return 0.85;
             default: return 0.85;
         }
     }
 
-    // 구형 및 정방형 기초 (L/B 비율에 따른 보간)
     const lbTable = [1.0, 2.0, 5.0, 10.0];
     const data = {
         rigid:   [0.88, 1.12, 1.60, 2.00],
@@ -164,7 +142,6 @@ function calculateSettlement() {
 
     const rigidity = document.getElementById('set_rigidity').value;
     const shape = document.getElementById('set_shape').value;
-    const flex_pos = document.getElementById('set_flex_pos').value;
 
     const gamma_w = 9.807;
 
@@ -208,22 +185,36 @@ function calculateSettlement() {
     const Si_m = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz;
     const Si_mm = Si_m * 1000;
 
-    // 2. 탄성이론에 의한 산정 (구조물기초설계기준해설 2018, P.235)
+    // 2. 탄성이론에 의한 침하량 (Case별 산정)
     const L_over_B = L / B;
-    const Is = getInfluenceFactor(shape, rigidity, flex_pos, L_over_B);
-
     const u_sq = Math.pow(u, 2);
-    const Se_m = qb * B * ((1.0 - u_sq) / E) * Is;
-    const Se_mm = Se_m * 1000;
+    const factor_base = qb * B * ((1.0 - u_sq) / E) * 1000; // mm 산정 기본인자
 
+    // Is 값 산정
+    const Is_rigid = getInfluenceFactor(shape, 'rigid', 'rigid', L_over_B);
+    const Is_center = getInfluenceFactor(shape, 'flexible', 'center', L_over_B);
+    const Is_midside = getInfluenceFactor(shape, 'flexible', 'midside', L_over_B);
+    const Is_corner = getInfluenceFactor(shape, 'flexible', 'corner', L_over_B);
+    const Is_average = getInfluenceFactor(shape, 'flexible', 'average', L_over_B);
+
+    // 침하량 산정 (mm)
+    const Se_rigid_mm = factor_base * Is_rigid;
+    const Se_center_mm = factor_base * Is_center;
+    const Se_midside_mm = factor_base * Is_midside;
+    const Se_corner_mm = factor_base * Is_corner;
+    const Se_average_mm = factor_base * Is_average;
+
+    // 대표 침하량 선택 (선택된 강성 기준)
+    const Is_selected = (rigidity === 'rigid') ? Is_rigid : Is_average;
+    const Se_selected_mm = (rigidity === 'rigid') ? Se_rigid_mm : Se_average_mm;
+
+    // O.K / N.G 판정
     const pass_si = Si_mm <= allow_settle ? "O.K" : "N.G";
-    const pass_se = Se_mm <= allow_settle ? "O.K" : "N.G";
+    const pass_se_rigid = Se_rigid_mm <= allow_settle ? "O.K" : "N.G";
+    const pass_se_center = Se_center_mm <= allow_settle ? "O.K" : "N.G";
+    const pass_se_corner = Se_corner_mm <= allow_settle ? "O.K" : "N.G";
 
-    // 텍스트 라벨 설정
     const shapeLabel = shape === 'circular' ? '원형기초' : '구형/정방형기초';
-    const rigidityLabel = rigidity === 'rigid' ? '강성기초' : '연성기초';
-    const posMap = { center: '중심점', midside: '외변중점', corner: '모서리점', average: '평균' };
-    const posLabel = rigidity === 'flexible' ? ` - ${posMap[flex_pos]}` : '';
 
     const resultDiv = document.getElementById('settlement-result');
     resultDiv.style.display = 'block';
@@ -244,10 +235,22 @@ function calculateSettlement() {
                     <td style="font-weight:bold; color:${pass_si === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_si}</td>
                 </tr>
                 <tr>
-                    <td><strong>탄성&#8203;이론에 의한 산정법</strong></td>
-                    <td style="font-weight:bold; color:#e67e22;">${Se_mm.toFixed(2)} mm</td>
+                    <td><strong>탄성&#8203;이론 (강성기초)</strong></td>
+                    <td style="font-weight:bold; color:#e67e22;">${Se_rigid_mm.toFixed(2)} mm</td>
                     <td>${allow_settle.toFixed(2)} mm</td>
-                    <td style="font-weight:bold; color:${pass_se === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se}</td>
+                    <td style="font-weight:bold; color:${pass_se_rigid === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_rigid}</td>
+                </tr>
+                <tr>
+                    <td><strong>탄성&#8203;이론 (연성기초 - 중심점 [최대])</strong></td>
+                    <td style="font-weight:bold; color:#e67e22;">${Se_center_mm.toFixed(2)} mm</td>
+                    <td>${allow_settle.toFixed(2)} mm</td>
+                    <td style="font-weight:bold; color:${pass_se_center === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_center}</td>
+                </tr>
+                <tr>
+                    <td><strong>탄성&#8203;이론 (연성기초 - 모서리점 [최소])</strong></td>
+                    <td style="font-weight:bold; color:#e67e22;">${Se_corner_mm.toFixed(2)} mm</td>
+                    <td>${allow_settle.toFixed(2)} mm</td>
+                    <td style="font-weight:bold; color:${pass_se_corner === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_corner}</td>
                 </tr>
             </table>
         </div>
@@ -289,10 +292,9 @@ function calculateSettlement() {
 
         <div class="section-title">[검증 2] 탄성&#8203;이론에 의한 침하량 산정 (구조물&#8203;기초설계기준 해설. 2018. P235)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
-            ▶ 탄성&#8203;이론에 의한 침하량 산정 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
+            ▶ 탄성&#8203;이론 기본 계산식 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
             &nbsp;&nbsp;&nbsp;&nbsp;<strong>Se = q &times; B &times; [ (1 - &nu;&sup2;) / E ] &times; Is</strong><br><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toFixed(3)} ) / ${E.toFixed(1)} &times; ${Is.toFixed(2)}<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;= <strong>${Se_mm.toFixed(2)} mm</strong>
+            &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toFixed(3)} ) / ${E.toFixed(1)} &times; Is<br>
         </div>
 
         <div class="calc-step">
@@ -300,7 +302,16 @@ function calculateSettlement() {
             ② B : 기초 폭 = <strong>${B.toFixed(2)} m</strong><br>
             ③ E : 지반의 탄성계수 = <strong>${E.toLocaleString()} kN/m²</strong><br>
             ④ &nu; : 지반의 포아송 비 = <strong>${u.toFixed(3)}</strong><br>
-            ⑤ Is : 탄성&#8203;침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (${shapeLabel}, ${rigidityLabel}${posLabel}, L/B = ${L_over_B.toFixed(2)})
+            ⑤ Is : 탄성&#8203;침하의 영향&#8203;계수 (${shapeLabel}, L/B = ${L_over_B.toFixed(2)})
+        </div>
+
+        <div class="calc-step" style="background-color: #eaf2f8; border-color: #3498db; margin-top: 10px; padding: 12px;">
+            <strong style="color: #2980b9;">■ 강성 및 연성 기초 Case별 침하량 계산 결과</strong><br><br>
+            • <strong>강성&#8203;기초 :</strong> Is = ${Is_rigid.toFixed(2)} &rarr; <strong>Se = ${Se_rigid_mm.toFixed(2)} mm</strong><br>
+            • <strong>연성&#8203;기초 (중심점 [최대]) :</strong> Is = ${Is_center.toFixed(2)} &rarr; <strong>Se = ${Se_center_mm.toFixed(2)} mm</strong><br>
+            • <strong>연성&#8203;기초 (외변&#8203;중점) :</strong> Is = ${Is_midside.toFixed(2)} &rarr; <strong>Se = ${Se_midside_mm.toFixed(2)} mm</strong><br>
+            • <strong>연성&#8203;기초 (모서리&#8203;점 [최소]) :</strong> Is = ${Is_corner.toFixed(2)} &rarr; <strong>Se = ${Se_corner_mm.toFixed(2)} mm</strong><br>
+            • <strong>연성&#8203;기초 (평균 침하) :</strong> Is = ${Is_average.toFixed(2)} &rarr; <strong>Se = ${Se_average_mm.toFixed(2)} mm</strong>
         </div>
 
         <div class="section-title">■ 탄성&#8203;침하의 영향&#8203;계수 Is (구조물&#8203;기초설계기준 해설 표 4.3.2 및 그림 4.3.7)</div>
@@ -310,61 +321,61 @@ function calculateSettlement() {
                 <table class="result-table" style="font-size: 0.75em; text-align: center; width: 100%; table-layout: fixed; height: 100%; margin: 0;">
                     <thead>
                         <tr style="background-color: #eaeded;">
-                            <th rowspan="2" style="padding:4px; width: 18%; vertical-align: middle; white-space: nowrap;">영향&#8203;계수 Is</th>
-                            <th rowspan="2" style="padding:4px; width: 12%; vertical-align: middle; white-space: nowrap;">강성&#8203;기초</th>
-                            <th colspan="4" style="padding:4px; width: 44%; vertical-align: middle; white-space: nowrap;">연성&#8203;기초</th>
-                            <th rowspan="2" style="padding:4px; width: 26%; vertical-align: middle;">비고</th>
+                            <th rowspan="2" style="padding:10px 2px; width: 22%; vertical-align: middle; white-space: nowrap;">영향&#8203;계수 Is</th>
+                            <th rowspan="2" style="padding:10px 2px; width: 9%; vertical-align: middle; white-space: nowrap;">강성&#8203;기초</th>
+                            <th colspan="4" style="padding:6px 2px; width: 45%; vertical-align: middle; white-space: nowrap;">연성&#8203;기초</th>
+                            <th rowspan="2" style="padding:10px 2px; width: 24%; vertical-align: middle;">비고</th>
                         </tr>
                         <tr style="background-color: #eaeded;">
-                            <th style="padding:4px 2px; vertical-align: middle; font-size: 0.88em; white-space: nowrap;">중심&#8203;점</th>
-                            <th style="padding:4px 2px; vertical-align: middle; font-size: 0.88em; white-space: nowrap;">외변&#8203;중점</th>
-                            <th style="padding:4px 2px; vertical-align: middle; font-size: 0.88em; white-space: nowrap;">모서리</th>
-                            <th style="padding:4px 2px; vertical-align: middle; font-size: 0.88em; white-space: nowrap;">평균</th>
+                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em; white-space: nowrap;">중심&#8203;점</th>
+                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em; white-space: nowrap;">외변&#8203;중점</th>
+                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em; white-space: nowrap;">모서리</th>
+                            <th style="padding:6px 1px; vertical-align: middle; font-size: 0.9em; white-space: nowrap;">평균</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr style="${shape === 'circular' ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
-                            <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">원형&#8203;기초</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.79</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.00</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.64</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">-</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.85</td>
-                            <td rowspan="5" style="text-align:left; padding:4px 6px; font-size:0.7em; word-break: keep-all; vertical-align: middle; line-height: 1.3;">
+                            <td style="padding: 10px 2px; vertical-align: middle; white-space: nowrap;">원형&#8203;기초</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.79</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.00</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.64</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">-</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.85</td>
+                            <td rowspan="5" style="text-align:left; padding:4px 6px; font-size:0.75em; word-break: keep-all; vertical-align: middle; line-height: 1.3;">
                                 연성&#8203;기초 중심&#8203;점 영향치는 모서리&#8203;점의 2배임. 즉, 중심&#8203;점 침하는 모서리&#8203;점 침하의 2배임.
                             </td>
                         </tr>
                         <tr style="${shape === 'rectangular' && L_over_B === 1 ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
-                            <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">정방형&#8203;기초</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.88</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.76</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.56</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.95</td>
+                            <td style="padding: 10px 2px; vertical-align: middle; white-space: nowrap;">정방형&#8203;기초</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.88</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.12</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.76</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.56</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.95</td>
                         </tr>
                         <tr style="${shape === 'rectangular' && L_over_B > 1 && L_over_B <= 3.5 ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
-                            <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=2)</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.53</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">0.76</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.30</td>
+                            <td style="padding: 10px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=2)</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.12</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.53</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.12</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">0.76</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.30</td>
                         </tr>
                         <tr style="${shape === 'rectangular' && L_over_B > 3.5 && L_over_B <= 7.5 ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
-                            <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=5)</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.60</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.10</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.68</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.05</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.82</td>
+                            <td style="padding: 10px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=5)</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.60</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.10</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.68</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.05</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.82</td>
                         </tr>
                         <tr style="${shape === 'rectangular' && L_over_B > 7.5 ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
-                            <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=10)</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.00</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.56</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.10</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">1.28</td>
-                            <td style="padding: 4px 2px; vertical-align: middle;">2.24</td>
+                            <td style="padding: 10px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=10)</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.00</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.56</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.10</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">1.28</td>
+                            <td style="padding: 10px 2px; vertical-align: middle;">2.24</td>
                         </tr>
                     </tbody>
                 </table>
