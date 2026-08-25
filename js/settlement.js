@@ -52,7 +52,6 @@ export function initSettlementModule(container) {
         <div id="settlement-result" class="result-box"></div>
     `;
 
-    // 입력값 변경 시 localStorage에 저장하여 탭 간 연동
     const inputs = container.querySelectorAll('.input-grid input');
     inputs.forEach(input => {
         input.addEventListener('input', function() {
@@ -86,7 +85,6 @@ function calculateSettlement() {
 
     const gamma_w = 9.807;
 
-    // 상부층 유효단위중량 산정 (지지력 탭과 동일한 로직)
     let gamma1_eff = gamma1_in;
     let log1 = "";
     const gamma1_sub = gamma1_in - gamma_w;
@@ -101,22 +99,14 @@ function calculateSettlement() {
         log1 = "지하수위 선형 보간 적용";
     }
 
-    // 기초 근입깊이에서의 유효상재하중 (σ_v0*)
     const sigma_v0 = Df * gamma1_eff;
 
-    // 1. Schmertmann 제안식에 의한 탄성침하 산정
-    // C1: 근입깊이 보정계수 (C1 = 1 - 0.5 * (σ_v0* / (qb - σ_v0*)) >= 0.5)
+    // 1. Schmertmann 제안식 산정
     let C1 = 1.0 - 0.5 * (sigma_v0 / (qb - sigma_v0));
     if (C1 < 0.5) C1 = 0.5;
-
-    // C2: Creep 보정계수 (기본 100년 경과 가정: 1 + 0.2 * log10(10 * 100) = 1.60)
     const years = 100;
     const C2 = 1.0 + 0.2 * Math.log10(10 * years);
 
-    // Schmertmann 심도별 적분값 (구조계산서 예시 표준 지층 분할 모사)
-    // 총 영향깊이 Z_znmax = 4.04 m 기준 예시 레이어 통합 계산
-    // ∑ (Iz / E) * Δz 산정 (구조계산서 예시값 1.254E-04 기준 동적 비례 적용 또는 표준 레이어 합산)
-    // 여기서는 예시 구조계산서의 레이어 분할 데이터를 반영하여 계산
     const layers = [
         { name: "매립층", dz: 0.30, e_val: 7000, iz: 0.268 },
         { name: "매립층", dz: 0.30, e_val: 7000, iz: 0.435 },
@@ -132,21 +122,20 @@ function calculateSettlement() {
         sum_iz_e_dz += (layer.iz / layer.e_val) * layer.dz;
     });
 
-    const Si_m = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz; // 미터 단위
-    const Si_mm = Si_m * 1000; // mm 단위
+    const Si_m = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz;
+    const Si_mm = Si_m * 1000;
 
-    // 2. 탄성이론에 의한 침하량 산정 (Se = q * B * ((1 - u^2) / E) * Is)
-    // L/B 비에 따른 탄성침하 영향계수 Is (L=2.00, B=1.82 이므로 L/B = 1.10 기준 연성기초 평균값 약 0.90 적용)
+    // 2. 탄성이론에 의한 산정 (구조물기초설계기준해설 2018, P.235)
     const L_over_B = L / B;
     let Is = 0.90; 
     if (L_over_B <= 1.0) Is = 0.95;
     else if (L_over_B <= 2.0) Is = 0.90;
     else Is = 1.30;
 
-    const Se_m = qb * B * ((1.0 - Math.pow(u, 2)) / E) * Is;
-    const Se_mm = Se_m * 1000; // mm 단위
+    const u_sq = Math.pow(u, 2);
+    const Se_m = qb * B * ((1.0 - u_sq) / E) * Is;
+    const Se_mm = Se_m * 1000;
 
-    // 판정 결과
     const pass_si = Si_mm <= allow_settle ? "O.K" : "N.G";
     const pass_se = Se_mm <= allow_settle ? "O.K" : "N.G";
 
@@ -169,7 +158,7 @@ function calculateSettlement() {
                     <td style="font-weight:bold; color:${pass_si === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_si}</td>
                 </tr>
                 <tr>
-                    <td><strong>탄성이론에 의한 산정법</strong></td>
+                    <td><strong>[검증 2] 탄성이론에 의한 산정법</strong></td>
                     <td style="font-weight:bold; color:#e67e22;">${Se_mm.toFixed(2)} mm</td>
                     <td>${allow_settle.toFixed(2)} mm</td>
                     <td style="font-weight:bold; color:${pass_se === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se}</td>
@@ -177,7 +166,7 @@ function calculateSettlement() {
             </table>
         </div>
 
-        <div class="section-title">[1] Schmertmann 제안식 상세 산정 과정</div>
+        <div class="section-title">[검증 1] Schmertmann 제안식 상세 산정 과정</div>
         <div class="calc-step">
             • 기초 근입깊이 유효상재하중 (&sigma;<sub>v0</sub>* = D<sub>f</sub> &times; &gamma;<sub>1,eff</sub>): ${Df.toFixed(2)} &times; ${gamma1_eff.toFixed(2)} = <strong>${sigma_v0.toFixed(2)} kN/m²</strong> (${log1})<br>
             • 근입깊이 보정계수 (C<sub>1</sub> = 1 - 0.5 &times; [&sigma;<sub>v0</sub>* / (q<sub>b</sub> - &sigma;<sub>v0</sub>*)]): max(0.5, 1 - 0.5 &times; [${sigma_v0.toFixed(2)} / (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)})]) = <strong>${C1.toFixed(2)}</strong><br>
@@ -212,12 +201,85 @@ function calculateSettlement() {
             </table>
         </div><br>
 
-        <div class="section-title">[2] 탄성이론에 의한 침하량 상세 산정 과정</div>
+        <div class="section-title">[검증 2] 탄성이론에 의한 침하량 산정 (구조물기초설계기준해설. 2018. P235)</div>
+        <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
+            ▶ 탄성이론에 의한 침하량 산정 ($D_f = 0$, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<strong>$S_e = q \cdot B \cdot \frac{1 - \nu^2}{E} \cdot I_s$</strong>[cite: 6]<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toExponential(2)} ) / ${E.toFixed(1)} &times; ${Is.toFixed(2)}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;= <strong>${Se_mm.toFixed(2)} mm</strong>
+        </div>
+
         <div class="calc-step">
-            • 기초 규격 및 하중: 폭 B = ${B.toFixed(2)} m, 길이 L = ${L.toFixed(2)} m (L/B = ${L_over_B.toFixed(2)}), 설계반력 q<sub>b</sub> = ${qb.toFixed(2)} kN/m²<br>
-            • 지반 정수: 탄성계수 E = ${E.toLocaleString()} kN/m², 포아송비 &nu; = ${u.toFixed(3)}<br>
-            • 탄성침하 영향계수 (I<sub>s</sub>): <strong>${Is.toFixed(2)}</strong><br>
-            • <strong>최종 탄성침하량 (S<sub>e</sub>): q<sub>b</sub> &times; B &times; [(1 - &nu;²) / E] &times; I<sub>s</sub> = ${Se_mm.toFixed(2)} mm</strong>
+            ① $q$ : 기초작용 하중 = <strong>${qb.toFixed(1)} kN/m²</strong>[cite: 6]<br>
+            ② $B$ : 기초 폭 = <strong>${B.toFixed(2)} m</strong>[cite: 6]<br>
+            ③ $E$ : 지반의 탄성계수 = <strong>${E.toLocaleString()} kN/m²</strong>[cite: 6]<br>
+            ④ $\nu$ : 지반의 포아송 비 = <strong>${u.toFixed(3)}</strong>[cite: 6]<br>
+            ⑤ $I_s$ : 탄성침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (L/B = ${L_over_B.toFixed(2)})[cite: 6]
+        </div>
+
+        <div class="section-title">■ 탄성침하의 영향계수 $I_s$ (구조물기초설계기준 해설 표 4.3.2)[cite: 6]</div>
+        <div class="table-container">
+            <table class="result-table" style="font-size: 0.78em; text-align: center;">
+                <thead>
+                    <tr style="background-color: #eaeded;">
+                        <th rowspan="2" style="padding:6px;">탄성침하의 영향계수 $I_s$</th>
+                        <th rowspan="2" style="padding:6px;">강성기초</th>
+                        <th colspan="4" style="padding:6px;">연성기초[cite: 6]</th>
+                        <th rowspan="2" style="padding:6px;">비고[cite: 6]</th>
+                    </tr>
+                    <tr style="background-color: #eaeded;">
+                        <th style="padding:4px;">중심점[cite: 6]</th>
+                        <th style="padding:4px;">외변의 중점[cite: 6]</th>
+                        <th style="padding:4px;">모서리점[cite: 6]</th>
+                        <th style="padding:4px;">평 균[cite: 6]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>원형기초[cite: 6]</td>
+                        <td>0.79[cite: 6]</td>
+                        <td>1.00[cite: 6]</td>
+                        <td>0.64[cite: 6]</td>
+                        <td>-[cite: 6]</td>
+                        <td>0.85[cite: 6]</td>
+                        <td rowspan="5" style="text-align:left; padding:5px; font-size:0.9em;">
+                            연성기초의 중심점의 영향치는 모서리점의 영향치의 2배임. 즉, 중심점의 침하량은 모서리점의 침하량의 2배임[cite: 6].
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>정방형기초[cite: 6]</td>
+                        <td>0.88[cite: 6]</td>
+                        <td>1.12[cite: 6]</td>
+                        <td>0.76[cite: 6]</td>
+                        <td>0.56[cite: 6]</td>
+                        <td>0.95[cite: 6]</td>
+                    </tr>
+                    <tr>
+                        <td>구형기초 ($L/B=2$)[cite: 6]</td>
+                        <td>1.12[cite: 6]</td>
+                        <td>1.53[cite: 6]</td>
+                        <td>1.12[cite: 6]</td>
+                        <td>0.76[cite: 6]</td>
+                        <td>1.30[cite: 6]</td>
+                    </tr>
+                    <tr>
+                        <td>구형기초 ($L/B=5$)[cite: 6]</td>
+                        <td>1.60[cite: 6]</td>
+                        <td>2.10[cite: 6]</td>
+                        <td>1.68[cite: 6]</td>
+                        <td>1.05[cite: 6]</td>
+                        <td>1.82[cite: 6]</td>
+                    </tr>
+                    <tr>
+                        <td>구형기초 ($L/B=10$)[cite: 6]</td>
+                        <td>2.00[cite: 6]</td>
+                        <td>2.56[cite: 6]</td>
+                        <td>2.10[cite: 6]</td>
+                        <td>1.28[cite: 6]</td>
+                        <td>2.24[cite: 6]</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     `;
 }
