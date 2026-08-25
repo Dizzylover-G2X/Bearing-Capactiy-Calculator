@@ -286,7 +286,6 @@ function calculateSettlement() {
     // ---------------------------------------------------------
     const sch_ratio = Math.max(1.0, Math.min(10.0, Math.max(L/B, B/L)));
     
-    // 심도 및 기초 영향계수 산정식[cite: 1]
     const zf0_ratio = 2.0 + 0.222 * (sch_ratio - 1.0);
     const zf0 = B * zf0_ratio;
     
@@ -294,7 +293,6 @@ function calculateSettlement() {
     const zfp = B * zfp_ratio;
     const Iz0 = 0.1 + 0.0111 * (sch_ratio - 1.0);
 
-    // zfp 위치 유효응력(sigma_vp_prime) 산정
     let sigma_vp_prime = sigma_v0;
     const water_depth_below_df = Math.max(0, WL - Df);
     if (zfp <= water_depth_below_df) {
@@ -311,66 +309,75 @@ function calculateSettlement() {
     const C2 = 1.0 + 0.2 * Math.log10(t_years / 0.1);
 
     // ---------------------------------------------------------
-    // Breakpoint 기반 자연스러운 지층 분할 알고리즘 적용
+    // 중심 심도(Z_mid) 기반 Peak 구간 자동 분할 알고리즘 적용
     // ---------------------------------------------------------
     let schLayers = JSON.parse(localStorage.getItem('geo_sch_layers')) || [];
-    let orig_boundaries = [0];
-    let cum_z = 0;
-    schLayers.forEach(l => {
-        cum_z += l.dz;
-        orig_boundaries.push(cum_z);
-    });
-
-    // 주요 브레이크포인트 심도 수집 (0, Zfp, Zf0 및 원본 지층 경계들)
-    let points = [0, zfp, zf0];
-    orig_boundaries.forEach(z => {
-        if (z <= zf0) points.push(z);
-    });
-
-    // 중복 제거 및 오름차순 정렬 (최대 심도 Zf0 이하로 제한)
-    points = Array.from(new Set(points)).filter(z => z >= 0 && z <= zf0).sort((a, b) => a - b);
-
     let sub_layers = [];
-    for (let i = 0; i < points.length - 1; i++) {
-        let z_start = points[i];
-        let z_end = points[i+1];
-        let dz = z_end - z_start;
-        if (dz <= 0.0001) continue;
+    let curr_z = 0;
+    
+    const peak_half_dz = 0.05; // Peak 중심부를 구성하기 위한 미소 두께의 절반 (총 0.1m 두께 구간)
 
-        let z_mid = (z_start + z_end) / 2.0;
-
-        // 해당 구간이 속한 원본 지층 탐색
-        let target_layer = schLayers[0];
-        let layer_idx = 1;
-        let check_z = 0;
-        for (let j = 0; j < schLayers.length; j++) {
-            check_z += schLayers[j].dz;
-            if (z_mid <= check_z + 1e-5) {
-                target_layer = schLayers[j];
-                layer_idx = j + 1;
-                break;
+    for (let i = 0; i < schLayers.length; i++) {
+        let l = schLayers[i];
+        let l_start = curr_z;
+        let l_end = curr_z + l.dz;
+        let layer_name = `지층${i+1}`;
+        
+        if (l_start >= zf0) break;
+        let clipped_end = Math.min(l_end, zf0);
+        let is_clipped = (l_end > zf0);
+        
+        // Zfp 심도가 현재 지층 내부에 포함되는지 확인
+        if (l_start < zfp && clipped_end > zfp) {
+            let p_start = Math.max(l_start, zfp - peak_half_dz);
+            let p_end = Math.min(clipped_end, zfp + peak_half_dz);
+            
+            // 1. Peak 상부 구간
+            if (p_start > l_start) {
+                sub_layers.push({
+                    name: layer_name + " (상부)",
+                    dz: p_start - l_start,
+                    e_val: l.e_val,
+                    z_mid: (l_start + p_start) / 2.0,
+                    is_peak: false,
+                    is_clipped: false
+                });
             }
-            if (j === schLayers.length - 1) {
-                target_layer = schLayers[j];
-                layer_idx = j + 1;
+            
+            // 2. Peak 중심부 구간 (이 구간의 중앙 심도가 정확히 zfp가 됨)
+            sub_layers.push({
+                name: layer_name + " (Peak 중심부)",
+                dz: p_end - p_start,
+                e_val: l.e_val,
+                z_mid: (p_start + p_end) / 2.0, // 정확히 zfp 위치
+                is_peak: true,
+                is_clipped: false
+            });
+            
+            // 3. Peak 하부 구간
+            if (clipped_end > p_end) {
+                sub_layers.push({
+                    name: layer_name + " (하부)",
+                    dz: clipped_end - p_end,
+                    e_val: l.e_val,
+                    z_mid: (p_end + clipped_end) / 2.0,
+                    is_peak: false,
+                    is_clipped: is_clipped
+                });
             }
+        } else {
+            sub_layers.push({
+                name: layer_name,
+                dz: clipped_end - l_start,
+                e_val: l.e_val,
+                z_mid: (l_start + clipped_end) / 2.0,
+                is_peak: false,
+                is_clipped: is_clipped
+            });
         }
-
-        let is_peak_zone = (Math.abs(z_start - zfp) < 1e-4 || Math.abs(z_end - zfp) < 1e-4 || (z_start < zfp && z_end > zfp));
-        let name = `지층${layer_idx}`;
-        if (is_peak_zone) {
-            name += " (Peak 구간)";
-        }
-
-        sub_layers.push({
-            name: name,
-            dz: dz,
-            e_val: target_layer.e_val,
-            z_start: z_start,
-            z_end: z_end,
-            z_mid: z_mid,
-            is_clipped: (Math.abs(z_end - zf0) < 1e-4 && z_end < orig_boundaries[orig_boundaries.length-1])
-        });
+        
+        curr_z = l_end;
+        if (curr_z >= zf0) break;
     }
 
     let sum_iz_e_dz = 0;
@@ -394,7 +401,7 @@ function calculateSettlement() {
             e_val: sl.e_val,
             iz: Iz_mid,
             val: val,
-            is_peak: sl.name.includes("Peak"),
+            is_peak: sl.is_peak,
             is_clipped: sl.is_clipped
         });
     }
@@ -617,7 +624,7 @@ function calculateSettlement() {
 
         <div class="section-title">■ Schmert&#8203;mann 지층별 영향계수 적분 상세 표 (최대 영향심도 Z<sub>f0</sub> = ${zf0.toFixed(2)} m)</div>
         
-        <p style="font-size: 0.8em; color: #2980b9; margin-bottom: 5px;">※ Peak 지점 적분 정밀도를 높이기 위해, <strong>I<sub>zp</sub> 발생심도(Z<sub>fp</sub> = ${zfp.toFixed(2)}m)</strong> 지점을 기준으로 지층이 자동으로 구간 분할되어 계산됩니다.</p>
+        <p style="font-size: 0.8em; color: #2980b9; margin-bottom: 5px;">※ Peak 지점($Z_{fp}$ = ${zfp.toFixed(2)}m)이 <strong>구간의 정확한 중앙 심도($Z_{mid}$)</strong>가 되도록 지층이 자동 분할되어 계산됩니다.</p>
         
         <div class="table-container">
             <table class="result-table" style="font-size: 0.78em; text-align: center;">
@@ -625,7 +632,7 @@ function calculateSettlement() {
                     <tr style="background-color: #f5eef8;">
                         <th>분석 지층 구간명</th>
                         <th>두께 &Delta;z (m)</th>
-                        <th>중앙심도 Z_mid (m)</th>
+                        <th>중앙 심도 Z_mid (m)</th>
                         <th>변형계수 E (kN/m²)</th>
                         <th>중앙 영향계수 I<sub>z</sub></th>
                         <th>(I<sub>z</sub> / E) &times; &Delta;z</th>
@@ -642,7 +649,7 @@ function calculateSettlement() {
                         <td>${l.iz.toFixed(3)}</td>
                         <td>${l.val.toExponential(4)}</td>
                         <td style="font-size: 0.8em; color: #7f8c8d; text-align:left;">
-                            ${l.is_clipped ? '한계심도 초과분 강제 절삭' : (l.is_peak ? 'Peak(Z_fp) 경계 지점 자동분할 구간' : '-')}
+                            ${l.is_clipped ? '한계심도 초과분 강제 절삭' : (l.is_peak ? 'Peak 위치가 Z_mid에 정확히 일치' : '-')}
                         </td>
                     </tr>
                 `).join('')}
