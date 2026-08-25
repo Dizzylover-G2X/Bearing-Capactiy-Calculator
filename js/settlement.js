@@ -1,7 +1,6 @@
 export function initSettlementModule(container) {
     const getVal = (id, defaultVal) => localStorage.getItem('geo_' + id) ?? defaultVal;
 
-    // Schmertmann 지층 데이터 초기화 (기본값 3개, E=10000 적용)
     let schLayers = JSON.parse(localStorage.getItem('geo_sch_layers'));
     if (!schLayers || !Array.isArray(schLayers) || schLayers.length === 0) {
         schLayers = [
@@ -115,7 +114,6 @@ export function initSettlementModule(container) {
         <div id="settlement-result" class="result-box"></div>
     `;
 
-    // Schmertmann 지층 렌더링 함수
     function renderSchLayers() {
         const tbody = document.getElementById('sch_layers_body');
         if(!tbody) return;
@@ -133,7 +131,6 @@ export function initSettlementModule(container) {
     }
     renderSchLayers();
 
-    // 일반 입력값 변경 이벤트
     const inputs = container.querySelectorAll('.input-grid input, .input-grid select, #set_t_years');
     inputs.forEach(input => {
         input.addEventListener('change', function() {
@@ -144,7 +141,6 @@ export function initSettlementModule(container) {
             input.addEventListener('blur', function() {
                 let val = parseFloat(this.value);
                 if (!isNaN(val)) {
-                    // t_years는 소수점 1자리, 나머지는 2자리
                     this.value = (this.id === 'set_t_years') ? val.toFixed(1) : val.toFixed(2);
                     let key = this.id.replace('set_', '');
                     localStorage.setItem('geo_' + key, this.value);
@@ -153,7 +149,6 @@ export function initSettlementModule(container) {
         }
     });
 
-    // 지층 테이블 동적 이벤트 (이벤트 위임)
     container.addEventListener('change', (e) => {
         if (e.target.classList.contains('sch-layer-dz')) {
             schLayers[e.target.dataset.idx].dz = parseFloat(e.target.value) || 0;
@@ -165,7 +160,6 @@ export function initSettlementModule(container) {
         }
     });
 
-    // 지층 두께 onblur 소수점 강제
     container.addEventListener('focusout', (e) => {
         if (e.target.classList.contains('sch-layer-dz')) {
             let val = parseFloat(e.target.value) || 0;
@@ -247,7 +241,6 @@ function calculateSettlement() {
 
     const gamma_w = 9.807;
 
-    // 공통 유효응력 산정 로직
     let gamma1_eff = gamma1_in;
     let log1 = "";
     const gamma1_sub = gamma1_in - gamma_w;
@@ -293,7 +286,7 @@ function calculateSettlement() {
     // ---------------------------------------------------------
     const sch_ratio = Math.max(1.0, Math.min(10.0, Math.max(L/B, B/L)));
     
-    // 심도 및 기초 영향계수 산정
+    // 심도 및 기초 영향계수 산정식[cite: 1]
     const zf0_ratio = 2.0 + 0.222 * (sch_ratio - 1.0);
     const zf0 = B * zf0_ratio;
     
@@ -301,7 +294,7 @@ function calculateSettlement() {
     const zfp = B * zfp_ratio;
     const Iz0 = 0.1 + 0.0111 * (sch_ratio - 1.0);
 
-    // zfp 위치(최대변형영향심도)의 유효응력(sigma_vp_prime) 산정
+    // zfp 위치 유효응력(sigma_vp_prime) 산정
     let sigma_vp_prime = sigma_v0;
     const water_depth_below_df = Math.max(0, WL - Df);
     if (zfp <= water_depth_below_df) {
@@ -317,48 +310,78 @@ function calculateSettlement() {
     if (C1 < 0.5) C1 = 0.5;
     const C2 = 1.0 + 0.2 * Math.log10(t_years / 0.1);
 
-    // 지층 분할 및 적분 (Zfp 심도에서 피크값 강제 분할 적용)
+    // ---------------------------------------------------------
+    // Breakpoint 기반 자연스러운 지층 분할 알고리즘 적용
+    // ---------------------------------------------------------
     let schLayers = JSON.parse(localStorage.getItem('geo_sch_layers')) || [];
+    let orig_boundaries = [0];
+    let cum_z = 0;
+    schLayers.forEach(l => {
+        cum_z += l.dz;
+        orig_boundaries.push(cum_z);
+    });
+
+    // 주요 브레이크포인트 심도 수집 (0, Zfp, Zf0 및 원본 지층 경계들)
+    let points = [0, zfp, zf0];
+    orig_boundaries.forEach(z => {
+        if (z <= zf0) points.push(z);
+    });
+
+    // 중복 제거 및 오름차순 정렬 (최대 심도 Zf0 이하로 제한)
+    points = Array.from(new Set(points)).filter(z => z >= 0 && z <= zf0).sort((a, b) => a - b);
+
     let sub_layers = [];
-    let current_orig_z = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+        let z_start = points[i];
+        let z_end = points[i+1];
+        let dz = z_end - z_start;
+        if (dz <= 0.0001) continue;
 
-    for (let i = 0; i < schLayers.length; i++) {
-        let orig_dz = schLayers[i].dz;
-        let e_val = schLayers[i].e_val;
-        let layer_name = `지층${i+1}`;
+        let z_mid = (z_start + z_end) / 2.0;
 
-        let z_start = current_orig_z;
-        let z_end = current_orig_z + orig_dz;
-
-        if (z_start >= zf0) break; // 최대 심도 초과 시 종료
-
-        let clipped_end = Math.min(z_end, zf0);
-        let is_clipped = (z_end > zf0);
-
-        // 해당 지층이 최대변형영향심도(Zfp)를 관통할 경우 -> 2개로 강제 분할
-        if (z_start < zfp && clipped_end > zfp) {
-            sub_layers.push({ name: layer_name + " (Z<sub>fp</sub> 상부)", dz: zfp - z_start, e_val: e_val, z_start: z_start, z_end: zfp, is_clipped: false });
-            sub_layers.push({ name: layer_name + " (Z<sub>fp</sub> 하부)", dz: clipped_end - zfp, e_val: e_val, z_start: zfp, z_end: clipped_end, is_clipped: is_clipped });
-        } else {
-            sub_layers.push({ name: layer_name, dz: clipped_end - z_start, e_val: e_val, z_start: z_start, z_end: clipped_end, is_clipped: is_clipped });
+        // 해당 구간이 속한 원본 지층 탐색
+        let target_layer = schLayers[0];
+        let layer_idx = 1;
+        let check_z = 0;
+        for (let j = 0; j < schLayers.length; j++) {
+            check_z += schLayers[j].dz;
+            if (z_mid <= check_z + 1e-5) {
+                target_layer = schLayers[j];
+                layer_idx = j + 1;
+                break;
+            }
+            if (j === schLayers.length - 1) {
+                target_layer = schLayers[j];
+                layer_idx = j + 1;
+            }
         }
 
-        current_orig_z = z_end;
-        if (current_orig_z >= zf0) break;
+        let is_peak_zone = (Math.abs(z_start - zfp) < 1e-4 || Math.abs(z_end - zfp) < 1e-4 || (z_start < zfp && z_end > zfp));
+        let name = `지층${layer_idx}`;
+        if (is_peak_zone) {
+            name += " (Peak 구간)";
+        }
+
+        sub_layers.push({
+            name: name,
+            dz: dz,
+            e_val: target_layer.e_val,
+            z_start: z_start,
+            z_end: z_end,
+            z_mid: z_mid,
+            is_clipped: (Math.abs(z_end - zf0) < 1e-4 && z_end < orig_boundaries[orig_boundaries.length-1])
+        });
     }
 
     let sum_iz_e_dz = 0;
     let layer_results = [];
 
-    // 분할 처리된 Sub-layer를 바탕으로 중간점 영향계수 및 침하량 계산
     for (let sl of sub_layers) {
-        let z_mid = sl.z_start + sl.dz / 2.0;
         let Iz_mid = 0;
-        
-        if (z_mid <= zfp) {
-            Iz_mid = Iz0 + (Izp - Iz0) * (z_mid / zfp);
+        if (sl.z_mid <= zfp) {
+            Iz_mid = Iz0 + (Izp - Iz0) * (sl.z_mid / zfp);
         } else {
-            Iz_mid = Izp * (1.0 - (z_mid - zfp) / (zf0 - zfp));
+            Iz_mid = Izp * (1.0 - (sl.z_mid - zfp) / (zf0 - zfp));
         }
 
         let val = (Iz_mid / sl.e_val) * sl.dz;
@@ -367,10 +390,11 @@ function calculateSettlement() {
         layer_results.push({
             name: sl.name,
             dz: sl.dz,
+            z_mid: sl.z_mid,
             e_val: sl.e_val,
-            z_mid: z_mid,
             iz: Iz_mid,
             val: val,
+            is_peak: sl.name.includes("Peak"),
             is_clipped: sl.is_clipped
         });
     }
@@ -378,9 +402,6 @@ function calculateSettlement() {
     const Si_mm = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz * 1000;
     const pass_si = Si_mm <= allow_settle ? "O.K" : "N.G";
 
-    // ---------------------------------------------------------
-    // 결과 출력부 구성
-    // ---------------------------------------------------------
     let elasticSummaryRows = '';
     if (rigidity === 'rigid') {
         elasticSummaryRows = `
@@ -579,15 +600,15 @@ function calculateSettlement() {
 
         <div class="calc-step">
             <strong>1. 기초 및 지반 조건 산정 (L/B = ${sch_ratio.toFixed(2)} 적용)</strong><br>
-            • 최대 영향심도 한계 (Z<sub>f0</sub>) : <strong>${zf0.toFixed(2)} m</strong> <span style="color:#7f8c8d;">(계산식: ${zf0_ratio.toFixed(2)}B)</span><br>
-            • 최대 영향계수 발생심도 (Z<sub>fp</sub>) : <strong>${zfp.toFixed(2)} m</strong> <span style="color:#7f8c8d;">(계산식: ${zfp_ratio.toFixed(2)}B)</span><br>
-            • 기초바닥 영향계수 (I<sub>z0</sub>) : <strong>${Iz0.toFixed(3)}</strong><br>
+            • 최대 영향심도 한계 (Z<sub>f0</sub>) : <strong>${zf0.toFixed(2)} m</strong> [적용식: B &times; (2.0 + 0.222 &times; (${sch_ratio.toFixed(2)} - 1)) = ${B.toFixed(2)} &times; ${zf0_ratio.toFixed(3)}]<br>
+            • 최대 영향계수 발생심도 (Z<sub>fp</sub>) : <strong>${zfp.toFixed(2)} m</strong> [적용식: B &times; (0.5 + 0.0555 &times; (${sch_ratio.toFixed(2)} - 1)) = ${B.toFixed(2)} &times; ${zfp_ratio.toFixed(3)}]<br>
+            • 기초바닥 영향계수 (I<sub>z0</sub>) : <strong>${Iz0.toFixed(3)}</strong> [적용식: 0.1 + 0.0111 &times; (${sch_ratio.toFixed(2)} - 1)]<br>
             • Z<sub>fp</sub> 위치의 유효응력 (&sigma;<sub>vp</sub>') : <strong>${sigma_vp_prime.toFixed(2)} kN/m²</strong><br>
-            • <strong>최대 영향계수 (I<sub>zp</sub>)</strong> : 0.5 + 0.1 &times; &radic;[(${qb.toFixed(2)} - ${sigma_v0.toFixed(2)}) / ${sigma_vp_prime.toFixed(2)}] = <strong>${Izp.toFixed(3)}</strong><br><br>
+            • <strong>최대 영향계수 (I<sub>zp</sub>)</strong> : <strong>${Izp.toFixed(3)}</strong> [적용식: 0.5 + 0.1 &times; &radic;( (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)}) / ${sigma_vp_prime.toFixed(2)} )]<br><br>
             
             <strong>2. 보정계수 산정</strong><br>
-            • 근입깊이 보정계수 C<sub>1</sub> : 1 - 0.5 &times; [${sigma_v0.toFixed(2)} / (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)})] = <strong>${C1.toFixed(3)}</strong><br>
-            • Creep 보정계수 C<sub>2</sub> : 1 + 0.2 &times; log<sub>10</sub>(${t_years} / 0.1) = <strong>${C2.toFixed(3)}</strong><br><br>
+            • 근입깊이 보정계수 C<sub>1</sub> : <strong>${C1.toFixed(3)}</strong> [적용식: max(0.5, 1 - 0.5 &times; (${sigma_v0.toFixed(2)} / (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)})))]<br>
+            • Creep 보정계수 C<sub>2</sub> : <strong>${C2.toFixed(3)}</strong> [적용식: 1 + 0.2 &times; log<sub>10</sub>(${t_years} / 0.1)]<br><br>
 
             <strong>3. 최종 침하량 산정</strong><br>
             • 지층별 변형영향계수 적분 합계 (&sum; (I<sub>z</sub> / E) &Delta;z) : <strong>${sum_iz_e_dz.toExponential(4)} m²/kN</strong><br>
@@ -596,7 +617,7 @@ function calculateSettlement() {
 
         <div class="section-title">■ Schmert&#8203;mann 지층별 영향계수 적분 상세 표 (최대 영향심도 Z<sub>f0</sub> = ${zf0.toFixed(2)} m)</div>
         
-        <p style="font-size: 0.8em; color: #c0392b; margin-bottom: 5px;">※ Peak 지점 적분 정밀도를 높이기 위해, <strong>I<sub>zp</sub> 발생심도(Z<sub>fp</sub> = ${zfp.toFixed(2)}m)</strong>를 관통하는 지층은 자동으로 <strong>상부/하부로 강제 분할</strong>되어 계산됩니다.</p>
+        <p style="font-size: 0.8em; color: #2980b9; margin-bottom: 5px;">※ Peak 지점 적분 정밀도를 높이기 위해, <strong>I<sub>zp</sub> 발생심도(Z<sub>fp</sub> = ${zfp.toFixed(2)}m)</strong> 지점을 기준으로 지층이 자동으로 구간 분할되어 계산됩니다.</p>
         
         <div class="table-container">
             <table class="result-table" style="font-size: 0.78em; text-align: center;">
@@ -613,15 +634,15 @@ function calculateSettlement() {
                 </thead>
                 <tbody>
                 ${layer_results.map(l => `
-                    <tr style="${l.is_clipped ? 'background-color: #fdf2e9;' : (l.name.includes('Z') ? 'background-color: #f4f6f7; font-weight:bold;' : '')}">
-                        <td style="${l.name.includes('Z') ? 'color: #2980b9;' : ''}">${l.name}</td>
+                    <tr style="${l.is_clipped ? 'background-color: #fdf2e9;' : (l.is_peak ? 'background-color: #eaf2f8; font-weight:bold;' : '')}">
+                        <td style="${l.is_peak ? 'color: #2980b9;' : ''}">${l.name}</td>
                         <td style="${l.is_clipped ? 'font-weight:bold; color:#e67e22;' : ''}">${l.dz.toFixed(2)}</td>
                         <td>${l.z_mid.toFixed(2)}</td>
                         <td>${l.e_val.toLocaleString()}</td>
                         <td>${l.iz.toFixed(3)}</td>
                         <td>${l.val.toExponential(4)}</td>
                         <td style="font-size: 0.8em; color: #7f8c8d; text-align:left;">
-                            ${l.is_clipped ? '한계심도 초과분 강제 절삭' : (l.name.includes('상부') ? 'Peak 관통 지층 자동분할 (상부)' : (l.name.includes('하부') ? 'Peak 관통 지층 자동분할 (하부)' : '-'))}
+                            ${l.is_clipped ? '한계심도 초과분 강제 절삭' : (l.is_peak ? 'Peak(Z_fp) 경계 지점 자동분할 구간' : '-')}
                         </td>
                     </tr>
                 `).join('')}
