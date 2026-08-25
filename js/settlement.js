@@ -1,17 +1,13 @@
 export function initSettlementModule(container) {
     const getVal = (id, defaultVal) => localStorage.getItem('geo_' + id) ?? defaultVal;
 
-    // Schmertmann 지층 데이터 초기화
+    // Schmertmann 지층 데이터 초기화 (기본값 3개로 변경)
     let schLayers = JSON.parse(localStorage.getItem('geo_sch_layers'));
     if (!schLayers || !Array.isArray(schLayers) || schLayers.length === 0) {
         schLayers = [
-            { name: "매립층", dz: 0.30, e_val: 7000 },
-            { name: "매립층", dz: 0.30, e_val: 7000 },
-            { name: "매립층", dz: 0.32, e_val: 7000 },
-            { name: "매립층", dz: 1.26, e_val: 7000 },
-            { name: "퇴적층(자갈)", dz: 0.60, e_val: 60000 },
-            { name: "퇴적층(자갈)", dz: 0.60, e_val: 60000 },
-            { name: "퇴적층(자갈)", dz: 0.66, e_val: 60000 }
+            { name: "매립층", dz: 1.50, e_val: 7000 },
+            { name: "퇴적층(모래)", dz: 2.50, e_val: 25000 },
+            { name: "퇴적층(자갈)", dz: 3.00, e_val: 60000 }
         ];
         localStorage.setItem('geo_sch_layers', JSON.stringify(schLayers));
     }
@@ -289,9 +285,9 @@ function calculateSettlement() {
     // ---------------------------------------------------------
     // [검증 2] Schmertmann 제안식 산정
     // ---------------------------------------------------------
-    const sch_ratio = Math.max(1.0, Math.min(10.0, Math.max(L/B, B/L))); // L/B는 1.0 이상으로 정규화
+    const sch_ratio = Math.max(1.0, Math.min(10.0, Math.max(L/B, B/L)));
     
-    // 심도 및 기초 영향계수 산정 (구조물기초설계기준)
+    // 심도 및 기초 영향계수 산정
     const zf0 = B * (2.0 + 0.222 * (sch_ratio - 1.0));
     const zfp = B * (0.5 + 0.0555 * (sch_ratio - 1.0));
     const Iz0 = 0.1 + 0.0111 * (sch_ratio - 1.0);
@@ -341,7 +337,7 @@ function calculateSettlement() {
 
         layer_results.push({
             name: l.name,
-            dz: dz_prime, // 실제 계산에 사용된(잘려진) 두께
+            dz: dz_prime,
             e_val: l.e_val,
             z_mid: z_mid,
             iz: Iz_mid,
