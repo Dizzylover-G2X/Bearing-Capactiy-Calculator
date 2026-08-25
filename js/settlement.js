@@ -188,7 +188,7 @@ function calculateSettlement() {
     // 2. 탄성이론에 의한 침하량 (Case별 산정)
     const L_over_B = L / B;
     const u_sq = Math.pow(u, 2);
-    const factor_base = qb * B * ((1.0 - u_sq) / E) * 1000; // mm 산정 기본인자
+    const factor_base = qb * B * ((1.0 - u_sq) / E) * 1000;
 
     // Is 값 산정
     const Is_rigid = getInfluenceFactor(shape, 'rigid', 'rigid', L_over_B);
@@ -204,10 +204,6 @@ function calculateSettlement() {
     const Se_corner_mm = factor_base * Is_corner;
     const Se_average_mm = factor_base * Is_average;
 
-    // 대표 침하량 선택 (선택된 강성 기준)
-    const Is_selected = (rigidity === 'rigid') ? Is_rigid : Is_average;
-    const Se_selected_mm = (rigidity === 'rigid') ? Se_rigid_mm : Se_average_mm;
-
     // O.K / N.G 판정
     const pass_si = Si_mm <= allow_settle ? "O.K" : "N.G";
     const pass_se_rigid = Se_rigid_mm <= allow_settle ? "O.K" : "N.G";
@@ -215,6 +211,34 @@ function calculateSettlement() {
     const pass_se_corner = Se_corner_mm <= allow_settle ? "O.K" : "N.G";
 
     const shapeLabel = shape === 'circular' ? '원형기초' : '구형/정방형기초';
+
+    // 요약 결과 테이블 탄성이론 행 동적 구성
+    let elasticSummaryRows = '';
+    if (rigidity === 'rigid') {
+        elasticSummaryRows = `
+            <tr>
+                <td><strong>탄성&#8203;이론 (강성기초)</strong></td>
+                <td style="font-weight:bold; color:#e67e22;">${Se_rigid_mm.toFixed(2)} mm</td>
+                <td>${allow_settle.toFixed(2)} mm</td>
+                <td style="font-weight:bold; color:${pass_se_rigid === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_rigid}</td>
+            </tr>
+        `;
+    } else {
+        elasticSummaryRows = `
+            <tr>
+                <td><strong>탄성&#8203;이론 (연성기초 - 중심점 [최대])</strong></td>
+                <td style="font-weight:bold; color:#e67e22;">${Se_center_mm.toFixed(2)} mm</td>
+                <td>${allow_settle.toFixed(2)} mm</td>
+                <td style="font-weight:bold; color:${pass_se_center === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_center}</td>
+            </tr>
+            <tr>
+                <td><strong>탄성&#8203;이론 (연성기초 - 모서리점 [최소])</strong></td>
+                <td style="font-weight:bold; color:#e67e22;">${Se_corner_mm.toFixed(2)} mm</td>
+                <td>${allow_settle.toFixed(2)} mm</td>
+                <td style="font-weight:bold; color:${pass_se_corner === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_corner}</td>
+            </tr>
+        `;
+    }
 
     const resultDiv = document.getElementById('settlement-result');
     resultDiv.style.display = 'block';
@@ -234,24 +258,7 @@ function calculateSettlement() {
                     <td>${allow_settle.toFixed(2)} mm</td>
                     <td style="font-weight:bold; color:${pass_si === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_si}</td>
                 </tr>
-                <tr>
-                    <td><strong>탄성&#8203;이론 (강성기초)</strong></td>
-                    <td style="font-weight:bold; color:#e67e22;">${Se_rigid_mm.toFixed(2)} mm</td>
-                    <td>${allow_settle.toFixed(2)} mm</td>
-                    <td style="font-weight:bold; color:${pass_se_rigid === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_rigid}</td>
-                </tr>
-                <tr>
-                    <td><strong>탄성&#8203;이론 (연성기초 - 중심점 [최대])</strong></td>
-                    <td style="font-weight:bold; color:#e67e22;">${Se_center_mm.toFixed(2)} mm</td>
-                    <td>${allow_settle.toFixed(2)} mm</td>
-                    <td style="font-weight:bold; color:${pass_se_center === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_center}</td>
-                </tr>
-                <tr>
-                    <td><strong>탄성&#8203;이론 (연성기초 - 모서리점 [최소])</strong></td>
-                    <td style="font-weight:bold; color:#e67e22;">${Se_corner_mm.toFixed(2)} mm</td>
-                    <td>${allow_settle.toFixed(2)} mm</td>
-                    <td style="font-weight:bold; color:${pass_se_corner === 'O.K' ? '#27ae60' : '#c0392b'};">${pass_se_corner}</td>
-                </tr>
+                ${elasticSummaryRows}
             </table>
         </div>
 
@@ -297,7 +304,7 @@ function calculateSettlement() {
             &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toFixed(3)} ) / ${E.toFixed(1)} &times; Is<br>
         </div>
 
-        <div class="calc-step">
+        <div class="calc-step" style="margin-bottom: 12px;">
             ① q : 기초작용 하중 = <strong>${qb.toFixed(1)} kN/m²</strong><br>
             ② B : 기초 폭 = <strong>${B.toFixed(2)} m</strong><br>
             ③ E : 지반의 탄성계수 = <strong>${E.toLocaleString()} kN/m²</strong><br>
@@ -305,13 +312,56 @@ function calculateSettlement() {
             ⑤ Is : 탄성&#8203;침하의 영향&#8203;계수 (${shapeLabel}, L/B = ${L_over_B.toFixed(2)})
         </div>
 
-        <div class="calc-step" style="background-color: #eaf2f8; border-color: #3498db; margin-top: 10px; padding: 12px;">
-            <strong style="color: #2980b9;">■ 강성 및 연성 기초 Case별 침하량 계산 결과</strong><br><br>
-            • <strong>강성&#8203;기초 :</strong> Is = ${Is_rigid.toFixed(2)} &rarr; <strong>Se = ${Se_rigid_mm.toFixed(2)} mm</strong><br>
-            • <strong>연성&#8203;기초 (중심점 [최대]) :</strong> Is = ${Is_center.toFixed(2)} &rarr; <strong>Se = ${Se_center_mm.toFixed(2)} mm</strong><br>
-            • <strong>연성&#8203;기초 (외변&#8203;중점) :</strong> Is = ${Is_midside.toFixed(2)} &rarr; <strong>Se = ${Se_midside_mm.toFixed(2)} mm</strong><br>
-            • <strong>연성&#8203;기초 (모서리&#8203;점 [최소]) :</strong> Is = ${Is_corner.toFixed(2)} &rarr; <strong>Se = ${Se_corner_mm.toFixed(2)} mm</strong><br>
-            • <strong>연성&#8203;기초 (평균 침하) :</strong> Is = ${Is_average.toFixed(2)} &rarr; <strong>Se = ${Se_average_mm.toFixed(2)} mm</strong>
+        <div class="section-title">■ 강성 및 연성 기초 위치별 침하량 산정 결과 (Case별 비교)</div>
+        <div class="table-container" style="margin-bottom: 15px;">
+            <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                <thead>
+                    <tr style="background-color: #ebf5fb;">
+                        <th>구분 (Case)</th>
+                        <th>영향계수 (Is)</th>
+                        <th>산정식 [q &times; B &times; (1-&nu;&sup2;) / E &times; Is]</th>
+                        <th>발생 침하량 (mm)</th>
+                        <th>적용 상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="${rigidity === 'rigid' ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
+                        <td><strong>강성&#8203;기초</strong></td>
+                        <td>${Is_rigid.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_rigid.toFixed(2)}</td>
+                        <td style="color:#e67e22; font-weight:bold;">${Se_rigid_mm.toFixed(2)} mm</td>
+                        <td>${rigidity === 'rigid' ? '<span style="color:#27ae60; font-weight:bold;">● 선택됨 (요약표 반영)</span>' : '-'}</td>
+                    </tr>
+                    <tr style="${rigidity === 'flexible' ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
+                        <td><strong>연성&#8203;기초 (중심점 [최대])</strong></td>
+                        <td>${Is_center.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_center.toFixed(2)}</td>
+                        <td style="color:#e67e22; font-weight:bold;">${Se_center_mm.toFixed(2)} mm</td>
+                        <td>${rigidity === 'flexible' ? '<span style="color:#27ae60; font-weight:bold;">● 선택됨 (요약표 반영)</span>' : '-'}</td>
+                    </tr>
+                    <tr>
+                        <td>연성&#8203;기초 (외변&#8203;중점)</td>
+                        <td>${Is_midside.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_midside.toFixed(2)}</td>
+                        <td>${Se_midside_mm.toFixed(2)} mm</td>
+                        <td>-</td>
+                    </tr>
+                    <tr style="${rigidity === 'flexible' ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
+                        <td><strong>연성&#8203;기초 (모서리&#8203;점 [최소])</strong></td>
+                        <td>${Is_corner.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_corner.toFixed(2)}</td>
+                        <td style="color:#e67e22; font-weight:bold;">${Se_corner_mm.toFixed(2)} mm</td>
+                        <td>${rigidity === 'flexible' ? '<span style="color:#27ae60; font-weight:bold;">● 선택됨 (요약표 반영)</span>' : '-'}</td>
+                    </tr>
+                    <tr>
+                        <td>연성&#8203;기초 (평균)</td>
+                        <td>${Is_average.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_average.toFixed(2)}</td>
+                        <td>${Se_average_mm.toFixed(2)} mm</td>
+                        <td>-</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <div class="section-title">■ 탄성&#8203;침하의 영향&#8203;계수 Is (구조물&#8203;기초설계기준 해설 표 4.3.2 및 그림 4.3.7)</div>
