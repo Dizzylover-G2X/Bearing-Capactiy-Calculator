@@ -203,80 +203,80 @@ function calculateSettlement() {
 
         <div class="section-title">[검증 2] 탄성이론에 의한 침하량 산정 (구조물기초설계기준해설. 2018. P235)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
-            ▶ 탄성이론에 의한 침하량 산정 ($D_f = 0$, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;<strong>$S_e = q \cdot B \cdot \frac{1 - \nu^2}{E} \cdot I_s$</strong>[cite: 6]<br><br>
+            ▶ 탄성이론에 의한 침하량 산정 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<strong>Se = q &times; B &times; [ (1 - &nu;&sup2;) / E ] &times; Is</strong><br><br>
             &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toExponential(2)} ) / ${E.toFixed(1)} &times; ${Is.toFixed(2)}<br>
             &nbsp;&nbsp;&nbsp;&nbsp;= <strong>${Se_mm.toFixed(2)} mm</strong>
         </div>
 
         <div class="calc-step">
-            ① $q$ : 기초작용 하중 = <strong>${qb.toFixed(1)} kN/m²</strong>[cite: 6]<br>
-            ② $B$ : 기초 폭 = <strong>${B.toFixed(2)} m</strong>[cite: 6]<br>
-            ③ $E$ : 지반의 탄성계수 = <strong>${E.toLocaleString()} kN/m²</strong>[cite: 6]<br>
-            ④ $\nu$ : 지반의 포아송 비 = <strong>${u.toFixed(3)}</strong>[cite: 6]<br>
-            ⑤ $I_s$ : 탄성침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (L/B = ${L_over_B.toFixed(2)})[cite: 6]
+            ① q : 기초작용 하중 = <strong>${qb.toFixed(1)} kN/m²</strong><br>
+            ② B : 기초 폭 = <strong>${B.toFixed(2)} m</strong><br>
+            ③ E : 지반의 탄성계수 = <strong>${E.toLocaleString()} kN/m²</strong><br>
+            ④ &nu; : 지반의 포아송 비 = <strong>${u.toFixed(3)}</strong><br>
+            ⑤ Is : 탄성침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (L/B = ${L_over_B.toFixed(2)})
         </div>
 
-        <div class="section-title">■ 탄성침하의 영향계수 $I_s$ (구조물기초설계기준 해설 표 4.3.2)[cite: 6]</div>
+        <div class="section-title">■ 탄성침하의 영향계수 Is (구조물기초설계기준 해설 표 4.3.2)</div>
         <div class="table-container">
             <table class="result-table" style="font-size: 0.78em; text-align: center;">
                 <thead>
                     <tr style="background-color: #eaeded;">
-                        <th rowspan="2" style="padding:6px;">탄성침하의 영향계수 $I_s$</th>
+                        <th rowspan="2" style="padding:6px;">탄성침하의 영향계수 Is</th>
                         <th rowspan="2" style="padding:6px;">강성기초</th>
-                        <th colspan="4" style="padding:6px;">연성기초[cite: 6]</th>
-                        <th rowspan="2" style="padding:6px;">비고[cite: 6]</th>
+                        <th colspan="4" style="padding:6px;">연성기초</th>
+                        <th rowspan="2" style="padding:6px;">비고</th>
                     </tr>
                     <tr style="background-color: #eaeded;">
-                        <th style="padding:4px;">중심점[cite: 6]</th>
-                        <th style="padding:4px;">외변의 중점[cite: 6]</th>
-                        <th style="padding:4px;">모서리점[cite: 6]</th>
-                        <th style="padding:4px;">평 균[cite: 6]</th>
+                        <th style="padding:4px;">중심점</th>
+                        <th style="padding:4px;">외변의 중점</th>
+                        <th style="padding:4px;">모서리점</th>
+                        <th style="padding:4px;">평 균</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>원형기초[cite: 6]</td>
-                        <td>0.79[cite: 6]</td>
-                        <td>1.00[cite: 6]</td>
-                        <td>0.64[cite: 6]</td>
-                        <td>-[cite: 6]</td>
-                        <td>0.85[cite: 6]</td>
+                        <td>원형기초</td>
+                        <td>0.79</td>
+                        <td>1.00</td>
+                        <td>0.64</td>
+                        <td>-</td>
+                        <td>0.85</td>
                         <td rowspan="5" style="text-align:left; padding:5px; font-size:0.9em;">
-                            연성기초의 중심점의 영향치는 모서리점의 영향치의 2배임. 즉, 중심점의 침하량은 모서리점의 침하량의 2배임[cite: 6].
+                            연성기초의 중심점의 영향치는 모서리점의 영향치의 2배임. 즉, 중심점의 침하량은 모서리점의 침하량의 2배임.
                         </td>
                     </tr>
                     <tr>
-                        <td>정방형기초[cite: 6]</td>
-                        <td>0.88[cite: 6]</td>
-                        <td>1.12[cite: 6]</td>
-                        <td>0.76[cite: 6]</td>
-                        <td>0.56[cite: 6]</td>
-                        <td>0.95[cite: 6]</td>
+                        <td>정방형기초</td>
+                        <td>0.88</td>
+                        <td>1.12</td>
+                        <td>0.76</td>
+                        <td>0.56</td>
+                        <td>0.95</td>
                     </tr>
                     <tr>
-                        <td>구형기초 ($L/B=2$)[cite: 6]</td>
-                        <td>1.12[cite: 6]</td>
-                        <td>1.53[cite: 6]</td>
-                        <td>1.12[cite: 6]</td>
-                        <td>0.76[cite: 6]</td>
-                        <td>1.30[cite: 6]</td>
+                        <td>구형기초 (L/B=2)</td>
+                        <td>1.12</td>
+                        <td>1.53</td>
+                        <td>1.12</td>
+                        <td>0.76</td>
+                        <td>1.30</td>
                     </tr>
                     <tr>
-                        <td>구형기초 ($L/B=5$)[cite: 6]</td>
-                        <td>1.60[cite: 6]</td>
-                        <td>2.10[cite: 6]</td>
-                        <td>1.68[cite: 6]</td>
-                        <td>1.05[cite: 6]</td>
-                        <td>1.82[cite: 6]</td>
+                        <td>구형기초 (L/B=5)</td>
+                        <td>1.60</td>
+                        <td>2.10</td>
+                        <td>1.68</td>
+                        <td>1.05</td>
+                        <td>1.82</td>
                     </tr>
                     <tr>
-                        <td>구형기초 ($L/B=10$)[cite: 6]</td>
-                        <td>2.00[cite: 6]</td>
-                        <td>2.56[cite: 6]</td>
-                        <td>2.10[cite: 6]</td>
-                        <td>1.28[cite: 6]</td>
-                        <td>2.24[cite: 6]</td>
+                        <td>구형기초 (L/B=10)</td>
+                        <td>2.00</td>
+                        <td>2.56</td>
+                        <td>2.10</td>
+                        <td>1.28</td>
+                        <td>2.24</td>
                     </tr>
                 </tbody>
             </table>
