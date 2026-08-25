@@ -41,6 +41,32 @@ export function initSettlementModule(container) {
                 <label style="color: #2980b9;">설계 반력 q_b (kN/m²)</label>
                 <input type="number" id="set_qb" value="${getVal('qb', '60.05')}" step="0.01">
             </div>
+            
+            <!-- 기초 조건 및 연성기초 위치 선택 옵션 -->
+            <div class="input-group" style="background-color: #f4f6f7; border-color: #bdc3c7;">
+                <label>기초 강성 구분</label>
+                <select id="set_rigidity">
+                    <option value="flexible" ${getVal('rigidity', 'flexible') === 'flexible' ? 'selected' : ''}>연성기초</option>
+                    <option value="rigid" ${getVal('rigidity', 'flexible') === 'rigid' ? 'selected' : ''}>강성기초</option>
+                </select>
+            </div>
+            <div class="input-group" style="background-color: #f4f6f7; border-color: #bdc3c7;">
+                <label>기초 형상 구분</label>
+                <select id="set_shape">
+                    <option value="rectangular" ${getVal('shape', 'rectangular') === 'rectangular' ? 'selected' : ''}>구형 / 정방형</option>
+                    <option value="circular" ${getVal('shape', 'rectangular') === 'circular' ? 'selected' : ''}>원형기초</option>
+                </select>
+            </div>
+            <div class="input-group" style="background-color: #f4f6f7; border-color: #bdc3c7; grid-column: span 2;">
+                <label>연성기초 검토 위치</label>
+                <select id="set_flex_pos">
+                    <option value="center" ${getVal('flex_pos', 'center') === 'center' ? 'selected' : ''}>중심점</option>
+                    <option value="midside" ${getVal('flex_pos', 'center') === 'midside' ? 'selected' : ''}>외변의 중점</option>
+                    <option value="corner" ${getVal('flex_pos', 'center') === 'corner' ? 'selected' : ''}>모서리점</option>
+                    <option value="average" ${getVal('flex_pos', 'center') === 'average' ? 'selected' : ''}>평균</option>
+                </select>
+            </div>
+
             <div class="input-group" style="background-color: #fcf3cf; border-color: #f1c40f; grid-column: span 2;">
                 <label style="color: #d4ac0d;">허용 기준 침하량 (mm)</label>
                 <input type="number" id="set_allow_settlement" value="${getVal('allow_settlement', '25.00')}" step="0.1">
@@ -52,23 +78,76 @@ export function initSettlementModule(container) {
         <div id="settlement-result" class="result-box"></div>
     `;
 
-    const inputs = container.querySelectorAll('.input-grid input');
+    // 강성기초 선택 시 연성기초 위치 선택창 비활성화 처리
+    const rigiditySelect = container.querySelector('#set_rigidity');
+    const posSelect = container.querySelector('#set_flex_pos');
+    const togglePosSelect = () => {
+        posSelect.disabled = (rigiditySelect.value === 'rigid');
+    };
+    rigiditySelect.addEventListener('change', togglePosSelect);
+    togglePosSelect();
+
+    // 입력값 변경 시 localStorage 저장
+    const inputs = container.querySelectorAll('.input-grid input, .input-grid select');
     inputs.forEach(input => {
-        input.addEventListener('input', function() {
+        input.addEventListener('change', function() {
             let key = this.id.replace('set_', '');
             localStorage.setItem('geo_' + key, this.value);
         });
-        input.addEventListener('blur', function() {
-            let val = parseFloat(this.value);
-            if (!isNaN(val)) {
-                this.value = val.toFixed(2);
-                let key = this.id.replace('set_', '');
-                localStorage.setItem('geo_' + key, this.value);
-            }
-        });
+        if (input.tagName === 'INPUT') {
+            input.addEventListener('blur', function() {
+                let val = parseFloat(this.value);
+                if (!isNaN(val)) {
+                    this.value = val.toFixed(2);
+                    let key = this.id.replace('set_', '');
+                    localStorage.setItem('geo_' + key, this.value);
+                }
+            });
+        }
     });
 
     container.querySelector('#calc-settlement-btn').addEventListener('click', calculateSettlement);
+}
+
+// 영향계수 Is 보간 함수 (표 4.3.2 데이터 기반)
+function getInfluenceFactor(shape, rigidity, position, ratio) {
+    if (shape === 'circular') {
+        if (rigidity === 'rigid') return 0.79;
+        switch (position) {
+            case 'center': return 1.00;
+            case 'midside': return 0.64;
+            case 'corner': return 0.64; // 원형기초는 모서리가 없으므로 외변중점 적용
+            case 'average': return 0.85;
+            default: return 0.85;
+        }
+    }
+
+    // 구형 및 정방형 기초 (L/B 비율에 따른 보간)
+    const lbTable = [1.0, 2.0, 5.0, 10.0];
+    const data = {
+        rigid:   [0.88, 1.12, 1.60, 2.00],
+        center:  [1.12, 1.53, 2.10, 2.56],
+        midside: [0.76, 1.12, 1.68, 2.10],
+        corner:  [0.56, 0.76, 1.05, 1.28],
+        average: [0.95, 1.30, 1.82, 2.24]
+    };
+
+    let key = (rigidity === 'rigid') ? 'rigid' : position;
+    let values = data[key] || data['average'];
+
+    let r = Math.max(1.0, Math.min(10.0, ratio));
+
+    if (r <= 1.0) return values[0];
+    if (r >= 10.0) return values[3];
+
+    for (let i = 0; i < lbTable.length - 1; i++) {
+        if (r >= lbTable[i] && r <= lbTable[i+1]) {
+            let x0 = lbTable[i], x1 = lbTable[i+1];
+            let y0 = values[i], y1 = values[i+1];
+            return y0 + (y1 - y0) * (r - x0) / (x1 - x0);
+        }
+    }
+    return values[0];
 }
 
 function calculateSettlement() {
@@ -82,6 +161,10 @@ function calculateSettlement() {
     const u = parseFloat(document.getElementById('set_u').value);
     const qb = parseFloat(document.getElementById('set_qb').value);
     const allow_settle = parseFloat(document.getElementById('set_allow_settlement').value);
+
+    const rigidity = document.getElementById('set_rigidity').value;
+    const shape = document.getElementById('set_shape').value;
+    const flex_pos = document.getElementById('set_flex_pos').value;
 
     const gamma_w = 9.807;
 
@@ -125,12 +208,9 @@ function calculateSettlement() {
     const Si_m = C1 * C2 * (qb - sigma_v0) * sum_iz_e_dz;
     const Si_mm = Si_m * 1000;
 
-    // 2. 탄성이론에 의한 산정
+    // 2. 탄성이론에 의한 산정 (구조물기초설계기준해설 2018, P.235)
     const L_over_B = L / B;
-    let Is = 0.90; 
-    if (L_over_B <= 1.0) Is = 0.95;
-    else if (L_over_B <= 2.0) Is = 0.90;
-    else Is = 1.30;
+    const Is = getInfluenceFactor(shape, rigidity, flex_pos, L_over_B);
 
     const u_sq = Math.pow(u, 2);
     const Se_m = qb * B * ((1.0 - u_sq) / E) * Is;
@@ -138,6 +218,12 @@ function calculateSettlement() {
 
     const pass_si = Si_mm <= allow_settle ? "O.K" : "N.G";
     const pass_se = Se_mm <= allow_settle ? "O.K" : "N.G";
+
+    // 텍스트 라벨 설정
+    const shapeLabel = shape === 'circular' ? '원형기초' : '구형/정방형기초';
+    const rigidityLabel = rigidity === 'rigid' ? '강성기초' : '연성기초';
+    const posMap = { center: '중심점', midside: '외변중점', corner: '모서리점', average: '평균' };
+    const posLabel = rigidity === 'flexible' ? ` - ${posMap[flex_pos]}` : '';
 
     const resultDiv = document.getElementById('settlement-result');
     resultDiv.style.display = 'block';
@@ -205,7 +291,7 @@ function calculateSettlement() {
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             ▶ 탄성&#8203;이론에 의한 침하량 산정 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
             &nbsp;&nbsp;&nbsp;&nbsp;<strong>Se = q &times; B &times; [ (1 - &nu;&sup2;) / E ] &times; Is</strong><br><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toExponential(2)} ) / ${E.toFixed(1)} &times; ${Is.toFixed(2)}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toFixed(3)} ) / ${E.toFixed(1)} &times; ${Is.toFixed(2)}<br>
             &nbsp;&nbsp;&nbsp;&nbsp;= <strong>${Se_mm.toFixed(2)} mm</strong>
         </div>
 
@@ -214,7 +300,7 @@ function calculateSettlement() {
             ② B : 기초 폭 = <strong>${B.toFixed(2)} m</strong><br>
             ③ E : 지반의 탄성계수 = <strong>${E.toLocaleString()} kN/m²</strong><br>
             ④ &nu; : 지반의 포아송 비 = <strong>${u.toFixed(3)}</strong><br>
-            ⑤ Is : 탄성&#8203;침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (L/B = ${L_over_B.toFixed(2)})
+            ⑤ Is : 탄성&#8203;침하의 영향계수 = <strong>${Is.toFixed(2)}</strong> (${shapeLabel}, ${rigidityLabel}${posLabel}, L/B = ${L_over_B.toFixed(2)})
         </div>
 
         <div class="section-title">■ 탄성&#8203;침하의 영향&#8203;계수 Is (구조물&#8203;기초설계기준 해설 표 4.3.2 및 그림 4.3.7)</div>
@@ -237,7 +323,7 @@ function calculateSettlement() {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
+                        <tr style="${shape === 'circular' ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
                             <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">원형&#8203;기초</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">0.79</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">1.00</td>
@@ -248,7 +334,7 @@ function calculateSettlement() {
                                 연성&#8203;기초 중심&#8203;점 영향치는 모서리&#8203;점의 2배임. 즉, 중심&#8203;점 침하는 모서리&#8203;점 침하의 2배임.
                             </td>
                         </tr>
-                        <tr>
+                        <tr style="${shape === 'rectangular' && L_over_B === 1 ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
                             <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">정방형&#8203;기초</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">0.88</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
@@ -256,7 +342,7 @@ function calculateSettlement() {
                             <td style="padding: 4px 2px; vertical-align: middle;">0.56</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">0.95</td>
                         </tr>
-                        <tr>
+                        <tr style="${shape === 'rectangular' && L_over_B > 1 && L_over_B <= 3.5 ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
                             <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=2)</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">1.12</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">1.53</td>
@@ -264,7 +350,7 @@ function calculateSettlement() {
                             <td style="padding: 4px 2px; vertical-align: middle;">0.76</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">1.30</td>
                         </tr>
-                        <tr>
+                        <tr style="${shape === 'rectangular' && L_over_B > 3.5 && L_over_B <= 7.5 ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
                             <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=5)</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">1.60</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">2.10</td>
@@ -272,7 +358,7 @@ function calculateSettlement() {
                             <td style="padding: 4px 2px; vertical-align: middle;">1.05</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">1.82</td>
                         </tr>
-                        <tr>
+                        <tr style="${shape === 'rectangular' && L_over_B > 7.5 ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
                             <td style="padding: 4px 2px; vertical-align: middle; white-space: nowrap;">구형&#8203;기초 (L/B=10)</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">2.00</td>
                             <td style="padding: 4px 2px; vertical-align: middle;">2.56</td>
