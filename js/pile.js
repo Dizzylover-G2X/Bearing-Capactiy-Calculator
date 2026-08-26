@@ -1,6 +1,13 @@
 export function initPileModule(container) {
     const getVal = (id, defaultVal) => localStorage.getItem('geo_pile_' + id) ?? defaultVal;
 
+    // 말뚝 종류별 기본 허용압축응력(MPa) 구하기
+    const getDefaultSigmaCa = (type) => {
+        if (type === 'STEEL') return '240.0';
+        if (type === 'CAST') return '35.0';
+        return '80.0'; // PHC, PC, RC
+    };
+
     // 초기 지층 데이터
     let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
     if (!pileLayers || !Array.isArray(pileLayers) || pileLayers.length === 0) {
@@ -16,6 +23,7 @@ export function initPileModule(container) {
 
     const initialType = getVal('type', 'PHC');
     const initialT1 = parseFloat(getVal('t1', '1.0')).toFixed(1);
+    const initialSigmaCa = getVal('sigma_ca', getDefaultSigmaCa(initialType));
 
     container.innerHTML = `
         <h3>1. 설계자료 입력 (말뚝기초 연직지지력 검토)</h3>
@@ -67,11 +75,7 @@ export function initPileModule(container) {
             </div>
             <div class="input-group">
                 <label>허용압축응력 σ_ca (MPa)</label>
-                <input type="number" id="pile_sigma_ca" value="${getVal('sigma_ca', '16.395')}" step="0.001">
-            </div>
-            <div class="input-group">
-                <label>선단 지층 설계 N치 (상한 50)</label>
-                <input type="number" id="pile_N_tip" value="${getVal('N_tip', '50')}" step="1" max="50">
+                <input type="number" id="pile_sigma_ca" value="${initialSigmaCa}" step="0.1">
             </div>
         </div>
 
@@ -90,7 +94,7 @@ export function initPileModule(container) {
 
         <!-- 3. 주면마찰력 산정을 위한 지층 정보 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 주면마찰력 산정을 위한 지층 정보</div>
+            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 지층 정보 (최하단 지층 평균 N치가 선단지지력에 자동 사용됨)</div>
             <button type="button" id="pile_layer_add" style="padding: 4px 10px; background: #27ae60; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em; font-weight: bold;">+ 지층 추가</button>
         </div>
         
@@ -159,11 +163,13 @@ export function initPileModule(container) {
     }
     renderLayers();
 
-    // 말뚝 종류 변경 시 부식두께 인라인 토글 이벤트
+    // 말뚝 종류 변경 시 부식두께 토글 및 허용응력 기본값 자동 채우기
     const pileTypeSelect = document.getElementById('pile_type');
     pileTypeSelect.addEventListener('change', function() {
         const corrInput = document.getElementById('pile_t1');
         const hint = document.getElementById('t1_label_hint');
+        const sigmaInput = document.getElementById('pile_sigma_ca');
+
         if (this.value === 'STEEL') {
             corrInput.style.display = 'block';
             if (hint) hint.style.display = 'inline';
@@ -171,6 +177,14 @@ export function initPileModule(container) {
             corrInput.style.display = 'none';
             if (hint) hint.style.display = 'none';
         }
+
+        // 말뚝 종류별 기본 허용응력 자동 세팅
+        const defaultSigma = getDefaultSigmaCa(this.value);
+        if (sigmaInput) {
+            sigmaInput.value = defaultSigma;
+            localStorage.setItem('geo_pile_sigma_ca', defaultSigma);
+        }
+
         localStorage.setItem('geo_pile_type', this.value);
     });
 
@@ -242,15 +256,17 @@ function calculatePileCapacity() {
     const joint_type = document.getElementById('pile_joint_type').value;
     const joint_cnt = parseInt(document.getElementById('pile_joint_count').value) || 0;
     const sigma_ca = parseFloat(document.getElementById('pile_sigma_ca').value); // MPa
-    const N_tip_in = parseFloat(document.getElementById('pile_N_tip').value);
 
     const P_norm = parseFloat(document.getElementById('pile_P_norm').value);
     const P_seis = parseFloat(document.getElementById('pile_P_seis').value);
 
     // ---------------------------------------------------------
-    // 1. 선단지지력 (Qup) 산정
+    // 1. 선단지지력 (Qup) 산정 : 최하단 지층 평균 N치 자동 활용
     // ---------------------------------------------------------
-    let N_tip = Math.min(N_tip_in, 50); // 설계 N치 상한 50 적용
+    let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', n_val: 50 };
+    let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
+    let N_tip = Math.min(raw_N_tip, 50); // 설계 N치 상한 50 적용[cite: 3]
+
     const Ap = (Math.PI * Math.pow(D, 2)) / 4.0; // 선단 지지면적 (m²)
     
     let alpha_p = 200; 
@@ -299,18 +315,18 @@ function calculatePileCapacity() {
     // 3. 지반에 의한 허용지지력 (Qa_soil) 산정
     // ---------------------------------------------------------
     const Qu_total = Qup + total_Qus;
-    const Qa_soil_norm = Qu_total / 3.0;
+    const Qa_soil_norm = Qu_total / 3.0; // FS = 3.0
     const Qa_soil_seis = Qa_soil_norm * 1.25;
 
     // ---------------------------------------------------------
-    // 4. 말뚝재료에 의한 허용지지력 (Qas) 산정 (응력 및 단면적 분리 계산)
+    // 4. 말뚝재료에 의한 허용지지력 (Qas) 산정
     // ---------------------------------------------------------
     const t_eff_m = Math.max(0, (t_mm - t1_mm)) / 1000.0;
     const A_net = Math.PI * (D - t_eff_m) * t_eff_m; // 유효 단면적 (m²)
 
     const Q_mat_base = sigma_ca * 1000.0 * A_net; // (MPa -> kPa 변환)
 
-    // 장경비 L/D 및 한계치 n 설정
+    // 장경비 L/D 및 한계치 n 설정[cite: 3]
     const L_over_D = L / D;
     let n_limit = 85; 
     if (p_type === 'PC') n_limit = 80;
@@ -320,7 +336,7 @@ function calculatePileCapacity() {
 
     let mu1 = Math.max(0, L_over_D - n_limit); // 장경비 저감율 (%)
 
-    // 이음 저감율 mu2
+    // 이음 저감율 mu2[cite: 3]
     let mu2_base = 0;
     if (joint_type === 'weld') mu2_base = 5.0;
     else if (joint_type === 'bolt') mu2_base = 10.0;
@@ -379,9 +395,11 @@ function calculatePileCapacity() {
             </table>
         </div>
 
-        <div class="section-title">1. 지반에 의한 허용지지력 산정 상세 (SPT 기반)</div>
+        <!-- 검증 1: 지반에 의한 지지력 -->
+        <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정 (구조물기초설계기준 해설)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
+            • 선단지층 : <strong>${lastLayer.name}</strong> (평균 N치 = ${raw_N_tip} &rarr; 설계 N치 = <strong>${N_tip}</strong> [상한 50 적용])<br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong><br>
             • 적용 산정식 : Q<sub>up</sub> = ${alpha_p} &times; N &times; A<sub>p</sub><br>
             • Q<sub>up</sub> = ${alpha_p} &times; ${N_tip} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span><br><br>
@@ -424,22 +442,82 @@ function calculatePileCapacity() {
             </table>
         </div>
 
-        <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
+        <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px;">
             <strong>(3) 지반 허용지지력 (Q<sub>a,soil</sub>)</strong><br>
             • 평상시 (F.S = 3.0) : (Q<sub>up</sub> + Q<sub>us</sub>) / 3.0 = (${Qup.toFixed(1)} + ${total_Qus.toFixed(1)}) / 3.0 = <strong>${Qa_soil_norm.toFixed(1)} kN</strong><br>
             • 내진시 : 평상시 허용지지력 &times; 1.25 = ${Qa_soil_norm.toFixed(1)} &times; 1.25 = <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
         </div>
 
-        <div class="section-title">2. 말뚝 재료에 의한 허용지지력 산정 상세</div>
-        <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px;">
+        <!-- 검증 2: 말뚝 재료에 의한 허용압축하중 -->
+        <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정 (구조물기초설계기준 해설)</div>
+        <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
             • 유효 두께 t<sub>eff</sub> : ${t_mm.toFixed(1)}mm ${p_type === 'STEEL' ? '- 부식두께 ' + t1_mm.toFixed(1) + 'mm = ' + (t_mm - t1_mm).toFixed(1) + 'mm' : ''}<br>
             • 유효 단면적 A<sub>net</sub> = &pi; &times; (D - t<sub>eff</sub>) &times; t<sub>eff</sub> = &pi; &times; (${D.toFixed(3)} - ${t_eff_m.toFixed(4)}) &times; ${t_eff_m.toFixed(4)} = <strong>${A_net.toFixed(5)} m²</strong><br>
-            • 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = ${sigma_ca.toFixed(3)} MPa &times; ${A_net.toFixed(5)} m² &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong><br><br>
+            • 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = ${sigma_ca.toFixed(1)} MPa &times; ${A_net.toFixed(5)} m² &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong><br><br>
             • 산정 공식 : Q<sub>as</sub> = [1 - (&mu;<sub>1</sub> + &mu;<sub>2</sub>)/100] &times; Q<sub>mat_base</sub><br>
             • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (상한 한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
             • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'})<br>
-            • 평상시 재료 허용지지력 Q<sub>as,norm</sub> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <strong>${Qas_norm.toFixed(1)} kN</strong><br>
-            • 내진시 재료 허용지지력 Q<sub>as,seis</sub> = Q<sub>as,norm</sub> &times; 1.50 = <strong>${Qas_seis.toFixed(1)} kN</strong>
+            • 평상시 재료 허용압축하중 Q<sub>as,norm</sub> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <strong>${Qas_norm.toFixed(1)} kN</strong><br>
+            • 내진시 재료 허용압축하중 Q<sub>as,seis</sub> = Q<sub>as,norm</sub> &times; 1.50 = <strong>${Qas_seis.toFixed(1)} kN</strong>
+        </div>
+
+        <!-- 기준 표 추가 1: 장경비에 의한 허용응력 감소 한계치 -->
+        <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 3. 장경비에 의한 허용응력 감소의 한계치 (구조물기초설계기준 해설 표 5.2.3)</div>
+        <div class="table-container" style="margin-bottom: 15px;">
+            <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                <thead>
+                    <tr style="background-color: #eaeded;">
+                        <th>구 분</th>
+                        <th>RC말뚝</th>
+                        <th>PC말뚝</th>
+                        <th>PHC말뚝</th>
+                        <th>강관말뚝</th>
+                        <th>현장타설말뚝</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>n</strong></td>
+                        <td style="${p_type === 'RC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">70</td>
+                        <td style="${p_type === 'PC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">80</td>
+                        <td style="${p_type === 'PHC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">85</td>
+                        <td style="${p_type === 'STEEL' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">100</td>
+                        <td style="${p_type === 'CAST' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">60</td>
+                    </tr>
+                    <tr>
+                        <td><strong>장경비의 상한계<sup>1)</sup></strong></td>
+                        <td style="${p_type === 'RC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">90</td>
+                        <td style="${p_type === 'PC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">105</td>
+                        <td style="${p_type === 'PHC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">110</td>
+                        <td style="${p_type === 'STEEL' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">130</td>
+                        <td style="${p_type === 'CAST' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">80</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="font-size:0.75em; color:#7f8c8d; margin-top:4px; margin-bottom:12px;">주1) 장경비에 의한 말뚝재료 허용응력 감소를 감안하더라도, 장경비 상한계 이상의 설계는 하지 않는 것이 좋다.</p>
+        </div>
+
+        <!-- 기준 표 추가 2: 말뚝이음에 의한 허용하중 감소율 -->
+        <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 4. 말뚝이음에 의한 허용하중 감소율 (구조물기초설계기준 해설 표 5.2.2)</div>
+        <div class="table-container">
+            <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                <thead>
+                    <tr style="background-color: #eaeded;">
+                        <th>이음방법</th>
+                        <th>용접이음</th>
+                        <th>볼트식 이음</th>
+                        <th>비고</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>감소율</strong></td>
+                        <td style="${joint_type === 'weld' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">5% / 개소</td>
+                        <td style="${joint_type === 'bolt' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">10% / 개소</td>
+                        <td style="text-align:left; font-size:0.85em; padding:4px 8px;">매입말뚝 경우에는 이음부 손상이 거의 없으므로 이음방법별 감소율 절반(1/2) 적용</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     `;
 }
