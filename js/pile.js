@@ -178,7 +178,6 @@ export function initPileModule(container) {
             if (hint) hint.style.display = 'none';
         }
 
-        // 말뚝 종류별 기본 허용응력 자동 세팅
         const defaultSigma = getDefaultSigmaCa(this.value);
         if (sigmaInput) {
             sigmaInput.value = defaultSigma;
@@ -244,7 +243,7 @@ function calculatePileCapacity() {
     const D = parseFloat(document.getElementById('pile_D').value);
     const t_mm = parseFloat(document.getElementById('pile_t').value);
     
-    // 강관말뚝일 때만 부식두께 t1 적용
+    // 강관말뚝일 때만 부식두께 t1 적용 (mm -> m)
     let t1_mm = 0;
     if (p_type === 'STEEL') {
         t1_mm = parseFloat(document.getElementById('pile_t1').value) || 0;
@@ -265,7 +264,7 @@ function calculatePileCapacity() {
     // ---------------------------------------------------------
     let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', n_val: 50 };
     let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
-    let N_tip = Math.min(raw_N_tip, 50); // 설계 N치 상한 50 적용[cite: 3]
+    let N_tip = Math.min(raw_N_tip, 50); // 설계 N치 상한 50 적용
 
     const Ap = (Math.PI * Math.pow(D, 2)) / 4.0; // 선단 지지면적 (m²)
     
@@ -319,14 +318,21 @@ function calculatePileCapacity() {
     const Qa_soil_seis = Qa_soil_norm * 1.25;
 
     // ---------------------------------------------------------
-    // 4. 말뚝재료에 의한 허용지지력 (Qas) 산정
+    // 4. 말뚝재료에 의한 허용지지력 (Qas) 산정 (외경/내경 단면적 반영)
     // ---------------------------------------------------------
-    const t_eff_m = Math.max(0, (t_mm - t1_mm)) / 1000.0;
-    const A_net = Math.PI * (D - t_eff_m) * t_eff_m; // 유효 단면적 (m²)
+    // 외경 D_out = D - t1 (m)
+    const D_out = D - (t1_mm / 1000.0);
+    
+    // 내경 D_in = D - 2t (m)
+    const D_in = Math.max(0, D - 2.0 * (t_mm / 1000.0));
+    
+    // 유효 중공 단면적 A_net = pi * (D_out^2 - D_in^2) / 4 (m²)
+    const A_net = (Math.PI * (Math.pow(D_out, 2) - Math.pow(D_in, 2))) / 4.0;
 
-    const Q_mat_base = sigma_ca * 1000.0 * A_net; // (MPa -> kPa 변환)
+    // 기본 재료 허용압축하중 Q_mat_base = sigma_ca * A_net (kPa 변환)
+    const Q_mat_base = sigma_ca * 1000.0 * A_net;
 
-    // 장경비 L/D 및 한계치 n 설정[cite: 3]
+    // 장경비 L/D 및 한계치 n 설정
     const L_over_D = L / D;
     let n_limit = 85; 
     if (p_type === 'PC') n_limit = 80;
@@ -336,21 +342,21 @@ function calculatePileCapacity() {
 
     let mu1 = Math.max(0, L_over_D - n_limit); // 장경비 저감율 (%)
 
-    // 이음 저감율 mu2[cite: 3]
+    // 이음 저감율 mu2
     let mu2_base = 0;
     if (joint_type === 'weld') mu2_base = 5.0;
     else if (joint_type === 'bolt') mu2_base = 10.0;
     
     let mu2 = (method.includes('bored') || method === 'cement_paste') ? (mu2_base * 0.5 * joint_cnt) : (mu2_base * joint_cnt);
 
-    const Qas_norm = (1.0 - (mu1 + mu2) / 100.0) * Q_mat_base;
-    const Qas_seis = Qas_norm * 1.50;
+    // 재료 허용압축하중 (평상시/내진시 구분 없이 단일 산정)
+    const Qas = (1.0 - (mu1 + mu2) / 100.0) * Q_mat_base;
 
     // ---------------------------------------------------------
     // 5. 최종 허용지지력 결정 및 안전성 검토
     // ---------------------------------------------------------
-    const Q_app_norm = Math.min(Qa_soil_norm, Qas_norm);
-    const Q_app_seis = Math.min(Qa_soil_seis, Qas_seis);
+    const Q_app_norm = Math.min(Qa_soil_norm, Qas);
+    const Q_app_seis = Math.min(Qa_soil_seis, Qas);
 
     const status_norm = P_norm <= Q_app_norm ? "안정 (O.K)" : "NG";
     const status_seis = P_seis <= Q_app_seis ? "안정 (O.K)" : "NG";
@@ -378,7 +384,7 @@ function calculatePileCapacity() {
                     <tr>
                         <td><strong>평상시 (상시)</strong></td>
                         <td>${Qa_soil_norm.toFixed(1)}</td>
-                        <td>${Qas_norm.toFixed(1)}</td>
+                        <td rowspan="2" style="vertical-align: middle; font-weight:bold; color:#8e44ad;">${Qas.toFixed(1)}<br><span style="font-size:0.8em; font-weight:normal; color:#7f8c8d;">(단일값 적용)</span></td>
                         <td style="font-weight:bold; color:#2980b9;">${Q_app_norm.toFixed(1)}</td>
                         <td>${P_norm.toFixed(1)}</td>
                         <td style="font-weight:bold; color:${status_norm.includes('안정') ? '#27ae60' : '#c0392b'};">${status_norm}</td>
@@ -386,7 +392,6 @@ function calculatePileCapacity() {
                     <tr>
                         <td><strong>내진시 (지진시)</strong></td>
                         <td>${Qa_soil_seis.toFixed(1)}</td>
-                        <td>${Qas_seis.toFixed(1)}</td>
                         <td style="font-weight:bold; color:#2980b9;">${Q_app_seis.toFixed(1)}</td>
                         <td>${P_seis.toFixed(1)}</td>
                         <td style="font-weight:bold; color:${status_seis.includes('안정') ? '#27ae60' : '#c0392b'};">${status_seis}</td>
@@ -451,14 +456,14 @@ function calculatePileCapacity() {
         <!-- 검증 2: 말뚝 재료에 의한 허용압축하중 -->
         <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정 (구조물기초설계기준 해설)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
-            • 유효 두께 t<sub>eff</sub> : ${t_mm.toFixed(1)}mm ${p_type === 'STEEL' ? '- 부식두께 ' + t1_mm.toFixed(1) + 'mm = ' + (t_mm - t1_mm).toFixed(1) + 'mm' : ''}<br>
-            • 유효 단면적 A<sub>net</sub> = &pi; &times; (D - t<sub>eff</sub>) &times; t<sub>eff</sub> = &pi; &times; (${D.toFixed(3)} - ${t_eff_m.toFixed(4)}) &times; ${t_eff_m.toFixed(4)} = <strong>${A_net.toFixed(5)} m²</strong><br>
+            • 말뚝 외경 D<sub>out</sub> : D - 부식두께 t<sub>1</sub> = ${D.toFixed(3)}m ${p_type === 'STEEL' ? '- ' + (t1_mm/1000.0).toFixed(4) + 'm = ' + D_out.toFixed(4) + 'm' : '= ' + D_out.toFixed(3) + 'm'}<br>
+            • 말뚝 내경 D<sub>in</sub> : D - 2 &times; 말뚝두께 t = ${D.toFixed(3)}m - 2 &times; ${(t_mm/1000.0).toFixed(4)}m = <strong>${D_in.toFixed(4)} m</strong><br>
+            • 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = &pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>
             • 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = ${sigma_ca.toFixed(1)} MPa &times; ${A_net.toFixed(5)} m² &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong><br><br>
             • 산정 공식 : Q<sub>as</sub> = [1 - (&mu;<sub>1</sub> + &mu;<sub>2</sub>)/100] &times; Q<sub>mat_base</sub><br>
             • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (상한 한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
             • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'})<br>
-            • 평상시 재료 허용압축하중 Q<sub>as,norm</sub> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <strong>${Qas_norm.toFixed(1)} kN</strong><br>
-            • 내진시 재료 허용압축하중 Q<sub>as,seis</sub> = Q<sub>as,norm</sub> &times; 1.50 = <strong>${Qas_seis.toFixed(1)} kN</strong>
+            • <strong>최종 재료 허용압축하중 Q<sub>as</sub></strong> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <span style="color:#8e44ad; font-weight:bold;">${Qas.toFixed(1)} kN</span>
         </div>
 
         <!-- 기준 표 추가 1: 장경비에 의한 허용응력 감소 한계치 -->
