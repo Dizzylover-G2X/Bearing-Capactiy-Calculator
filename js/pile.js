@@ -23,17 +23,17 @@ export function initPileModule(container) {
         <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.95em;">■ 말뚝기초 제원 및 시공 조건</div>
         <div class="input-grid" style="margin-bottom: 15px;">
             <div class="input-group">
-                <label>말뚝 종류 <span id="t1_label_hint" style="font-size: 0.8em; color: #b7950b; font-weight: bold; display: ${initialType === 'STEEL' ? 'inline' : 'none'};">(부식 t1)</span></label>
+                <label>말뚝 종류 <span id="t1_label_hint" style="display: ${initialType === 'STEEL' ? 'inline' : 'none'};">/ 부식두께(mm)</span></label>
                 <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
                     <select id="pile_type" style="flex: 1; min-width: 0;">
                         <option value="PHC" ${initialType === 'PHC' ? 'selected' : ''}>PHC 말뚝</option>
                         <option value="PC" ${initialType === 'PC' ? 'selected' : ''}>PC 말뚝</option>
                         <option value="RC" ${initialType === 'RC' ? 'selected' : ''}>RC 말뚝</option>
                         <option value="STEEL" ${initialType === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
-                        <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설 콘크리트</option>
+                        <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설말뚝</option>
                     </select>
-                    <!-- 강관말뚝 선택 시 콤보박스 옆에 붙는 컴팩트 인라인 입력창 -->
-                    <input type="number" id="pile_t1" value="${getVal('t1', '1.0')}" step="0.1" title="부식두께 t1 (mm)" placeholder="t1(mm)" style="display: ${initialType === 'STEEL' ? 'block' : 'none'}; width: 65px; text-align: center; border: 1px solid #f1c40f; background-color: #fef9e7; font-weight: bold; box-sizing: border-box; padding: 4px;">
+                    <!-- 콤보박스와 동일한 보편적 스타일의 부식두께 입력창 -->
+                    <input type="number" id="pile_t1" value="${getVal('t1', '1.0')}" step="0.1" title="부식두께(mm)" placeholder="t1" style="display: ${initialType === 'STEEL' ? 'block' : 'none'}; width: 65px; text-align: center; border: 1px solid #ccc; border-radius: 3px; background-color: #fff; box-sizing: border-box; padding: 4px; font-size: 0.9em;">
                 </div>
             </div>
 
@@ -156,7 +156,7 @@ export function initPileModule(container) {
     }
     renderLayers();
 
-    // 말뚝 종류 변경 시 부식두께 인라인 포커스 토글 이벤트
+    // 말뚝 종류 변경 시 부식두께 토글
     const pileTypeSelect = document.getElementById('pile_type');
     pileTypeSelect.addEventListener('change', function() {
         const corrInput = document.getElementById('pile_t1');
@@ -290,12 +290,10 @@ function calculatePileCapacity() {
     // ---------------------------------------------------------
     // 4. 말뚝재료에 의한 허용지지력 (Qas) 산정 (응력 및 단면적 분리 계산)
     // ---------------------------------------------------------
-    // 유효두께 및 유효단면적(A_net) 산정 (m)
     const t_eff_m = Math.max(0, (t_mm - t1_mm)) / 1000.0;
     const A_net = Math.PI * (D - t_eff_m) * t_eff_m; // 유효 단면적 (m²)
 
-    // 기본 재료 허용압축하중 (Q_mat_base = sigma_ca * A_net)
-    const Q_mat_base = sigma_ca * 1000.0 * A_net; // (MPa -> kPa 변환 적용)
+    const Q_mat_base = sigma_ca * 1000.0 * A_net; // (MPa -> kPa 변환)
 
     // 장경비 L/D 및 한계치 n 설정
     const L_over_D = L / D;
