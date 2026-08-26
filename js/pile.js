@@ -33,14 +33,14 @@ export function initPileModule(container) {
                         <option value="STEEL" ${initialType === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
                         <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설말뚝</option>
                     </select>
-                    <!-- 높이가 콤보박스와 완전히 일치하는 부식두께 입력창 -->
+                    <!-- 콤보박스와 동일한 보편적 스타일의 부식두께 입력창 -->
                     <input type="number" id="pile_t1" value="${initialT1}" step="0.1" title="부식두께(mm)" placeholder="t1" style="display: ${initialType === 'STEEL' ? 'block' : 'none'}; width: 65px; height: 100%; text-align: center; border: 1px solid #ccc; border-radius: 3px; background-color: #fff; box-sizing: border-box; padding: 4px; font-size: 0.9em;">
                 </div>
             </div>
 
             <div class="input-group">
                 <label>시공 공법</label>
-                <select id="pile_method">
+                <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 0.9em;">
                     <option value="cement_paste" ${getVal('method', 'cement_paste') === 'cement_paste' ? 'selected' : ''}>매입 (시멘트페이스트 주입)</option>
                     <option value="driven" ${getVal('method', 'cement_paste') === 'driven' ? 'selected' : ''}>타격 공법</option>
                     <option value="bored_solid" ${getVal('method', 'cement_paste') === 'bored_solid' ? 'selected' : ''}>선굴착 고결 공법</option>
