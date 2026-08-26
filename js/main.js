@@ -2,12 +2,13 @@ import { initBearingModule } from './bearing.js';
 import { initSettlementModule } from './settlement.js';
 import { initConsolidationModule } from './consolidation.js';
 import { initSlopeModule } from './slope.js';
+import { initPileModule } from './pile.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const contentContainer = document.getElementById('app-content');
-    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabButtons = document.querySelectorAll('.tab-btn, .nav-tab');
 
-    // 초기 실행 (기본 탭: 지지력 검토)
+    // 초기 실행 (기본 탭: 얕은기초 지지력 검토)
     initBearingModule(contentContainer);
 
     // 탭 클릭 이벤트 바인딩
@@ -32,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case 'slope':
                     initSlopeModule(contentContainer);
+                    break;
+                case 'pile':
+                    initPileModule(contentContainer);
                     break;
                 default:
                     contentContainer.innerHTML = `<p>페이지를 찾을 수 없습니다.</p>`;
