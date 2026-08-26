@@ -33,7 +33,6 @@ export function initPileModule(container) {
                         <option value="STEEL" ${initialType === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
                         <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설말뚝</option>
                     </select>
-                    <!-- 콤보박스와 동일한 보편적 스타일의 부식두께 입력창 -->
                     <input type="number" id="pile_t1" value="${initialT1}" step="0.1" title="부식두께(mm)" placeholder="t1" style="display: ${initialType === 'STEEL' ? 'block' : 'none'}; width: 65px; height: 100%; text-align: center; border: 1px solid #ccc; border-radius: 3px; background-color: #fff; box-sizing: border-box; padding: 4px; font-size: 0.9em;">
                 </div>
             </div>
@@ -54,10 +53,6 @@ export function initPileModule(container) {
             <div class="input-group">
                 <label>말뚝 두께 t (mm)</label>
                 <input type="number" id="pile_t" value="${getVal('t', '110')}" step="1">
-            </div>
-            <div class="input-group" style="background-color: #ebf5fb; border-color: #aed6f1;">
-                <label style="color: #2980b9;">말뚝 총 길이 L (m) [지층 연동]</label>
-                <input type="number" id="pile_L" value="${calcTotalL().toFixed(2)}" readonly style="background-color: #e8f8f5; font-weight: bold; color: #16a085; cursor: not-allowed; text-align: center;">
             </div>
             <div class="input-group">
                 <label>이음 방법 / 개소 수</label>
@@ -84,37 +79,44 @@ export function initPileModule(container) {
         <div style="font-weight: bold; margin-bottom: 8px; color: #d35400; font-size: 0.95em;">■ 작용 하중 (상부구조 반력)</div>
         <div class="input-grid" style="margin-bottom: 15px; background-color: #fdf2e9; padding: 10px; border-radius: 5px; border: 1px solid #edbb99;">
             <div class="input-group" style="background:#fff;">
-                <label style="color:#d35400;">평상시 작용하중 P_norm (kN/본)</label>
+                <label style="color:#d35400;">평상시 P_norm (kN/본)</label>
                 <input type="number" id="pile_P_norm" value="${getVal('P_norm', '2062.8')}" step="0.1">
             </div>
             <div class="input-group" style="background:#fff;">
-                <label style="color:#c0392b;">내진시 작용하중 P_seis (kN/본)</label>
+                <label style="color:#c0392b;">내진시 P_seis (kN/본)</label>
                 <input type="number" id="pile_P_seis" value="${getVal('P_seis', '1728.6')}" step="0.1">
             </div>
         </div>
 
         <!-- 3. 주면마찰력 산정을 위한 지층 정보 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 주면마찰력 산정을 위한 지층 정보 (층후 변경 시 말뚝 길이 L 자동 연동)</div>
+            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 주면마찰력 산정을 위한 지층 정보</div>
             <button type="button" id="pile_layer_add" style="padding: 4px 10px; background: #27ae60; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em; font-weight: bold;">+ 지층 추가</button>
         </div>
         
         <div style="background-color: #e8f8f5; padding: 12px; border-radius: 6px; border: 1px solid #a3e4d7; margin-bottom: 15px;">
             <div class="table-container" style="margin: 0;">
-                <table class="result-table" style="font-size: 0.85em; text-align: center; margin: 0; width: 100%;">
+                <table class="result-table" style="font-size: 0.85em; text-align: center; margin: 0; width: 100%; table-layout: fixed;">
                     <thead>
                         <tr style="background-color: #d1f2eb;">
-                            <th>지층명</th>
-                            <th>토성 구분</th>
-                            <th>층후 L (m)</th>
-                            <th>평균 N치</th>
-                            <th>점착력 c (kN/m²)</th>
-                            <th>삭제</th>
+                            <th style="width: 24%; padding: 6px;">지층명</th>
+                            <th style="width: 24%; padding: 6px;">토성 구분</th>
+                            <th style="width: 16%; padding: 6px;">층후 L (m)</th>
+                            <th style="width: 14%; padding: 6px;">평균 N치</th>
+                            <th style="width: 14%; padding: 6px;">점착력 c (kN/m²)</th>
+                            <th style="width: 8%; padding: 6px;">삭제</th>
                         </tr>
                     </thead>
                     <tbody id="pile_layers_body">
                         <!-- 동적 생성 렌더링 -->
                     </tbody>
+                    <tfoot>
+                        <tr style="background-color: #ebf5fb; font-weight: bold; border-top: 2px solid #a3e4d7;">
+                            <td colspan="2" style="padding: 8px 6px; text-align: right; color: #2980b9;">말뚝 총 길이 L (m) :</td>
+                            <td id="pile_L_val" style="padding: 8px 6px; color: #16a085; font-size: 1.05em; text-align: center;">${calcTotalL().toFixed(2)}</td>
+                            <td colspan="3" style="padding: 8px 6px; text-align: left; color: #7f8c8d; font-size: 0.85em;">(지층 층후 자동 합산)</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -125,9 +127,9 @@ export function initPileModule(container) {
 
     function updatePileLength() {
         const totalL = calcTotalL();
-        const pileLInput = document.getElementById('pile_L');
-        if (pileLInput) {
-            pileLInput.value = totalL.toFixed(2);
+        const pileLVal = document.getElementById('pile_L_val');
+        if (pileLVal) {
+            pileLVal.textContent = totalL.toFixed(2);
             localStorage.setItem('geo_pile_L', totalL.toFixed(2));
         }
     }
@@ -139,16 +141,16 @@ export function initPileModule(container) {
         pileLayers.forEach((l, idx) => {
             tbody.innerHTML += `
                 <tr>
-                    <td style="padding:4px;"><input type="text" value="${l.name}" data-idx="${idx}" class="pl-name" style="width:100%; text-align:center;"></td>
+                    <td style="padding:4px;"><input type="text" value="${l.name}" data-idx="${idx}" class="pl-name" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
                     <td style="padding:4px;">
-                        <select data-idx="${idx}" class="pl-type" style="width:100%;">
+                        <select data-idx="${idx}" class="pl-type" style="width:100%; box-sizing:border-box; padding:4px;">
                             <option value="sand" ${l.type === 'sand' ? 'selected' : ''}>사질토 / 풍화암</option>
                             <option value="clay" ${l.type === 'clay' ? 'selected' : ''}>점성토</option>
                         </select>
                     </td>
-                    <td style="padding:4px;"><input type="number" value="${l.dz.toFixed(2)}" data-idx="${idx}" class="pl-dz" step="0.1" style="width:100%; text-align:center;"></td>
-                    <td style="padding:4px;"><input type="number" value="${l.n_val}" data-idx="${idx}" class="pl-n" step="1" style="width:100%; text-align:center;"></td>
-                    <td style="padding:4px;"><input type="number" value="${l.c_val.toFixed(1)}" data-idx="${idx}" class="pl-c" step="0.5" style="width:100%; text-align:center;"></td>
+                    <td style="padding:4px;"><input type="number" value="${l.dz.toFixed(2)}" data-idx="${idx}" class="pl-dz" step="0.1" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
+                    <td style="padding:4px;"><input type="number" value="${l.n_val}" data-idx="${idx}" class="pl-n" step="1" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
+                    <td style="padding:4px;"><input type="number" value="${l.c_val.toFixed(1)}" data-idx="${idx}" class="pl-c" step="0.5" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
                     <td style="padding:4px;"><button type="button" class="pl-del" data-idx="${idx}" style="padding:3px 8px; background:#e74c3c; color:#fff; border:none; border-radius:3px; cursor:pointer;">-</button></td>
                 </tr>
             `;
