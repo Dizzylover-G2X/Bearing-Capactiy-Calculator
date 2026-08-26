@@ -1,7 +1,7 @@
 export function initPileModule(container) {
     const getVal = (id, defaultVal) => localStorage.getItem('geo_pile_' + id) ?? defaultVal;
 
-    // 초기 지층 데이터 (말뚝기초-연직.pdf 기준)
+    // 초기 지층 데이터
     let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
     if (!pileLayers || !Array.isArray(pileLayers) || pileLayers.length === 0) {
         pileLayers = [
@@ -11,8 +11,13 @@ export function initPileModule(container) {
         localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
     }
 
+    // 지층 층후 합산으로 말뚝 총 길이 L 계산
+    const calcTotalL = () => pileLayers.reduce((sum, l) => sum + (parseFloat(l.dz) || 0), 0);
+
+    const initialType = getVal('type', 'PHC');
+
     container.innerHTML = `
-        <h3>2. 말뚝기초 연직지지력 및 검토</h3>
+        <h3>1. 설계자료 입력 (말뚝기초 연직지지력 검토)</h3>
         
         <!-- 1. 말뚝기초 제원 및 시공 조건 -->
         <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.95em;">■ 말뚝기초 제원 및 시공 조건</div>
@@ -20,12 +25,16 @@ export function initPileModule(container) {
             <div class="input-group">
                 <label>말뚝 종류</label>
                 <select id="pile_type">
-                    <option value="PHC" ${getVal('type', 'PHC') === 'PHC' ? 'selected' : ''}>PHC 말뚝</option>
-                    <option value="PC" ${getVal('type', 'PHC') === 'PC' ? 'selected' : ''}>PC 말뚝</option>
-                    <option value="RC" ${getVal('type', 'PHC') === 'RC' ? 'selected' : ''}>RC 말뚝</option>
-                    <option value="STEEL" ${getVal('type', 'PHC') === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
-                    <option value="CAST" ${getVal('type', 'PHC') === 'CAST' ? 'selected' : ''}>현장타설 콘크리트</option>
+                    <option value="PHC" ${initialType === 'PHC' ? 'selected' : ''}>PHC 말뚝</option>
+                    <option value="PC" ${initialType === 'PC' ? 'selected' : ''}>PC 말뚝</option>
+                    <option value="RC" ${initialType === 'RC' ? 'selected' : ''}>RC 말뚝</option>
+                    <option value="STEEL" ${initialType === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
+                    <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설 콘크리트</option>
                 </select>
+            </div>
+            <div class="input-group" id="corrosion_group" style="display: ${initialType === 'STEEL' ? 'block' : 'none'}; background-color: #fef9e7; border-color: #f1c40f;">
+                <label style="color: #b7950b;">부식두께 t1 (mm)</label>
+                <input type="number" id="pile_t1" value="${getVal('t1', '1.0')}" step="0.1">
             </div>
             <div class="input-group">
                 <label>시공 공법</label>
@@ -44,9 +53,9 @@ export function initPileModule(container) {
                 <label>말뚝 두께 t (mm)</label>
                 <input type="number" id="pile_t" value="${getVal('t', '110')}" step="1">
             </div>
-            <div class="input-group">
-                <label>말뚝 길이 L (m)</label>
-                <input type="number" id="pile_L" value="${getVal('L', '10.00')}" step="0.1">
+            <div class="input-group" style="background-color: #ebf5fb; border-color: #aed6f1;">
+                <label style="color: #2980b9;">말뚝 총 길이 L (m) [지층 연동]</label>
+                <input type="number" id="pile_L" value="${calcTotalL().toFixed(2)}" readonly style="background-color: #e8f8f5; font-weight: bold; color: #16a085; cursor: not-allowed; text-align: center;">
             </div>
             <div class="input-group">
                 <label>이음 방법 / 개소 수</label>
@@ -60,8 +69,8 @@ export function initPileModule(container) {
                 </div>
             </div>
             <div class="input-group">
-                <label>말뚝 재료 허용압축하중 (kN)</label>
-                <input type="number" id="pile_mat_qa" value="${getVal('mat_qa', '3910.0')}" step="10">
+                <label>허용압축응력 σ_ca (MPa)</label>
+                <input type="number" id="pile_sigma_ca" value="${getVal('sigma_ca', '16.395')}" step="0.001">
             </div>
             <div class="input-group">
                 <label>선단 지층 설계 N치 (상한 50)</label>
@@ -84,7 +93,7 @@ export function initPileModule(container) {
 
         <!-- 3. 주면마찰력 산정을 위한 지층 정보 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 주면마찰력 산정용 지층 정보</div>
+            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 주면마찰력 산정용 지층 정보 (층후 변경 시 말뚝 길이 L 자동 연동)</div>
             <button type="button" id="pile_layer_add" style="padding: 4px 10px; background: #27ae60; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em; font-weight: bold;">+ 지층 추가</button>
         </div>
         
@@ -112,6 +121,15 @@ export function initPileModule(container) {
         <div id="pile-result" class="result-box"></div>
     `;
 
+    function updatePileLength() {
+        const totalL = calcTotalL();
+        const pileLInput = document.getElementById('pile_L');
+        if (pileLInput) {
+            pileLInput.value = totalL.toFixed(2);
+            localStorage.setItem('geo_pile_L', totalL.toFixed(2));
+        }
+    }
+
     function renderLayers() {
         const tbody = document.getElementById('pile_layers_body');
         if (!tbody) return;
@@ -133,10 +151,23 @@ export function initPileModule(container) {
                 </tr>
             `;
         });
+        updatePileLength();
     }
     renderLayers();
 
-    // Event Listeners for Storage and Layer Table
+    // 말뚝 종류 변경 시 강관말뚝 부식두께 토글 이벤트
+    const pileTypeSelect = document.getElementById('pile_type');
+    pileTypeSelect.addEventListener('change', function() {
+        const corrGroup = document.getElementById('corrosion_group');
+        if (this.value === 'STEEL') {
+            corrGroup.style.display = 'block';
+        } else {
+            corrGroup.style.display = 'none';
+        }
+        localStorage.setItem('geo_pile_type', this.value);
+    });
+
+    // 일반 입력 필드 저장 이벤트
     const inputs = container.querySelectorAll('.input-grid input, .input-grid select');
     inputs.forEach(input => {
         input.addEventListener('change', function() {
@@ -145,10 +176,14 @@ export function initPileModule(container) {
         });
     });
 
+    // 지층 정보 수정 이벤트 및 L 자동 연동
     container.addEventListener('change', (e) => {
         if (e.target.classList.contains('pl-name')) pileLayers[e.target.dataset.idx].name = e.target.value;
         if (e.target.classList.contains('pl-type')) pileLayers[e.target.dataset.idx].type = e.target.value;
-        if (e.target.classList.contains('pl-dz')) pileLayers[e.target.dataset.idx].dz = parseFloat(e.target.value) || 0;
+        if (e.target.classList.contains('pl-dz')) {
+            pileLayers[e.target.dataset.idx].dz = parseFloat(e.target.value) || 0;
+            updatePileLength();
+        }
         if (e.target.classList.contains('pl-n')) pileLayers[e.target.dataset.idx].n_val = parseFloat(e.target.value) || 0;
         if (e.target.classList.contains('pl-c')) pileLayers[e.target.dataset.idx].c_val = parseFloat(e.target.value) || 0;
         localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
@@ -174,25 +209,31 @@ function calculatePileCapacity() {
     const p_type = document.getElementById('pile_type').value;
     const method = document.getElementById('pile_method').value;
     const D = parseFloat(document.getElementById('pile_D').value);
-    const t = parseFloat(document.getElementById('pile_t').value);
-    const L = parseFloat(document.getElementById('pile_L').value);
+    const t_mm = parseFloat(document.getElementById('pile_t').value);
+    
+    // 강관말뚝일 때만 부식두께 t1 적용
+    let t1_mm = 0;
+    if (p_type === 'STEEL') {
+        t1_mm = parseFloat(document.getElementById('pile_t1').value) || 0;
+    }
+
+    let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers')) || [];
+    const L = pileLayers.reduce((sum, l) => sum + (parseFloat(l.dz) || 0), 0);
+
     const joint_type = document.getElementById('pile_joint_type').value;
     const joint_cnt = parseInt(document.getElementById('pile_joint_count').value) || 0;
-    const mat_qa_base = parseFloat(document.getElementById('pile_mat_qa').value);
+    const sigma_ca = parseFloat(document.getElementById('pile_sigma_ca').value); // MPa
     const N_tip_in = parseFloat(document.getElementById('pile_N_tip').value);
 
     const P_norm = parseFloat(document.getElementById('pile_P_norm').value);
     const P_seis = parseFloat(document.getElementById('pile_P_seis').value);
 
-    let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers')) || [];
-
     // ---------------------------------------------------------
     // 1. 선단지지력 (Qup) 산정
     // ---------------------------------------------------------
     let N_tip = Math.min(N_tip_in, 50); // 설계 N치 상한 50 적용
-    const Ap = (Math.PI * Math.pow(D, 2)) / 4.0; // 단면적 (폐색/외경 기준)
+    const Ap = (Math.PI * Math.pow(D, 2)) / 4.0; // 선단 지지면적 (m²)
     
-    // 시공법별 계수 선택 (도로설계편람/구조물기초설계기준)
     let alpha_p = 200; 
     if (method === 'driven') alpha_p = 300;
     else if (method === 'bored_solid' || method === 'bored_final') alpha_p = 250;
@@ -211,11 +252,9 @@ function calculatePileCapacity() {
         let formula_str = "";
         
         if (l.type === 'sand') {
-            // 사질토/풍화암 매입 기준: f = 2N (<= 100)
             f_unit = Math.min(2.0 * l.n_val, 100.0);
             formula_str = `2 &times; ${l.n_val}`;
         } else {
-            // 점성토 매입 기준: f = 0.8c 또는 8N (<= 150)
             let f_c = 0.8 * l.c_val;
             let f_n = 8.0 * l.n_val;
             f_unit = Math.min(Math.max(f_c, f_n), 150.0);
@@ -241,15 +280,22 @@ function calculatePileCapacity() {
     // 3. 지반에 의한 허용지지력 (Qa_soil) 산정
     // ---------------------------------------------------------
     const Qu_total = Qup + total_Qus;
-    const Qa_soil_norm = Qu_total / 3.0; // 평상시 FS = 3.0
-    const Qa_soil_seis = Qa_soil_norm * 1.25; // 내진시 (평상시의 1.25배 적용)
+    const Qa_soil_norm = Qu_total / 3.0;
+    const Qa_soil_seis = Qa_soil_norm * 1.25;
 
     // ---------------------------------------------------------
-    // 4. 말뚝재료에 의한 허용지지력 (Qas) 산정
+    // 4. 말뚝재료에 의한 허용지지력 (Qas) 산정 (응력 및 단면적 분리 계산)
     // ---------------------------------------------------------
+    // 유효두께 및 유효단면적(A_net) 산정 (m)
+    const t_eff_m = Math.max(0, (t_mm - t1_mm)) / 1000.0;
+    const A_net = Math.PI * (D - t_eff_m) * t_eff_m; // 유효 단면적 (m²)
+
+    // 기본 재료 허용압축하중 (Q_mat_base = sigma_ca * A_net)
+    const Q_mat_base = sigma_ca * 1000.0 * A_net; // (MPa -> kPa 변환 적용)
+
     // 장경비 L/D 및 한계치 n 설정
     const L_over_D = L / D;
-    let n_limit = 85; // PHC 기준 기본값
+    let n_limit = 85; 
     if (p_type === 'PC') n_limit = 80;
     else if (p_type === 'RC') n_limit = 70;
     else if (p_type === 'STEEL') n_limit = 100;
@@ -262,11 +308,10 @@ function calculatePileCapacity() {
     if (joint_type === 'weld') mu2_base = 5.0;
     else if (joint_type === 'bolt') mu2_base = 10.0;
     
-    // 매입공법 시 이음 저감율 1/2 적용
     let mu2 = (method.includes('bored') || method === 'cement_paste') ? (mu2_base * 0.5 * joint_cnt) : (mu2_base * joint_cnt);
 
-    const Qas_norm = (1.0 - (mu1 + mu2) / 100.0) * mat_qa_base;
-    const Qas_seis = Qas_norm * 1.50; // 내진시 재료 허용력 1.5배 적용
+    const Qas_norm = (1.0 - (mu1 + mu2) / 100.0) * Q_mat_base;
+    const Qas_seis = Qas_norm * 1.50;
 
     // ---------------------------------------------------------
     // 5. 최종 허용지지력 결정 및 안전성 검토
@@ -280,7 +325,7 @@ function calculatePileCapacity() {
     // ---------------------------------------------------------
     // 6. 결과 렌더링
     // ---------------------------------------------------------
-    const resultDiv = document.getElementById('pile-result');
+    const resultDiv = document.getElementById('settlement-result') || document.getElementById('pile-result');
     resultDiv.style.display = 'block';
     resultDiv.innerHTML = `
         <div class="section-title">[말뚝기초 연직지지력 최종 검토 요약]</div>
@@ -370,10 +415,13 @@ function calculatePileCapacity() {
 
         <div class="section-title">2. 말뚝 재료에 의한 허용지지력 산정 상세</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px;">
+            • 유효 두께 t<sub>eff</sub> : ${t_mm.toFixed(1)}mm ${p_type === 'STEEL' ? '- 부식두께 ' + t1_mm.toFixed(1) + 'mm = ' + (t_mm - t1_mm).toFixed(1) + 'mm' : ''}<br>
+            • 유효 단면적 A<sub>net</sub> = &pi; &times; (D - t<sub>eff</sub>) &times; t<sub>eff</sub> = &pi; &times; (${D.toFixed(3)} - ${t_eff_m.toFixed(4)}) &times; ${t_eff_m.toFixed(4)} = <strong>${A_net.toFixed(5)} m²</strong><br>
+            • 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = ${sigma_ca.toFixed(3)} MPa &times; ${A_net.toFixed(5)} m² &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong><br><br>
             • 산정 공식 : Q<sub>as</sub> = [1 - (&mu;<sub>1</sub> + &mu;<sub>2</sub>)/100] &times; Q<sub>mat_base</sub><br>
-            • 장경비 L/D = ${L.toFixed(1)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (상한 한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
+            • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (상한 한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
             • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'})<br>
-            • 평상시 재료 허용지지력 Q<sub>as,norm</sub> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${mat_qa_base.toFixed(1)} = <strong>${Qas_norm.toFixed(1)} kN</strong><br>
+            • 평상시 재료 허용지지력 Q<sub>as,norm</sub> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <strong>${Qas_norm.toFixed(1)} kN</strong><br>
             • 내진시 재료 허용지지력 Q<sub>as,seis</sub> = Q<sub>as,norm</sub> &times; 1.50 = <strong>${Qas_seis.toFixed(1)} kN</strong>
         </div>
     `;
