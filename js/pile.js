@@ -22,7 +22,7 @@ export function initPileModule(container) {
         <!-- 1. 말뚝기초 제원 및 시공 조건 -->
         <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.95em;">■ 말뚝기초 제원 및 시공 조건</div>
         <div class="input-grid" style="margin-bottom: 15px;">
-            <div class="input-group">
+            <div class="input-group" style="display: flex; flex-direction: column; justify-content: flex-start;">
                 <label>말뚝 종류</label>
                 <select id="pile_type">
                     <option value="PHC" ${initialType === 'PHC' ? 'selected' : ''}>PHC 말뚝</option>
@@ -31,11 +31,14 @@ export function initPileModule(container) {
                     <option value="STEEL" ${initialType === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
                     <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설 콘크리트</option>
                 </select>
+                
+                <!-- 강관말뚝 선택 시 콤보박스 아래에 배치되는 부식두께 입력란 -->
+                <div id="corrosion_group" style="display: ${initialType === 'STEEL' ? 'flex' : 'none'}; flex-direction: column; gap: 4px; margin-top: 6px; padding: 6px; background-color: #fef9e7; border: 1px solid #f1c40f; border-radius: 4px;">
+                    <label style="color: #b7950b; font-size: 0.85em; font-weight: bold; margin: 0;">부식두께 t1 (mm)</label>
+                    <input type="number" id="pile_t1" value="${getVal('t1', '1.0')}" step="0.1" style="width: 100%; box-sizing: border-box; text-align: center; padding: 4px;">
+                </div>
             </div>
-            <div class="input-group" id="corrosion_group" style="display: ${initialType === 'STEEL' ? 'block' : 'none'}; background-color: #fef9e7; border-color: #f1c40f;">
-                <label style="color: #b7950b;">부식두께 t1 (mm)</label>
-                <input type="number" id="pile_t1" value="${getVal('t1', '1.0')}" step="0.1">
-            </div>
+
             <div class="input-group">
                 <label>시공 공법</label>
                 <select id="pile_method">
@@ -155,12 +158,12 @@ export function initPileModule(container) {
     }
     renderLayers();
 
-    // 말뚝 종류 변경 시 강관말뚝 부식두께 토글 이벤트
+    // 말뚝 종류 변경 시 강관말뚝 부식두께 인라인 토글 이벤트
     const pileTypeSelect = document.getElementById('pile_type');
     pileTypeSelect.addEventListener('change', function() {
         const corrGroup = document.getElementById('corrosion_group');
         if (this.value === 'STEEL') {
-            corrGroup.style.display = 'block';
+            corrGroup.style.display = 'flex';
         } else {
             corrGroup.style.display = 'none';
         }
