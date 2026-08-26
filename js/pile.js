@@ -15,6 +15,7 @@ export function initPileModule(container) {
     const calcTotalL = () => pileLayers.reduce((sum, l) => sum + (parseFloat(l.dz) || 0), 0);
 
     const initialType = getVal('type', 'PHC');
+    const initialT1 = parseFloat(getVal('t1', '1.0')).toFixed(1);
 
     container.innerHTML = `
         <h3>1. 설계자료 입력 (말뚝기초 연직지지력 검토)</h3>
@@ -24,16 +25,16 @@ export function initPileModule(container) {
         <div class="input-grid" style="margin-bottom: 15px;">
             <div class="input-group">
                 <label>말뚝 종류 <span id="t1_label_hint" style="display: ${initialType === 'STEEL' ? 'inline' : 'none'};">/ 부식두께(mm)</span></label>
-                <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
-                    <select id="pile_type" style="flex: 1; min-width: 0;">
+                <div style="display: flex; gap: 4px; align-items: stretch; width: 100%; height: 32px;">
+                    <select id="pile_type" style="flex: 1; min-width: 0; height: 100%; box-sizing: border-box; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 0.9em;">
                         <option value="PHC" ${initialType === 'PHC' ? 'selected' : ''}>PHC 말뚝</option>
                         <option value="PC" ${initialType === 'PC' ? 'selected' : ''}>PC 말뚝</option>
                         <option value="RC" ${initialType === 'RC' ? 'selected' : ''}>RC 말뚝</option>
                         <option value="STEEL" ${initialType === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
                         <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설말뚝</option>
                     </select>
-                    <!-- 콤보박스와 동일한 보편적 스타일의 부식두께 입력창 -->
-                    <input type="number" id="pile_t1" value="${getVal('t1', '1.0')}" step="0.1" title="부식두께(mm)" placeholder="t1" style="display: ${initialType === 'STEEL' ? 'block' : 'none'}; width: 65px; text-align: center; border: 1px solid #ccc; border-radius: 3px; background-color: #fff; box-sizing: border-box; padding: 4px; font-size: 0.9em;">
+                    <!-- 높이가 콤보박스와 완전히 일치하는 부식두께 입력창 -->
+                    <input type="number" id="pile_t1" value="${initialT1}" step="0.1" title="부식두께(mm)" placeholder="t1" style="display: ${initialType === 'STEEL' ? 'block' : 'none'}; width: 65px; height: 100%; text-align: center; border: 1px solid #ccc; border-radius: 3px; background-color: #fff; box-sizing: border-box; padding: 4px; font-size: 0.9em;">
                 </div>
             </div>
 
@@ -94,7 +95,7 @@ export function initPileModule(container) {
 
         <!-- 3. 주면마찰력 산정을 위한 지층 정보 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 주면마찰력 산정용 지층 정보 (층후 변경 시 말뚝 길이 L 자동 연동)</div>
+            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 주면마찰력 산정을 위한 지층 정보 (층후 변경 시 말뚝 길이 L 자동 연동)</div>
             <button type="button" id="pile_layer_add" style="padding: 4px 10px; background: #27ae60; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em; font-weight: bold;">+ 지층 추가</button>
         </div>
         
@@ -156,7 +157,7 @@ export function initPileModule(container) {
     }
     renderLayers();
 
-    // 말뚝 종류 변경 시 부식두께 토글
+    // 말뚝 종류 변경 시 부식두께 인라인 토글 이벤트
     const pileTypeSelect = document.getElementById('pile_type');
     pileTypeSelect.addEventListener('change', function() {
         const corrInput = document.getElementById('pile_t1');
@@ -170,6 +171,18 @@ export function initPileModule(container) {
         }
         localStorage.setItem('geo_pile_type', this.value);
     });
+
+    // 부식두께(t1) blur 이벤트 (소수점 첫째 자리 포맷팅)
+    const t1Input = container.querySelector('#pile_t1');
+    if (t1Input) {
+        t1Input.addEventListener('blur', function() {
+            let val = parseFloat(this.value);
+            if (!isNaN(val)) {
+                this.value = val.toFixed(1);
+                localStorage.setItem('geo_pile_t1', this.value);
+            }
+        });
+    }
 
     // 일반 입력 필드 저장 이벤트
     const inputs = container.querySelectorAll('.input-grid input, .input-grid select');
