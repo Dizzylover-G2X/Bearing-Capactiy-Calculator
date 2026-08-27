@@ -193,7 +193,7 @@ export function initPileModule(container) {
         let qsText = "";
 
         if (method === 'driven') {
-            qpText = "300·N (사질토, N≤60) / 6·c_u (점성토, 상한 12,000 kN/m²)";
+            qpText = "300·N (N≤60)";
             qsText = "2.0·N (사질토, 상한 100 kN/m²), 1.0·c_u (점성토, 상한 100 kN/m²)";
         } else {
             if (qpVal === 'lh') {
@@ -501,7 +501,7 @@ function calculatePileCapacity() {
     const P_norm = parseFloat(document.getElementById('pile_P_norm').value);
     const P_seis = parseFloat(document.getElementById('pile_P_seis').value);
 
-    // 1. 선단지지력 (Qup) - 최하단 지층 토성구분 기준
+    // 1. 선단지지력 (Qup)
     let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', type: 'sand', n_val: 50, c_val: 0 };
     let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
     let c_tip = parseFloat(lastLayer.c_val) || 0;
@@ -513,15 +513,10 @@ function calculatePileCapacity() {
     let qp_calc_detail = "";
 
     if (method === 'driven') {
-        qp_formula_name = "항타공법 산정식";
-        if (lastLayer.type === 'sand') {
-            let N_used = Math.min(raw_N_tip, 60);
-            q_p = 300.0 * N_used;
-            qp_calc_detail = `300 &times; N (${N_used}) = <strong>${q_p.toFixed(1)} kN/m²</strong> (사질토 적용)`;
-        } else {
-            q_p = Math.min(6.0 * c_tip, 12000.0);
-            qp_calc_detail = `min(6 &times; c_u, 12,000) = min(6 &times; ${c_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong> (점성토 적용)`;
-        }
+        qp_formula_name = "항타공법 산정식 (300·N)";
+        let N_used = Math.min(raw_N_tip, 60);
+        q_p = 300.0 * N_used;
+        qp_calc_detail = `300 &times; N (${N_used}) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
     } else {
         if (qp_formula === 'lh') {
             qp_formula_name = "매입말뚝 - 주택공사 설계개선지침 (2008)";
@@ -542,14 +537,14 @@ function calculatePileCapacity() {
 
     const Qup = q_p * Ap;
 
-    // 2. 주면마찰력 (Qus) - 각 지층별 토성구분 기준
+    // 2. 주면마찰력 (Qus)
     const As = Math.PI * D;
     let total_Qus = 0;
     let layer_calc_rows = [];
     let qs_formula_name = "";
 
     if (method === 'driven') {
-        qs_formula_name = "항타공법 산정식";
+        qs_formula_name = "항타공법 산정식 (2.0·N / 1.0·c_u)";
     } else {
         qs_formula_name = qs_formula === 'lh' ? "매입말뚝 - 주택공사 설계개선지침 (2008)" : "매입말뚝 - 도로교설계기준해설 (2008)";
     }
@@ -697,7 +692,7 @@ function calculatePileCapacity() {
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
-            • 최하단 지층 및 토성구분 : <strong>${lastLayer.name}</strong> (${lastLayer.type === 'sand' ? '사질토' : '점성토'}, N = ${raw_N_tip}, c = ${c_tip} kN/m²)<br>
+            • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, c = ${c_tip} kN/m²)<br>
             • 단위면적당 극한선단지지력 q<sub>p</sub> = ${qp_calc_detail}<br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
             • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span><br><br>
