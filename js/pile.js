@@ -15,13 +15,13 @@ export function initPileModule(container) {
     };
 
     const STEEL_DB = {
-        "406.4": { defaultT: 12, displayD: "406" },
-        "508.0": { defaultT: 12, displayD: "508" },
-        "609.6": { defaultT: 14, displayD: "610" },
-        "711.2": { defaultT: 14, displayD: "711" },
-        "812.8": { defaultT: 14, displayD: "813" },
-        "914.4": { defaultT: 16, displayD: "914" },
-        "1016.0": { defaultT: 16, displayD: "1016" }
+        "406.4": { defaultT: 12, displayD: "406.4" },
+        "508.0": { defaultT: 12, displayD: "508.0" },
+        "609.6": { defaultT: 14, displayD: "609.6" },
+        "711.2": { defaultT: 14, displayD: "711.2" },
+        "812.8": { defaultT: 14, displayD: "812.8" },
+        "914.4": { defaultT: 16, displayD: "914.4" },
+        "1016.0": { defaultT: 16, displayD: "1016.0" }
     };
 
     const STEEL_GRADE_MAP = {
@@ -31,9 +31,9 @@ export function initPileModule(container) {
         "STP550": 550000
     };
 
-    // 레거시 저장 데이터(m 단위)를 mm 정수 단위로 보정
+    // 레거시 저장 데이터(m 단위)를 mm 단위로 보정
     let savedD = parseFloat(getVal('D', '500'));
-    if (savedD < 10) savedD = Math.round(savedD * 1000);
+    if (savedD < 10) savedD = savedD * 1000;
 
     // 초기 지층 데이터
     let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
@@ -79,7 +79,7 @@ export function initPileModule(container) {
                 <label>규격 선택 / 직경 D (mm)</label>
                 <div style="display:flex; gap:4px; height:32px;">
                     <select id="pile_spec_select" style="width:55%; height:100%; box-sizing:border-box; padding:2px; font-size:0.85em;"></select>
-                    <input type="number" id="pile_D" value="${savedD}" step="1" placeholder="D(mm)" style="width:45%; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.88em;">
+                    <input type="number" id="pile_D" value="${savedD}" step="0.1" placeholder="D(mm)" style="width:45%; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.88em;">
                 </div>
             </div>
 
@@ -216,6 +216,7 @@ export function initPileModule(container) {
 
             specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
             Object.keys(STEEL_DB).forEach(d => {
+                // 규격을 D???.? 소수점 첫째자리까지 표시
                 const dispD = STEEL_DB[d].displayD;
                 specSelect.innerHTML += `<option value="${d}">D${dispD}</option>`;
             });
@@ -248,7 +249,7 @@ export function initPileModule(container) {
         if (type === 'PHC') {
             const data = PHC_DB[specVal];
             if (data) {
-                dInput.value = Math.round(parseFloat(specVal)); // 정수 mm
+                dInput.value = Math.round(parseFloat(specVal));
                 tInput.value = data.t;
                 dInput.readOnly = true;
                 tInput.readOnly = true;
@@ -259,7 +260,8 @@ export function initPileModule(container) {
         } else if (type === 'STEEL') {
             const data = STEEL_DB[specVal];
             if (data) {
-                dInput.value = Math.round(parseFloat(specVal)); // 정수 mm (예: 508)
+                // 강관말뚝 소수점 첫째자리 직경 표시 (예: 508.0, 406.4)
+                dInput.value = parseFloat(specVal).toFixed(1);
                 tInput.value = data.defaultT;
                 dInput.readOnly = true;
                 tInput.readOnly = true;
@@ -436,12 +438,17 @@ function calculatePileCapacity() {
     const A_net = (Math.PI * (Math.pow(D_out, 2) - Math.pow(D_in, 2))) / 4.0;
 
     let Q_mat_base = 0;
+    let qMatBaseDetailStr = "";
+
     if (p_type === 'PHC') {
         Q_mat_base = grid5Val;
+        qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong> (해설 표 5.2.1 표준 허용축하중 적용)`;
     } else if (p_type === 'STEEL') {
-        Q_mat_base = grid5Val * A_net;
+        Q_mat_base = grid5Val * A_net; // σ_ca (kN/m²) × A_net (m²)
+        qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = ${grid5Val.toLocaleString()} kN/m² &times; ${A_net.toFixed(5)} m² = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
     } else {
-        Q_mat_base = grid5Val * 1000.0 * A_net;
+        Q_mat_base = grid5Val * 1000.0 * A_net; // σ_ca (MPa) × 1000 × A_net (m²)
+        qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> &times; 1000 = ${grid5Val.toFixed(1)} MPa &times; ${A_net.toFixed(5)} m² &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
     }
 
     const L_over_D = L / D;
@@ -509,7 +516,7 @@ function calculatePileCapacity() {
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 선단지층 : <strong>${lastLayer.name}</strong> (평균 N치 = ${raw_N_tip} &rarr; 설계 N치 = <strong>${N_tip}</strong> [상한 50 적용])<br>
-            • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (직경 D = ${D_mm}mm)<br>
+            • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (직경 D = ${D_mm.toFixed(1)}mm)<br>
             • 적용 산정식 : Q<sub>up</sub> = ${alpha_p} &times; N &times; A<sub>p</sub><br>
             • Q<sub>up</sub> = ${alpha_p} &times; ${N_tip} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span><br><br>
 
@@ -559,10 +566,10 @@ function calculatePileCapacity() {
 
         <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정 (구조물기초설계기준 해설)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
-            • 말뚝 외경 D<sub>out</sub> : ${D.toFixed(4)}m ${p_type === 'STEEL' ? '- 부식t1(' + (t1_mm/1000.0).toFixed(4) + 'm) = ' + D_out.toFixed(4) + 'm' : ''}<br>
+            • 말뚝 외경 D<sub>out</sub> : D - 부식t<sub>1</sub> = ${D.toFixed(4)}m ${p_type === 'STEEL' ? '- ' + (t1_mm/1000.0).toFixed(4) + 'm = ' + D_out.toFixed(4) + 'm' : '= ' + D_out.toFixed(4) + 'm'}<br>
             • 말뚝 내경 D<sub>in</sub> : D - 2 &times; t = ${D.toFixed(4)}m - 2 &times; ${(t_mm/1000.0).toFixed(4)}m = <strong>${D_in.toFixed(4)} m</strong><br>
-            • 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>
-            • 기본 허용압축하중 Q<sub>mat_base</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong> ${p_type === 'PHC' ? '(표 5.2.1 표준 허용축하중 적용)' : ''}<br><br>
+            • 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = &pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>
+            ${qMatBaseDetailStr}<br><br>
             • 산정 공식 : Q<sub>as</sub> = [1 - (&mu;<sub>1</sub> + &mu;<sub>2</sub>)/100] &times; Q<sub>mat_base</sub><br>
             • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
             • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'})<br>
