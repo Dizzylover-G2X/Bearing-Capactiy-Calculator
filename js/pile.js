@@ -37,8 +37,8 @@ export function initPileModule(container) {
     let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
     if (!pileLayers || !Array.isArray(pileLayers) || pileLayers.length === 0) {
         pileLayers = [
-            { name: '지층1', type: 'sand', dz: 4.40, n_val: 40, c_val: 25.0 },
-            { name: '지층2', type: 'sand', dz: 5.60, n_val: 40, c_val: 32.0 }
+            { name: '지층1', type: 'sand', dz: 4.40, n_val: 40, c_val: 25.0, gamma: 19.0 },
+            { name: '지층2', type: 'sand', dz: 5.60, n_val: 40, c_val: 32.0, gamma: 20.0 }
         ];
         localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
     }
@@ -48,6 +48,7 @@ export function initPileModule(container) {
     const initialType = getVal('type', 'PHC');
     const initialT1 = parseFloat(getVal('t1', '1.0')).toFixed(1);
     const initialMethod = getVal('method', 'bored');
+    const initialGWT = getVal('gwt', '2.0');
 
     container.innerHTML = `
         <h3>1. 설계자료 입력 (말뚝기초 연직지지력 검토)</h3>
@@ -127,7 +128,7 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 하단 실시간 산정식 구분 표시 안내 박스 -->
+        <!-- 하단 실시간 산정식 안내 박스 -->
         <div id="formula_info_box" style="margin-bottom: 15px; font-size: 0.83em; color: #2c3e50; background: #f4f6f7; padding: 8px 12px; border-radius: 4px; border-left: 4px solid #16a085;"></div>
 
         <!-- 2. 작용 하중 입력 -->
@@ -143,9 +144,15 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 3. 주면마찰력 산정을 위한 지층 정보 -->
+        <!-- 3. 지층 정보 (지하수위 입력항 추가) -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 지층 정보 (최하단 지층 평균 N치가 선단지지력에 자동 사용됨)</div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 지층 정보</span>
+                <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; color: #2c3e50; background: #eaf2f8; padding: 2px 8px; border-radius: 4px; border: 1px solid #aeb6bf;">
+                    <label for="pile_gwt" style="font-weight: bold;">지하수위 GWT (GL. -m):</label>
+                    <input type="number" id="pile_gwt" value="${initialGWT}" step="0.1" style="width: 55px; height: 22px; text-align: center; border: 1px solid #ccc; font-weight: bold;">
+                </div>
+            </div>
             <button type="button" id="pile_layer_add" style="padding: 4px 10px; background: #27ae60; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em; font-weight: bold;">+ 지층 추가</button>
         </div>
         
@@ -154,11 +161,12 @@ export function initPileModule(container) {
                 <table class="result-table" style="font-size: 0.85em; text-align: center; margin: 0; width: 100%; table-layout: fixed;">
                     <thead>
                         <tr style="background-color: #d1f2eb;">
-                            <th style="width: 24%; padding: 6px;">지층명</th>
-                            <th style="width: 24%; padding: 6px;">토성 구분</th>
-                            <th style="width: 16%; padding: 6px;">층후 L (m)</th>
-                            <th style="width: 14%; padding: 6px;">평균 N치</th>
-                            <th style="width: 14%; padding: 6px;">점착력 c (kN/m²)</th>
+                            <th style="width: 18%; padding: 6px;">지층명</th>
+                            <th style="width: 22%; padding: 6px;">토성 구분</th>
+                            <th style="width: 13%; padding: 6px;">층후 L (m)</th>
+                            <th style="width: 12%; padding: 6px;">평균 N치</th>
+                            <th style="width: 13%; padding: 6px;">점착력 c (kN/m²)</th>
+                            <th style="width: 14%; padding: 6px;">단위중량 γ (kN/m³)</th>
                             <th style="width: 8%; padding: 6px;">삭제</th>
                         </tr>
                     </thead>
@@ -167,7 +175,7 @@ export function initPileModule(container) {
                         <tr style="background-color: #ebf5fb; font-weight: bold; border-top: 2px solid #a3e4d7;">
                             <td colspan="2" style="padding: 8px 6px; text-align: right; color: #2980b9;">말뚝 총 길이 L (m) :</td>
                             <td id="pile_L_val" style="padding: 8px 6px; color: #16a085; font-size: 1.05em; text-align: center;">${calcTotalL().toFixed(2)}</td>
-                            <td colspan="3" style="padding: 8px 6px; text-align: left; color: #7f8c8d; font-size: 0.85em;">(지층 층후 자동 합산)</td>
+                            <td colspan="4" style="padding: 8px 6px; text-align: left; color: #7f8c8d; font-size: 0.85em;">(지층 층후 자동 합산)</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -182,6 +190,7 @@ export function initPileModule(container) {
     // UI 동적 제어 및 산정식 안내표시
     // ---------------------------------------------------------
     function updateFormulaInfoText() {
+        const type = document.getElementById('pile_type').value;
         const method = document.getElementById('pile_method').value;
         const qpVal = document.getElementById('pile_qp_formula').value;
         const qsVal = document.getElementById('pile_qs_formula').value;
@@ -192,7 +201,20 @@ export function initPileModule(container) {
         let qpText = "";
         let qsText = "";
 
-        if (method === 'driven') {
+        if (type === 'CAST') {
+            // 현장타설콘크리트말뚝 산정식 (해설 표 5.2.9)
+            if (qpVal === 'oneill') {
+                qpText = "57.4·N (N≤75) / 4,309.2 kN/m² (N>75) [O'Neill & Reese (1999)]";
+            } else {
+                qpText = "100·N_bar (사질토) / 6·c_u (점성토) [건축기초 구조설계지침 (2004)]";
+            }
+
+            if (qsVal === 'oneill') {
+                qsText = "f_s = β·σ_v' (β = 1.5 - 0.245√Z, 0.25 < β < 1.20, 상한 200 kPa) [O'Neill & Reese (1999)]";
+            } else {
+                qsText = "3.3·N (사질토, N≤50) / 1.0·c_u (점성토, c_u≤100 kPa) [건축기초 구조설계지침 (2004)]";
+            }
+        } else if (method === 'driven') {
             qpText = "300·N (N≤60)";
             if (qsVal === 'lh') {
                 qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
@@ -223,6 +245,7 @@ export function initPileModule(container) {
     }
 
     function updateMethodFormulas() {
+        const type = document.getElementById('pile_type').value;
         const method = document.getElementById('pile_method').value;
         const qpSelect = document.getElementById('pile_qp_formula');
         const qsSelect = document.getElementById('pile_qs_formula');
@@ -230,11 +253,23 @@ export function initPileModule(container) {
         const savedQp = getVal('qp_formula', 'road');
         const savedQs = getVal('qs_formula', 'road');
 
-        if (method === 'driven') {
+        if (type === 'CAST') {
+            // 현장타설말뚝 전용 산정식 옵션 (해설 표 5.2.9)
+            qpSelect.disabled = false;
+            qpSelect.innerHTML = `
+                <option value="oneill" ${savedQp === 'oneill' ? 'selected' : ''}>O'Neill & Reese (1999)</option>
+                <option value="aij" ${savedQp === 'aij' ? 'selected' : ''}>건축기초 구조설계지침 (2004)</option>
+            `;
+
+            qsSelect.disabled = false;
+            qsSelect.innerHTML = `
+                <option value="oneill" ${savedQs === 'oneill' ? 'selected' : ''}>O'Neill & Reese (1999)</option>
+                <option value="aij" ${savedQs === 'aij' ? 'selected' : ''}>건축기초 구조설계지침 (2004)</option>
+            `;
+        } else if (method === 'driven') {
             qpSelect.innerHTML = `<option value="driven_standard" selected>항타공법 표준식 (300N)</option>`;
             qpSelect.disabled = true;
 
-            // 항타공법 선택 시에도 주면마찰력 산정식(도로교 / 주택공사) 선택 가능
             qsSelect.disabled = false;
             qsSelect.innerHTML = `
                 <option value="road" ${savedQs === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
@@ -264,6 +299,9 @@ export function initPileModule(container) {
         const grid5Label = document.getElementById('grid5_label');
         const grid5Val = document.getElementById('grid5_val');
         const specSelect = document.getElementById('pile_spec_select');
+        const tSelect = document.getElementById('pile_t_select');
+        const tInput = document.getElementById('pile_t');
+        const pileMethod = document.getElementById('pile_method');
 
         specSelect.innerHTML = '';
 
@@ -283,6 +321,8 @@ export function initPileModule(container) {
                 specSelect.innerHTML += `<option value="${d}">D${d}</option>`;
             });
             specSelect.value = '500';
+
+            pileMethod.disabled = false;
 
         } else if (type === 'STEEL') {
             grid2Label.textContent = '강종 / 부식두께(mm)';
@@ -306,12 +346,28 @@ export function initPileModule(container) {
             });
             specSelect.value = '508.0';
 
+            pileMethod.disabled = false;
+
+        } else if (type === 'CAST') {
+            // 현장타설말뚝: 단면이 중공없는 원형이므로 두께 선택 비활성화 & 시공공법 매입말뚝 고정
+            grid2Label.textContent = '세부 구분';
+            grid2Content.innerHTML = `<span style="color:#aaa; font-size:0.85em; width:100%; text-align:center;">- (없음) -</span>`;
+            grid5Label.textContent = '허용압축응력 σ_ca (MPa)';
+            specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
+            grid5Val.value = '35.0';
+
+            // 시공 공법: 매입말뚝공법(현장타설)으로 고정 및 비활성화
+            pileMethod.value = 'bored';
+            pileMethod.disabled = true;
+
         } else {
             grid2Label.textContent = '세부 구분';
             grid2Content.innerHTML = `<span style="color:#aaa; font-size:0.85em; width:100%; text-align:center;">- (없음) -</span>`;
             grid5Label.textContent = '허용압축응력 σ_ca (MPa)';
             specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
-            grid5Val.value = (type === 'CAST') ? '35.0' : '80.0';
+            grid5Val.value = '80.0';
+
+            pileMethod.disabled = false;
         }
 
         applySpecSelection();
@@ -327,6 +383,20 @@ export function initPileModule(container) {
         const grid5Val = document.getElementById('grid5_val');
 
         tSelect.innerHTML = '';
+
+        if (type === 'CAST') {
+            // 현장타설말뚝: 두께 선택 불필요 (- 없음 - 표기 및 입력 불가)
+            tSelect.innerHTML = `<option value="none">- (없음) -</option>`;
+            tSelect.disabled = true;
+            tInput.value = '0';
+            tInput.readOnly = true;
+            tInput.style.backgroundColor = '#f2f2f2';
+            dInput.readOnly = false;
+            return;
+        }
+
+        tSelect.disabled = false;
+        tInput.style.backgroundColor = '#fff';
 
         if (specVal === 'direct') {
             dInput.readOnly = false;
@@ -377,6 +447,9 @@ export function initPileModule(container) {
     }
 
     function applyThicknessSelection() {
+        const type = document.getElementById('pile_type').value;
+        if (type === 'CAST') return;
+
         const tSelect = document.getElementById('pile_t_select');
         const tInput = document.getElementById('pile_t');
         if (!tSelect || !tInput) return;
@@ -412,6 +485,8 @@ export function initPileModule(container) {
         } else if (e.target.id === 'pile_qs_formula') {
             localStorage.setItem('geo_pile_qs_formula', e.target.value);
             updateFormulaInfoText();
+        } else if (e.target.id === 'pile_gwt') {
+            localStorage.setItem('geo_pile_gwt', e.target.value);
         }
     });
 
@@ -431,6 +506,7 @@ export function initPileModule(container) {
         if (!tbody) return;
         tbody.innerHTML = '';
         pileLayers.forEach((l, idx) => {
+            const gammaVal = l.gamma !== undefined ? l.gamma : 19.0;
             tbody.innerHTML += `
                 <tr>
                     <td style="padding:4px;"><input type="text" value="${l.name}" data-idx="${idx}" class="pl-name" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
@@ -443,6 +519,7 @@ export function initPileModule(container) {
                     <td style="padding:4px;"><input type="number" value="${l.dz.toFixed(2)}" data-idx="${idx}" class="pl-dz" step="0.1" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
                     <td style="padding:4px;"><input type="number" value="${l.n_val}" data-idx="${idx}" class="pl-n" step="1" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
                     <td style="padding:4px;"><input type="number" value="${l.c_val.toFixed(1)}" data-idx="${idx}" class="pl-c" step="0.5" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
+                    <td style="padding:4px;"><input type="number" value="${parseFloat(gammaVal).toFixed(1)}" data-idx="${idx}" class="pl-gamma" step="0.5" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
                     <td style="padding:4px;"><button type="button" class="pl-del" data-idx="${idx}" style="padding:3px 8px; background:#e74c3c; color:#fff; border:none; border-radius:3px; cursor:pointer;">-</button></td>
                 </tr>
             `;
@@ -460,14 +537,14 @@ export function initPileModule(container) {
         }
         if (e.target.classList.contains('pl-n')) pileLayers[e.target.dataset.idx].n_val = parseFloat(e.target.value) || 0;
         if (e.target.classList.contains('pl-c')) pileLayers[e.target.dataset.idx].c_val = parseFloat(e.target.value) || 0;
+        if (e.target.classList.contains('pl-gamma')) pileLayers[e.target.dataset.idx].gamma = parseFloat(e.target.value) || 19.0;
         localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
     });
 
-    // 지층 추가 시 지층1, 지층2, 지층3 형태의 단순 지층명 자동부여
     container.addEventListener('click', (e) => {
         if (e.target.id === 'pile_layer_add') {
             const nextIdx = pileLayers.length + 1;
-            pileLayers.push({ name: `지층${nextIdx}`, type: 'sand', dz: 3.0, n_val: 30, c_val: 0 });
+            pileLayers.push({ name: `지층${nextIdx}`, type: 'sand', dz: 3.0, n_val: 30, c_val: 0, gamma: 19.0 });
             localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
             renderLayers();
         }
@@ -493,8 +570,9 @@ function calculatePileCapacity() {
     const D_mm = parseFloat(document.getElementById('pile_D').value) || 500;
     const D = D_mm / 1000.0;
 
-    const t_mm = parseFloat(document.getElementById('pile_t').value);
+    const t_mm = (p_type === 'CAST') ? 0 : parseFloat(document.getElementById('pile_t').value);
     const grid5Val = parseFloat(document.getElementById('grid5_val').value) || 0;
+    const gwt = parseFloat(document.getElementById('pile_gwt')?.value) || 2.0;
 
     let t1_mm = 0;
     if (p_type === 'STEEL') {
@@ -512,7 +590,7 @@ function calculatePileCapacity() {
     const P_seis = parseFloat(document.getElementById('pile_P_seis').value);
 
     // 1. 선단지지력 (Qup)
-    let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', type: 'sand', n_val: 50, c_val: 0 };
+    let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', type: 'sand', n_val: 50, c_val: 0, gamma: 20.0 };
     let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
     let c_tip = parseFloat(lastLayer.c_val) || 0;
 
@@ -522,7 +600,28 @@ function calculatePileCapacity() {
     let qp_formula_name = "";
     let qp_calc_detail = "";
 
-    if (method === 'driven') {
+    if (p_type === 'CAST') {
+        // 현장타설콘크리트말뚝 (해설 표 5.2.9)
+        if (qp_formula === 'oneill') {
+            qp_formula_name = "현장타설말뚝 - O'Neill & Reese (1999)";
+            if (raw_N_tip <= 75) {
+                q_p = 57.4 * raw_N_tip;
+                qp_calc_detail = `57.4 &times; N (${raw_N_tip}) = <strong>${q_p.toFixed(1)} kN/m²</strong> (미보정 N&le;75)`;
+            } else {
+                q_p = 4309.2;
+                qp_calc_detail = `<strong>4,309.2 kN/m²</strong> (미보정 N>75 상한 적용)`;
+            }
+        } else {
+            qp_formula_name = "현장타설말뚝 - 건축기초 구조설계지침 (2004)";
+            if (lastLayer.type === 'sand') {
+                q_p = 100.0 * raw_N_tip;
+                qp_calc_detail = `100 &times; N_bar (${raw_N_tip}) = <strong>${q_p.toFixed(1)} kN/m²</strong> (사질토 적용)`;
+            } else {
+                q_p = 6.0 * c_tip;
+                qp_calc_detail = `6 &times; c_u (${c_tip}) = <strong>${q_p.toFixed(1)} kN/m²</strong> (점성토 적용)`;
+            }
+        }
+    } else if (method === 'driven') {
         qp_formula_name = "항타공법 산정식 (300·N)";
         let N_used = Math.min(raw_N_tip, 60);
         q_p = 300.0 * N_used;
@@ -547,23 +646,55 @@ function calculatePileCapacity() {
 
     const Qup = q_p * Ap;
 
-    // 2. 주면마찰력 (Qus)
+    // 2. 주면마찰력 (Qus) 및 지반 유효연직응력(σ_v') 계산
     const As = Math.PI * D;
     let total_Qus = 0;
     let layer_calc_rows = [];
     let qs_formula_name = "";
 
-    if (qs_formula === 'lh') {
+    if (p_type === 'CAST') {
+        qs_formula_name = qs_formula === 'oneill' ? "현장타설말뚝 - O'Neill & Reese (1999)" : "현장타설말뚝 - 건축기초 구조설계지침 (2004)";
+    } else if (qs_formula === 'lh') {
         qs_formula_name = (method === 'driven' ? "항타공법 - " : "매입말뚝 - ") + "주택공사 설계개선지침 (2008)";
     } else {
         qs_formula_name = (method === 'driven' ? "항타공법 - " : "매입말뚝 - ") + "도로교설계기준해설 (2008)";
     }
 
+    let cum_depth = 0;
+    let cum_sigma_v = 0; // 전응력 누적
+
     pileLayers.forEach(l => {
         let f_unit = 0;
         let formula_str = "";
+        let dz_i = parseFloat(l.dz) || 0;
+        let gamma_i = parseFloat(l.gamma) || 19.0;
 
-        if (method === 'driven') {
+        // 지층 중앙부 깊이 Z_i 및 유효연직응력 σ_v' 산정
+        let z_mid = cum_depth + 0.5 * dz_i;
+        let sigma_v_mid = cum_sigma_v + gamma_i * (0.5 * dz_i);
+        let u_mid = Math.max(0, (z_mid - gwt) * 9.81);
+        let sigma_v_prime = Math.max(0, sigma_v_mid - u_mid);
+
+        if (p_type === 'CAST') {
+            if (qs_formula === 'oneill') {
+                // f_s = β·σ_v', β = 1.5 - 0.245√Z (0.25 < β < 1.20)
+                let beta = 1.5 - 0.245 * Math.sqrt(Math.max(0.1, z_mid));
+                beta = Math.max(0.25, Math.min(1.20, beta));
+                f_unit = Math.min(200.0, beta * sigma_v_prime);
+                formula_str = `&beta;&middot;&sigma;<sub>v</sub>' = ${beta.toFixed(2)}&times;${sigma_v_prime.toFixed(1)} = ${f_unit.toFixed(1)} (max 200)`;
+            } else {
+                // 일본건축학회 (2004)
+                if (l.type === 'sand') {
+                    let N_lim = Math.min(l.n_val, 50.0);
+                    f_unit = 3.3 * N_lim;
+                    formula_str = `3.3 &times; N (${N_lim}) = ${f_unit.toFixed(1)}`;
+                } else {
+                    let c_lim = Math.min(l.c_val, 100.0);
+                    f_unit = 1.0 * c_lim;
+                    formula_str = `1.0 &times; c_u (${c_lim}) = ${f_unit.toFixed(1)}`;
+                }
+            }
+        } else if (method === 'driven') {
             if (qs_formula === 'lh') {
                 if (l.type === 'sand') {
                     let N_lim = Math.min(l.n_val, 50.0);
@@ -609,32 +740,43 @@ function calculatePileCapacity() {
             }
         }
 
-        let fxL = f_unit * l.dz;
+        let fxL = f_unit * dz_i;
         let Qus_i = fxL * As;
         total_Qus += Qus_i;
 
         layer_calc_rows.push({
             name: l.name,
             type: l.type === 'sand' ? '사질토' : '점성토',
-            dz: l.dz,
+            dz: dz_i,
             n_val: l.n_val,
             c_val: l.c_val,
+            gamma: gamma_i,
+            z_mid: z_mid,
+            sigma_v_prime: sigma_v_prime,
             formula: formula_str,
             f_unit: f_unit,
             fxL: fxL,
             qusi: Qus_i
         });
+
+        cum_depth += dz_i;
+        cum_sigma_v += gamma_i * dz_i;
     });
 
-    // 3. 지반 허용지지력 (Qa_soil) - 내진시 F.S=2.0 적용 (Qu / 2.0)
+    // 3. 지반 허용지지력 (Qa_soil) - 내진시 F.S=2.0
     const Qu_total = Qup + total_Qus;
     const Qa_soil_norm = Qu_total / 3.0;
     const Qa_soil_seis = Qu_total / 2.0;
 
     // 4. 재료 허용압축하중 (Qas)
-    const D_out = D - (t1_mm / 1000.0);
-    const D_in = Math.max(0, D - 2.0 * (t_mm / 1000.0));
-    const A_net = (Math.PI * (Math.pow(D_out, 2) - Math.pow(D_in, 2))) / 4.0;
+    let A_net = 0;
+    if (p_type === 'CAST') {
+        A_net = Ap; // 원형 실단면
+    } else {
+        const D_out = D - (t1_mm / 1000.0);
+        const D_in = Math.max(0, D - 2.0 * (t_mm / 1000.0));
+        A_net = (Math.PI * (Math.pow(D_out, 2) - Math.pow(D_in, 2))) / 4.0;
+    }
 
     let Q_mat_base = 0;
     let qMatBaseDetailStr = "";
@@ -663,11 +805,11 @@ function calculatePileCapacity() {
     if (joint_type === 'weld') mu2_base = 5.0;
     else if (joint_type === 'bolt') mu2_base = 10.0;
     
-    let mu2 = (method === 'bored') ? (mu2_base * 0.5 * joint_cnt) : (mu2_base * joint_cnt);
+    let mu2 = (method === 'bored' || p_type === 'CAST') ? (mu2_base * 0.5 * joint_cnt) : (mu2_base * joint_cnt);
 
     const Qas = (1.0 - (mu1 + mu2) / 100.0) * Q_mat_base;
 
-    // 5. 안전성 검토 및 비율 (작용력/허용력)% 계산
+    // 5. 안전성 검토 및 비율 (작용력/허용력)%
     const Q_app_norm = Math.min(Qa_soil_norm, Qas);
     const Q_app_seis = Math.min(Qa_soil_seis, Qas);
 
@@ -714,7 +856,7 @@ function calculatePileCapacity() {
             </table>
         </div>
 
-        <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정 (구조물기초설계기준 해설)</div>
+        <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정 (구조물기초설계기준 해설 표 5.2.9)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
@@ -725,6 +867,7 @@ function calculatePileCapacity() {
 
             <strong>(2) 말뚝 주면마찰력 (Q<sub>us</sub>)</strong><br>
             • 적용 산정식 : <strong>${qs_formula_name}</strong><br>
+            • 지하수위 GWT : <strong>GL. -${gwt.toFixed(1)} m</strong><br>
             • 말뚝 둘레 A<sub>s</sub> = &pi; &times; D = &pi; &times; ${D.toFixed(3)} = <strong>${As.toFixed(3)} m</strong><br>
             • <strong>총 극한주면마찰력 Q<sub>us</sub></strong> = &sum; (f<sub>s</sub> &times; L) &times; A<sub>s</sub> = <strong>${total_Qus.toFixed(1)} kN</strong>
         </div>
@@ -736,7 +879,8 @@ function calculatePileCapacity() {
                         <th>지층명</th>
                         <th>토성구분</th>
                         <th>층후 L (m)</th>
-                        <th>N치 / c</th>
+                        <th>N치 / c / &gamma;</th>
+                        <th>중앙깊이 Z / 유효응력 &sigma;<sub>v</sub>'</th>
                         <th>단위 마찰력 f<sub>s</sub> (kN/m²)</th>
                         <th>f<sub>s</sub> &times; L</th>
                         <th>층별 주면마찰력 Q<sub>us,i</sub> (kN)</th>
@@ -748,7 +892,8 @@ function calculatePileCapacity() {
                             <td>${r.name}</td>
                             <td>${r.type}</td>
                             <td>${r.dz.toFixed(2)}</td>
-                            <td>${r.n_val} / ${r.c_val}</td>
+                            <td>${r.n_val} / ${r.c_val} / ${r.gamma.toFixed(1)}</td>
+                            <td>${r.z_mid.toFixed(2)}m / ${r.sigma_v_prime.toFixed(1)}kPa</td>
                             <td>${r.formula}</td>
                             <td>${r.fxL.toFixed(1)}</td>
                             <td style="font-weight:bold;">${r.qusi.toFixed(1)}</td>
@@ -757,7 +902,7 @@ function calculatePileCapacity() {
                 </tbody>
                 <tfoot>
                     <tr style="background-color: #f5eef8; font-weight: bold;">
-                        <td colspan="6">주면마찰력 합계 (&sum;)</td>
+                        <td colspan="7">주면마찰력 합계 (&sum;)</td>
                         <td style="color:#27ae60;">${total_Qus.toFixed(1)} kN</td>
                     </tr>
                 </tfoot>
@@ -772,13 +917,11 @@ function calculatePileCapacity() {
 
         <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정 (구조물기초설계기준 해설)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
-            • 말뚝 외경 D<sub>out</sub> : D - 부식t<sub>1</sub> = ${D.toFixed(4)}m ${p_type === 'STEEL' ? '- ' + (t1_mm/1000.0).toFixed(4) + 'm = ' + D_out.toFixed(4) + 'm' : '= ' + D_out.toFixed(4) + 'm'}<br>
-            • 말뚝 내경 D<sub>in</sub> : D - 2 &times; t = ${D.toFixed(4)}m - 2 &times; ${(t_mm/1000.0).toFixed(4)}m = <strong>${D_in.toFixed(4)} m</strong><br>
-            • 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = &pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>
+            ${p_type === 'CAST' ? `• 현장타설말뚝 실단면적 A<sub>net</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${A_net.toFixed(5)} m²</strong> (직경 D = ${D_mm.toFixed(1)}mm)<br>` : `• 말뚝 외경 D<sub>out</sub> : D - 부식t<sub>1</sub> = ${D.toFixed(4)}m ${p_type === 'STEEL' ? '- ' + (t1_mm/1000.0).toFixed(4) + 'm = ' + D_out.toFixed(4) + 'm' : '= ' + D_out.toFixed(4) + 'm'}<br>• 말뚝 내경 D<sub>in</sub> : D - 2 &times; t = ${D.toFixed(4)}m - 2 &times; ${(t_mm/1000.0).toFixed(4)}m = <strong>${D_in.toFixed(4)} m</strong><br>• 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = &pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>`}
             ${qMatBaseDetailStr}<br><br>
             • 산정 공식 : Q<sub>as</sub> = [1 - (&mu;<sub>1</sub> + &mu;<sub>2</sub>)/100] &times; Q<sub>mat_base</sub><br>
             • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
-            • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'}${method === 'bored' ? ', 매입말뚝 손상감소율 1/2 적용' : ''})<br>
+            • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'})<br>
             • <strong>최종 재료 허용압축하중 Q<sub>as</sub></strong> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <span style="color:#8e44ad; font-weight:bold;">${Qas.toFixed(1)} kN</span>
         </div>
 
