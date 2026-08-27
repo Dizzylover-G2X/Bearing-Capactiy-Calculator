@@ -37,8 +37,8 @@ export function initPileModule(container) {
     let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
     if (!pileLayers || !Array.isArray(pileLayers) || pileLayers.length === 0) {
         pileLayers = [
-            { name: '풍화토(N>40)', type: 'sand', dz: 4.40, n_val: 40, c_val: 25.0 },
-            { name: '풍화암', type: 'sand', dz: 5.60, n_val: 40, c_val: 32.0 }
+            { name: '지층1', type: 'sand', dz: 4.40, n_val: 40, c_val: 25.0 },
+            { name: '지층2', type: 'sand', dz: 5.60, n_val: 40, c_val: 32.0 }
         ];
         localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
     }
@@ -194,7 +194,11 @@ export function initPileModule(container) {
 
         if (method === 'driven') {
             qpText = "300·N (N≤60)";
-            qsText = "2.0·N (사질토, 상한 100 kN/m²), 1.0·c_u (점성토, 상한 100 kN/m²)";
+            if (qsVal === 'lh') {
+                qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
+            } else {
+                qsText = "2.0·N (사질토, 상한 100 kN/m²), 1.0·c_u (점성토, 상한 100 kN/m²)";
+            }
         } else {
             if (qpVal === 'lh') {
                 qpText = "250·N (N≤60)";
@@ -227,11 +231,15 @@ export function initPileModule(container) {
         const savedQs = getVal('qs_formula', 'road');
 
         if (method === 'driven') {
-            qpSelect.innerHTML = `<option value="driven_standard" selected>항타공법 표준식</option>`;
+            qpSelect.innerHTML = `<option value="driven_standard" selected>항타공법 표준식 (300N)</option>`;
             qpSelect.disabled = true;
 
-            qsSelect.innerHTML = `<option value="driven_standard" selected>항타공법 표준식</option>`;
-            qsSelect.disabled = true;
+            // 항타공법 선택 시에도 주면마찰력 산정식(도로교 / 주택공사) 선택 가능
+            qsSelect.disabled = false;
+            qsSelect.innerHTML = `
+                <option value="road" ${savedQs === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
+                <option value="lh" ${savedQs === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
+            `;
         } else {
             qpSelect.disabled = false;
             qpSelect.innerHTML = `
@@ -455,9 +463,11 @@ export function initPileModule(container) {
         localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
     });
 
+    // 지층 추가 시 지층1, 지층2, 지층3 형태의 단순 지층명 자동부여
     container.addEventListener('click', (e) => {
         if (e.target.id === 'pile_layer_add') {
-            pileLayers.push({ name: '신규지층', type: 'sand', dz: 3.0, n_val: 30, c_val: 0 });
+            const nextIdx = pileLayers.length + 1;
+            pileLayers.push({ name: `지층${nextIdx}`, type: 'sand', dz: 3.0, n_val: 30, c_val: 0 });
             localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
             renderLayers();
         }
@@ -543,10 +553,10 @@ function calculatePileCapacity() {
     let layer_calc_rows = [];
     let qs_formula_name = "";
 
-    if (method === 'driven') {
-        qs_formula_name = "항타공법 산정식 (2.0·N / 1.0·c_u)";
+    if (qs_formula === 'lh') {
+        qs_formula_name = (method === 'driven' ? "항타공법 - " : "매입말뚝 - ") + "주택공사 설계개선지침 (2008)";
     } else {
-        qs_formula_name = qs_formula === 'lh' ? "매입말뚝 - 주택공사 설계개선지침 (2008)" : "매입말뚝 - 도로교설계기준해설 (2008)";
+        qs_formula_name = (method === 'driven' ? "항타공법 - " : "매입말뚝 - ") + "도로교설계기준해설 (2008)";
     }
 
     pileLayers.forEach(l => {
@@ -554,12 +564,25 @@ function calculatePileCapacity() {
         let formula_str = "";
 
         if (method === 'driven') {
-            if (l.type === 'sand') {
-                f_unit = Math.min(2.0 * l.n_val, 100.0);
-                formula_str = `min(2.0 &times; N, 100) = ${f_unit.toFixed(1)}`;
+            if (qs_formula === 'lh') {
+                if (l.type === 'sand') {
+                    let N_lim = Math.min(l.n_val, 50.0);
+                    f_unit = 2.0 * N_lim;
+                    formula_str = `2.0 &times; N (${N_lim}) = ${f_unit.toFixed(1)}`;
+                } else {
+                    let c_lim = Math.min(l.c_val, 125.0);
+                    let q_u = 2.0 * c_lim;
+                    f_unit = 5.0 * q_u;
+                    formula_str = `5.0 &times; q_u (${q_u.toFixed(1)}) = ${f_unit.toFixed(1)}`;
+                }
             } else {
-                f_unit = Math.min(1.0 * l.c_val, 100.0);
-                formula_str = `min(1.0 &times; c_u, 100) = ${f_unit.toFixed(1)}`;
+                if (l.type === 'sand') {
+                    f_unit = Math.min(2.0 * l.n_val, 100.0);
+                    formula_str = `min(2.0 &times; N, 100) = ${f_unit.toFixed(1)}`;
+                } else {
+                    f_unit = Math.min(1.0 * l.c_val, 100.0);
+                    formula_str = `min(1.0 &times; c_u, 100) = ${f_unit.toFixed(1)}`;
+                }
             }
         } else {
             if (qs_formula === 'lh') {
@@ -603,10 +626,10 @@ function calculatePileCapacity() {
         });
     });
 
-    // 3. 지반 허용지지력 (Qa_soil)
+    // 3. 지반 허용지지력 (Qa_soil) - 내진시 F.S=2.0 적용 (Qu / 2.0)
     const Qu_total = Qup + total_Qus;
     const Qa_soil_norm = Qu_total / 3.0;
-    const Qa_soil_seis = Qa_soil_norm * 1.25;
+    const Qa_soil_seis = Qu_total / 2.0;
 
     // 4. 재료 허용압축하중 (Qas)
     const D_out = D - (t1_mm / 1000.0);
@@ -644,12 +667,15 @@ function calculatePileCapacity() {
 
     const Qas = (1.0 - (mu1 + mu2) / 100.0) * Q_mat_base;
 
-    // 5. 안전성 검토
+    // 5. 안전성 검토 및 비율 (작용력/허용력)% 계산
     const Q_app_norm = Math.min(Qa_soil_norm, Qas);
     const Q_app_seis = Math.min(Qa_soil_seis, Qas);
 
-    const status_norm = P_norm <= Q_app_norm ? "안정 (O.K)" : "NG";
-    const status_seis = P_seis <= Q_app_seis ? "안정 (O.K)" : "NG";
+    const ratio_norm = (P_norm / Q_app_norm) * 100;
+    const ratio_seis = (P_seis / Q_app_seis) * 100;
+
+    const status_norm = P_norm <= Q_app_norm ? `안정 (O.K) (${ratio_norm.toFixed(1)}%)` : `NG (${ratio_norm.toFixed(1)}%)`;
+    const status_seis = P_seis <= Q_app_seis ? `안정 (O.K) (${ratio_seis.toFixed(1)}%)` : `NG (${ratio_seis.toFixed(1)}%)`;
 
     // 6. 결과 렌더링
     const resultDiv = document.getElementById('settlement-result') || document.getElementById('pile-result');
@@ -665,7 +691,7 @@ function calculatePileCapacity() {
                         <th>재료 허용지지력 (kN)</th>
                         <th>적용 허용지지력 (kN)</th>
                         <th>작용하중 (kN)</th>
-                        <th>검토 결과</th>
+                        <th>검토 결과 (작용/허용 %)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -675,14 +701,14 @@ function calculatePileCapacity() {
                         <td rowspan="2" style="vertical-align: middle; font-weight:bold; color:#8e44ad;">${Qas.toFixed(1)}<br><span style="font-size:0.8em; font-weight:normal; color:#7f8c8d;">(단일값 적용)</span></td>
                         <td style="font-weight:bold; color:#2980b9;">${Q_app_norm.toFixed(1)}</td>
                         <td>${P_norm.toFixed(1)}</td>
-                        <td style="font-weight:bold; color:${status_norm.includes('안정') ? '#27ae60' : '#c0392b'};">${status_norm}</td>
+                        <td style="font-weight:bold; color:${P_norm <= Q_app_norm ? '#27ae60' : '#c0392b'};">${status_norm}</td>
                     </tr>
                     <tr>
                         <td><strong>내진시 (지진시)</strong></td>
                         <td>${Qa_soil_seis.toFixed(1)}</td>
                         <td style="font-weight:bold; color:#2980b9;">${Q_app_seis.toFixed(1)}</td>
                         <td>${P_seis.toFixed(1)}</td>
-                        <td style="font-weight:bold; color:${status_seis.includes('안정') ? '#27ae60' : '#c0392b'};">${status_seis}</td>
+                        <td style="font-weight:bold; color:${P_seis <= Q_app_seis ? '#27ae60' : '#c0392b'};">${status_seis}</td>
                     </tr>
                 </tbody>
             </table>
@@ -741,7 +767,7 @@ function calculatePileCapacity() {
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px;">
             <strong>(3) 지반 허용지지력 (Q<sub>a,soil</sub>)</strong><br>
             • 평상시 (F.S = 3.0) : (Q<sub>up</sub> + Q<sub>us</sub>) / 3.0 = (${Qup.toFixed(1)} + ${total_Qus.toFixed(1)}) / 3.0 = <strong>${Qa_soil_norm.toFixed(1)} kN</strong><br>
-            • 내진시 : 평상시 허용지지력 &times; 1.25 = ${Qa_soil_norm.toFixed(1)} &times; 1.25 = <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
+            • 내진시 (F.S = 2.0) : (Q<sub>up</sub> + Q<sub>us</sub>) / 2.0 = (${Qup.toFixed(1)} + ${total_Qus.toFixed(1)}) / 2.0 = <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
         </div>
 
         <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정 (구조물기초설계기준 해설)</div>
