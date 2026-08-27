@@ -95,7 +95,7 @@ export function initPileModule(container) {
 
         <!-- Row 2: 시공 공법 | 선단지지력 식 | 주면마찰력 식 | 이음 방법 및 개소 (4개 그리드박스) -->
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px;">
-            <!-- [1] 시공 공법 선택 (일반 폰트) -->
+            <!-- [1] 시공 공법 선택 -->
             <div class="input-group" style="margin:0;">
                 <label>시공 공법</label>
                 <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em; font-weight: normal;">
@@ -131,7 +131,7 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 하단 실시간 산정식 구분 표시 안내 박스 -->
+        <!-- 하단 실시간 산정식 구분 표시 안내 박스 (요청 문구 삭제 반영) -->
         <div id="formula_info_box" style="margin-bottom: 15px; font-size: 0.83em; color: #2c3e50; background: #f4f6f7; padding: 8px 12px; border-radius: 4px; border-left: 4px solid #16a085;"></div>
 
         <!-- 2. 작용 하중 입력 -->
@@ -183,7 +183,7 @@ export function initPileModule(container) {
     `;
 
     // ---------------------------------------------------------
-    // UI 동적 제어 및 산정식 구체 표기 안내
+    // UI 동적 제어 및 산정식 안내표시
     // ---------------------------------------------------------
     function updateFormulaInfoText() {
         const method = document.getElementById('pile_method').value;
@@ -207,17 +207,17 @@ export function initPileModule(container) {
             }
 
             if (qsVal === 'lh') {
-                qsText = "2.0·N (사질토), 5.0·q_u (점성토, q_u=2c_u)";
+                qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
             } else {
-                qsText = "2.5·N (사질토, N≤50), 0.8·c_u (점성토, c_u≤125)";
+                qsText = "2.5·N (사질토, N≤50), 0.8·c_u (점성토, c_u≤125 kN/m²)";
             }
         }
 
         infoBox.innerHTML = `
             <div style="font-weight: bold; color: #16a085; margin-bottom: 2px;">▶ 적용 산정식</div>
             <div style="margin-left: 6px; line-height: 1.5;">
-                • <strong>선단지지력 :</strong> ${qpText} <span style="color:#7f8c8d; font-size:0.9em;">(최하단 지층 토성구분 기준)</span><br>
-                • <strong>주면마찰력 :</strong> ${qsText} <span style="color:#7f8c8d; font-size:0.9em;">(각 지층별 토성구분 기준)</span>
+                • <strong>선단지지력 :</strong> ${qpText}<br>
+                • <strong>주면마찰력 :</strong> ${qsText}
             </div>
         `;
     }
@@ -546,7 +546,7 @@ function calculatePileCapacity() {
 
     const Qup = q_p * Ap;
 
-    // 2. 주면마찰력 (Qus) - 각 지층별 토성구분 기준
+    // 2. 주면마찰력 (Qus) - 각 지층별 토성구분 기준 (주택공사 지침 N≤50, c_u≤125 상한 추가)
     const As = Math.PI * D;
     let total_Qus = 0;
     let layer_calc_rows = [];
@@ -573,22 +573,24 @@ function calculatePileCapacity() {
         } else {
             if (qs_formula === 'lh') {
                 if (l.type === 'sand') {
-                    f_unit = 2.0 * l.n_val;
-                    formula_str = `2.0 &times; N = ${f_unit.toFixed(1)}`;
+                    let N_lim = Math.min(l.n_val, 50.0);
+                    f_unit = 2.0 * N_lim;
+                    formula_str = `2.0 &times; N (${N_lim}) = ${f_unit.toFixed(1)}`;
                 } else {
-                    let q_u = 2.0 * l.c_val;
+                    let c_lim = Math.min(l.c_val, 125.0);
+                    let q_u = 2.0 * c_lim;
                     f_unit = 5.0 * q_u;
-                    formula_str = `5.0 &times; q_u = ${f_unit.toFixed(1)}`;
+                    formula_str = `5.0 &times; q_u (${q_u.toFixed(1)}) = ${f_unit.toFixed(1)}`;
                 }
             } else {
                 if (l.type === 'sand') {
                     let N_lim = Math.min(l.n_val, 50.0);
                     f_unit = 2.5 * N_lim;
-                    formula_str = `2.5 &times; N = ${f_unit.toFixed(1)}`;
+                    formula_str = `2.5 &times; N (${N_lim}) = ${f_unit.toFixed(1)}`;
                 } else {
                     let c_lim = Math.min(l.c_val, 125.0);
                     f_unit = 0.8 * c_lim;
-                    formula_str = `0.8 &times; c_u = ${f_unit.toFixed(1)}`;
+                    formula_str = `0.8 &times; c_u (${c_lim}) = ${f_unit.toFixed(1)}`;
                 }
             }
         }
