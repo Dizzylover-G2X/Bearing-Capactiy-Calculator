@@ -37,8 +37,8 @@ export function initPileModule(container) {
     let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
     if (!pileLayers || !Array.isArray(pileLayers) || pileLayers.length === 0) {
         pileLayers = [
-            { name: '지층1', type: 'sand', dz: 4.40, n_val: 40, c_val: 25.0, gamma: 19.0 },
-            { name: '지층2', type: 'sand', dz: 5.60, n_val: 40, c_val: 32.0, gamma: 20.0 }
+            { name: '지층1', type: 'sand', dz: 4.40, n_val: 40, gamma: 19.0, c_val: 25.0 },
+            { name: '지층2', type: 'sand', dz: 5.60, n_val: 40, gamma: 20.0, c_val: 32.0 }
         ];
         localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
     }
@@ -61,7 +61,8 @@ export function initPileModule(container) {
                 <select id="pile_type" style="width:100%; height:32px; box-sizing:border-box; padding:4px; font-size:0.88em;">
                     <option value="PHC" ${initialType === 'PHC' ? 'selected' : ''}>PHC 말뚝</option>
                     <option value="STEEL" ${initialType === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
-                    <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설말뚝</option>
+                    <option value="CAST" ${initialType === 'CAST' ? 'selected' : ''}>현장타설말뚝(토사)</option>
+                    <option value="CAST_ROCK" ${initialType === 'CAST_ROCK' ? 'selected' : ''}>현장타설말뚝(기반암)</option>
                     <option value="PC" ${initialType === 'PC' ? 'selected' : ''}>PC 말뚝</option>
                     <option value="RC" ${initialType === 'RC' ? 'selected' : ''}>RC 말뚝</option>
                 </select>
@@ -144,7 +145,7 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 3. 지층 정보 (지하수위 입력항 추가) -->
+        <!-- 3. 지층 정보 (위치 변경 및 암반 추가) -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <span style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 지층 정보</span>
@@ -161,12 +162,12 @@ export function initPileModule(container) {
                 <table class="result-table" style="font-size: 0.85em; text-align: center; margin: 0; width: 100%; table-layout: fixed;">
                     <thead>
                         <tr style="background-color: #d1f2eb;">
-                            <th style="width: 18%; padding: 6px;">지층명</th>
-                            <th style="width: 22%; padding: 6px;">토성 구분</th>
-                            <th style="width: 13%; padding: 6px;">층후 L (m)</th>
+                            <th style="width: 17%; padding: 6px;">지층명</th>
+                            <th style="width: 23%; padding: 6px;">토성 구분</th>
+                            <th style="width: 12%; padding: 6px;">층후 L (m)</th>
                             <th style="width: 12%; padding: 6px;">평균 N치</th>
-                            <th style="width: 13%; padding: 6px;">점착력 c (kN/m²)</th>
                             <th style="width: 14%; padding: 6px;">단위중량 γ (kN/m³)</th>
+                            <th style="width: 14%; padding: 6px;">점착력 c / 일축 q<sub>u</sub> (kPa)</th>
                             <th style="width: 8%; padding: 6px;">삭제</th>
                         </tr>
                     </thead>
@@ -201,38 +202,28 @@ export function initPileModule(container) {
         let qpText = "";
         let qsText = "";
 
-        if (type === 'CAST') {
-            // 현장타설콘크리트말뚝 산정식 (해설 표 5.2.9)
-            if (qpVal === 'oneill') {
-                qpText = "57.4·N (N≤75) / 4,309.2 kN/m² (N>75) [O'Neill & Reese (1999)]";
-            } else {
-                qpText = "100·N_bar (사질토) / 6·c_u (점성토) [건축기초 구조설계지침 (2004)]";
-            }
+        if (type === 'CAST_ROCK') {
+            if (qpVal === 'rock_case1') qpText = "q_p = 2.5·q_u (암반절리 없음/신선암)";
+            else qpText = "q_p = [√s + √(m√s + s)]·q_u (여러방향 절리, s=0.00009, m=0.311 가정)";
 
-            if (qsVal === 'oneill') {
-                qsText = "f_s = β·σ_v' (β = 1.5 - 0.245√Z, 0.25 < β < 1.20, 상한 200 kPa) [O'Neill & Reese (1999)]";
-            } else {
-                qsText = "3.3·N (사질토, N≤50) / 1.0·c_u (점성토, c_u≤100 kPa) [건축기초 구조설계지침 (2004)]";
-            }
+            if (qsVal === 'oneill') qsText = "토사: O'Neill & Reese (1999) / 암반: Horvath & Kenney (1979)";
+            else qsText = "토사: 건축기초 지침 (2004) / 암반: Horvath & Kenney (1979)";
+        } else if (type === 'CAST') {
+            if (qpVal === 'oneill') qpText = "57.4·N (N≤75) / 4,309.2 kN/m² (N>75) [O'Neill & Reese (1999)]";
+            else qpText = "100·N_bar (사질토) / 6·c_u (점성토) [건축기초 구조설계지침 (2004)]";
+
+            if (qsVal === 'oneill') qsText = "f_s = β·σ_v' (β = 1.5 - 0.245√Z, 상한 200 kPa) [O'Neill & Reese (1999)]";
+            else qsText = "3.3·N (사질토, N≤50) / 1.0·c_u (점성토, c_u≤100 kPa) [건축기초 구조설계지침 (2004)]";
         } else if (method === 'driven') {
             qpText = "300·N (N≤60)";
-            if (qsVal === 'lh') {
-                qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
-            } else {
-                qsText = "2.0·N (사질토, 상한 100 kN/m²), 1.0·c_u (점성토, 상한 100 kN/m²)";
-            }
+            if (qsVal === 'lh') qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
+            else qsText = "2.0·N (사질토, 상한 100 kN/m²), 1.0·c_u (점성토, 상한 100 kN/m²)";
         } else {
-            if (qpVal === 'lh') {
-                qpText = "250·N (N≤60)";
-            } else {
-                qpText = "200·N (사질토, 상한 12,000 kN/m²), 6·c_u (점성토, 상한 12,000 kN/m²)";
-            }
+            if (qpVal === 'lh') qpText = "250·N (N≤60)";
+            else qpText = "200·N (사질토, 상한 12,000 kN/m²), 6·c_u (점성토, 상한 12,000 kN/m²)";
 
-            if (qsVal === 'lh') {
-                qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
-            } else {
-                qsText = "2.5·N (사질토, N≤50), 0.8·c_u (점성토, c_u≤125 kN/m²)";
-            }
+            if (qsVal === 'lh') qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
+            else qsText = "2.5·N (사질토, N≤50), 0.8·c_u (점성토, c_u≤125 kN/m²)";
         }
 
         infoBox.innerHTML = `
@@ -253,14 +244,23 @@ export function initPileModule(container) {
         const savedQp = getVal('qp_formula', 'road');
         const savedQs = getVal('qs_formula', 'road');
 
-        if (type === 'CAST') {
-            // 현장타설말뚝 전용 산정식 옵션 (해설 표 5.2.9)
+        if (type === 'CAST_ROCK') {
+            qpSelect.disabled = false;
+            qpSelect.innerHTML = `
+                <option value="rock_case1" ${savedQp === 'rock_case1' ? 'selected' : ''}>암반 Case-1 (2.5 q_u)</option>
+                <option value="rock_case2" ${savedQp === 'rock_case2' ? 'selected' : ''}>암반 Case-2 (여러방향 절리)</option>
+            `;
+            qsSelect.disabled = false;
+            qsSelect.innerHTML = `
+                <option value="oneill" ${savedQs === 'oneill' ? 'selected' : ''}>O'Neill (토사) + H&K (암반)</option>
+                <option value="aij" ${savedQs === 'aij' ? 'selected' : ''}>건축기초 (토사) + H&K (암반)</option>
+            `;
+        } else if (type === 'CAST') {
             qpSelect.disabled = false;
             qpSelect.innerHTML = `
                 <option value="oneill" ${savedQp === 'oneill' ? 'selected' : ''}>O'Neill & Reese (1999)</option>
                 <option value="aij" ${savedQp === 'aij' ? 'selected' : ''}>건축기초 구조설계지침 (2004)</option>
             `;
-
             qsSelect.disabled = false;
             qsSelect.innerHTML = `
                 <option value="oneill" ${savedQs === 'oneill' ? 'selected' : ''}>O'Neill & Reese (1999)</option>
@@ -281,7 +281,6 @@ export function initPileModule(container) {
                 <option value="road" ${savedQp === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
                 <option value="lh" ${savedQp === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
             `;
-
             qsSelect.disabled = false;
             qsSelect.innerHTML = `
                 <option value="road" ${savedQs === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
@@ -348,15 +347,24 @@ export function initPileModule(container) {
 
             pileMethod.disabled = false;
 
-        } else if (type === 'CAST') {
-            // 현장타설말뚝: 단면이 중공없는 원형이므로 두께 선택 비활성화 & 시공공법 매입말뚝 고정
-            grid2Label.textContent = '세부 구분';
-            grid2Content.innerHTML = `<span style="color:#aaa; font-size:0.85em; width:100%; text-align:center;">- (없음) -</span>`;
+        } else if (type === 'CAST' || type === 'CAST_ROCK') {
+            if (type === 'CAST_ROCK') {
+                grid2Label.innerHTML = 'f<sub>ck</sub>(MPa) / &alpha;<sub>E</sub>';
+                grid2Content.innerHTML = `
+                    <div style="display:flex; gap:3px; width:100%; height:100%;">
+                        <input type="number" id="pile_fck" value="${getVal('fck', '27.0')}" step="1" placeholder="fck" title="콘크리트 압축강도 fck(MPa)" style="flex:1; min-width:0; text-align:center; box-sizing:border-box; padding:2px; border:1px solid #ccc; font-size:0.85em;">
+                        <input type="number" id="pile_alpha_e" value="${getVal('alpha_e', '0.37')}" step="0.01" placeholder="α_E" title="암반절리 감소계수 α_E" style="flex:1; min-width:0; text-align:center; box-sizing:border-box; padding:2px; border:1px solid #ccc; font-size:0.85em;">
+                    </div>
+                `;
+            } else {
+                grid2Label.textContent = '세부 구분';
+                grid2Content.innerHTML = `<span style="color:#aaa; font-size:0.85em; width:100%; text-align:center;">- (없음) -</span>`;
+            }
             grid5Label.textContent = '허용압축응력 σ_ca (MPa)';
             specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
-            grid5Val.value = '35.0';
+            grid5Val.value = getVal('grid5_val', '35.0');
 
-            // 시공 공법: 매입말뚝공법(현장타설)으로 고정 및 비활성화
+            // 시공 공법: 매입말뚝공법(현장타설)으로 고정
             pileMethod.value = 'bored';
             pileMethod.disabled = true;
 
@@ -384,8 +392,7 @@ export function initPileModule(container) {
 
         tSelect.innerHTML = '';
 
-        if (type === 'CAST') {
-            // 현장타설말뚝: 두께 선택 불필요 (- 없음 - 표기 및 입력 불가)
+        if (type === 'CAST' || type === 'CAST_ROCK') {
             tSelect.innerHTML = `<option value="none">- (없음) -</option>`;
             tSelect.disabled = true;
             tInput.value = '0';
@@ -448,7 +455,7 @@ export function initPileModule(container) {
 
     function applyThicknessSelection() {
         const type = document.getElementById('pile_type').value;
-        if (type === 'CAST') return;
+        if (type === 'CAST' || type === 'CAST_ROCK') return;
 
         const tSelect = document.getElementById('pile_t_select');
         const tInput = document.getElementById('pile_t');
@@ -487,6 +494,12 @@ export function initPileModule(container) {
             updateFormulaInfoText();
         } else if (e.target.id === 'pile_gwt') {
             localStorage.setItem('geo_pile_gwt', e.target.value);
+        } else if (e.target.id === 'pile_fck') {
+            localStorage.setItem('geo_pile_fck', e.target.value);
+        } else if (e.target.id === 'pile_alpha_e') {
+            localStorage.setItem('geo_pile_alpha_e', e.target.value);
+        } else if (e.target.id === 'grid5_val') {
+            localStorage.setItem('geo_pile_grid5_val', e.target.value);
         }
     });
 
@@ -507,6 +520,7 @@ export function initPileModule(container) {
         tbody.innerHTML = '';
         pileLayers.forEach((l, idx) => {
             const gammaVal = l.gamma !== undefined ? l.gamma : 19.0;
+            // 점착력과 단위중량 열의 위치 변경 반영 (N -> gamma -> c_val(q_u))
             tbody.innerHTML += `
                 <tr>
                     <td style="padding:4px;"><input type="text" value="${l.name}" data-idx="${idx}" class="pl-name" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
@@ -514,12 +528,13 @@ export function initPileModule(container) {
                         <select data-idx="${idx}" class="pl-type" style="width:100%; box-sizing:border-box; padding:4px;">
                             <option value="sand" ${l.type === 'sand' ? 'selected' : ''}>사질토 / 풍화암</option>
                             <option value="clay" ${l.type === 'clay' ? 'selected' : ''}>점성토</option>
+                            <option value="rock" ${l.type === 'rock' ? 'selected' : ''}>기반암 (연암/경암)</option>
                         </select>
                     </td>
                     <td style="padding:4px;"><input type="number" value="${l.dz.toFixed(2)}" data-idx="${idx}" class="pl-dz" step="0.1" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
                     <td style="padding:4px;"><input type="number" value="${l.n_val}" data-idx="${idx}" class="pl-n" step="1" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
-                    <td style="padding:4px;"><input type="number" value="${l.c_val.toFixed(1)}" data-idx="${idx}" class="pl-c" step="0.5" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
                     <td style="padding:4px;"><input type="number" value="${parseFloat(gammaVal).toFixed(1)}" data-idx="${idx}" class="pl-gamma" step="0.5" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
+                    <td style="padding:4px;"><input type="number" value="${parseFloat(l.c_val).toFixed(1)}" data-idx="${idx}" class="pl-c" step="0.1" title="점성토: 점착력 c / 기반암: 일축압축강도 q_u" style="width:100%; box-sizing:border-box; padding:4px; text-align:center;"></td>
                     <td style="padding:4px;"><button type="button" class="pl-del" data-idx="${idx}" style="padding:3px 8px; background:#e74c3c; color:#fff; border:none; border-radius:3px; cursor:pointer;">-</button></td>
                 </tr>
             `;
@@ -536,15 +551,15 @@ export function initPileModule(container) {
             updatePileLength();
         }
         if (e.target.classList.contains('pl-n')) pileLayers[e.target.dataset.idx].n_val = parseFloat(e.target.value) || 0;
-        if (e.target.classList.contains('pl-c')) pileLayers[e.target.dataset.idx].c_val = parseFloat(e.target.value) || 0;
         if (e.target.classList.contains('pl-gamma')) pileLayers[e.target.dataset.idx].gamma = parseFloat(e.target.value) || 19.0;
+        if (e.target.classList.contains('pl-c')) pileLayers[e.target.dataset.idx].c_val = parseFloat(e.target.value) || 0;
         localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
     });
 
     container.addEventListener('click', (e) => {
         if (e.target.id === 'pile_layer_add') {
             const nextIdx = pileLayers.length + 1;
-            pileLayers.push({ name: `지층${nextIdx}`, type: 'sand', dz: 3.0, n_val: 30, c_val: 0, gamma: 19.0 });
+            pileLayers.push({ name: `지층${nextIdx}`, type: 'sand', dz: 3.0, n_val: 30, gamma: 19.0, c_val: 0 });
             localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers));
             renderLayers();
         }
@@ -570,7 +585,7 @@ function calculatePileCapacity() {
     const D_mm = parseFloat(document.getElementById('pile_D').value) || 500;
     const D = D_mm / 1000.0;
 
-    const t_mm = (p_type === 'CAST') ? 0 : parseFloat(document.getElementById('pile_t').value);
+    const t_mm = (p_type === 'CAST' || p_type === 'CAST_ROCK') ? 0 : parseFloat(document.getElementById('pile_t').value);
     const grid5Val = parseFloat(document.getElementById('grid5_val').value) || 0;
     const gwt = parseFloat(document.getElementById('pile_gwt')?.value) || 2.0;
 
@@ -590,9 +605,9 @@ function calculatePileCapacity() {
     const P_seis = parseFloat(document.getElementById('pile_P_seis').value);
 
     // 1. 선단지지력 (Qup)
-    let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', type: 'sand', n_val: 50, c_val: 0, gamma: 20.0 };
+    let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', type: 'sand', n_val: 50, gamma: 20.0, c_val: 0 };
     let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
-    let c_tip = parseFloat(lastLayer.c_val) || 0;
+    let c_tip = parseFloat(lastLayer.c_val) || 0; // 암반의 경우 q_u 역할을 함
 
     const Ap = (Math.PI * Math.pow(D, 2)) / 4.0;
     
@@ -600,8 +615,22 @@ function calculatePileCapacity() {
     let qp_formula_name = "";
     let qp_calc_detail = "";
 
-    if (p_type === 'CAST') {
-        // 현장타설콘크리트말뚝 (해설 표 5.2.9)
+    if (p_type === 'CAST_ROCK') {
+        // 기반암 지지 현장타설말뚝 (구조계산서 기준)[cite: 6]
+        if (qp_formula === 'rock_case1') {
+            qp_formula_name = "현장타설말뚝(기반암) - Case-1 (절리 미고려)";
+            q_p = 2.5 * c_tip;
+            qp_calc_detail = `2.5 &times; q_u (${c_tip}) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+        } else {
+            qp_formula_name = "현장타설말뚝(기반암) - Case-2 (여러방향 절리)";
+            // 구조계산서 상 s=0.00009, m=0.311 (RMR 30 가정)[cite: 6]
+            const s = 0.00009;
+            const m = 0.311;
+            const factor = Math.sqrt(s) + Math.sqrt(m * Math.sqrt(s) + s);
+            q_p = factor * c_tip;
+            qp_calc_detail = `[&radic;s + &radic;(m&radic;s+s)] &times; q_u = ${factor.toFixed(4)} &times; ${c_tip} = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+        }
+    } else if (p_type === 'CAST') {
         if (qp_formula === 'oneill') {
             qp_formula_name = "현장타설말뚝 - O'Neill & Reese (1999)";
             if (raw_N_tip <= 75) {
@@ -613,9 +642,9 @@ function calculatePileCapacity() {
             }
         } else {
             qp_formula_name = "현장타설말뚝 - 건축기초 구조설계지침 (2004)";
-            if (lastLayer.type === 'sand') {
+            if (lastLayer.type === 'sand' || lastLayer.type === 'rock') {
                 q_p = 100.0 * raw_N_tip;
-                qp_calc_detail = `100 &times; N_bar (${raw_N_tip}) = <strong>${q_p.toFixed(1)} kN/m²</strong> (사질토 적용)`;
+                qp_calc_detail = `100 &times; N_bar (${raw_N_tip}) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
             } else {
                 q_p = 6.0 * c_tip;
                 qp_calc_detail = `6 &times; c_u (${c_tip}) = <strong>${q_p.toFixed(1)} kN/m²</strong> (점성토 적용)`;
@@ -634,12 +663,12 @@ function calculatePileCapacity() {
             qp_calc_detail = `250 &times; N (${N_used}) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
         } else {
             qp_formula_name = "매입말뚝 - 도로교설계기준해설 (2008)";
-            if (lastLayer.type === 'sand') {
+            if (lastLayer.type === 'sand' || lastLayer.type === 'rock') {
                 q_p = Math.min(200.0 * raw_N_tip, 12000.0);
-                qp_calc_detail = `min(200 &times; N, 12,000) = min(200 &times; ${raw_N_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong> (사질토 적용)`;
+                qp_calc_detail = `min(200 &times; N, 12,000) = min(200 &times; ${raw_N_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
             } else {
                 q_p = Math.min(6.0 * c_tip, 12000.0);
-                qp_calc_detail = `min(6 &times; c_u, 12,000) = min(6 &times; ${c_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong> (점성토 적용)`;
+                qp_calc_detail = `min(6 &times; c_u, 12,000) = min(6 &times; ${c_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
             }
         }
     }
@@ -652,8 +681,8 @@ function calculatePileCapacity() {
     let layer_calc_rows = [];
     let qs_formula_name = "";
 
-    if (p_type === 'CAST') {
-        qs_formula_name = qs_formula === 'oneill' ? "현장타설말뚝 - O'Neill & Reese (1999)" : "현장타설말뚝 - 건축기초 구조설계지침 (2004)";
+    if (p_type === 'CAST_ROCK' || p_type === 'CAST') {
+        qs_formula_name = qs_formula === 'oneill' ? "현장타설 - O'Neill(토사)+H&K(암반)" : "현장타설 - 건축기초(토사)+H&K(암반)";
     } else if (qs_formula === 'lh') {
         qs_formula_name = (method === 'driven' ? "항타공법 - " : "매입말뚝 - ") + "주택공사 설계개선지침 (2008)";
     } else {
@@ -668,6 +697,7 @@ function calculatePileCapacity() {
         let formula_str = "";
         let dz_i = parseFloat(l.dz) || 0;
         let gamma_i = parseFloat(l.gamma) || 19.0;
+        let c_val_i = parseFloat(l.c_val) || 0; // 흙에서는 c, 암반에서는 q_u
 
         // 지층 중앙부 깊이 Z_i 및 유효연직응력 σ_v' 산정
         let z_mid = cum_depth + 0.5 * dz_i;
@@ -675,65 +705,76 @@ function calculatePileCapacity() {
         let u_mid = Math.max(0, (z_mid - gwt) * 9.81);
         let sigma_v_prime = Math.max(0, sigma_v_mid - u_mid);
 
-        if (p_type === 'CAST') {
+        if (l.type === 'rock' && (p_type === 'CAST_ROCK' || p_type === 'CAST')) {
+            // 기반암 현장타설말뚝 주면마찰력 산정 (Horvath & Kenney, 1979)[cite: 6]
+            let fck = parseFloat(document.getElementById('pile_fck')?.value) || 27.0;
+            let alpha_e = parseFloat(document.getElementById('pile_alpha_e')?.value) || 0.37;
+            let P_a = 0.101; // 대기압 (MPa)[cite: 6]
+            let qu_MPa = c_val_i / 1000.0; // 입력된 q_u (kPa)를 MPa로 변환[cite: 6]
+            
+            let fs_MPa = 0.65 * alpha_e * P_a * Math.pow(qu_MPa / P_a, 0.5); //[cite: 6]
+            let fs_limit_MPa = 7.8 * P_a * Math.pow(fck / P_a, 0.5); //[cite: 6]
+            let f_unit_MPa = Math.min(fs_MPa, fs_limit_MPa);
+            f_unit = f_unit_MPa * 1000.0; // kPa 변환
+            
+            formula_str = `0.65&alpha;<sub>E</sub>P<sub>a</sub>(q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup> = ${f_unit.toFixed(1)}`;
+        } else if (p_type === 'CAST' || p_type === 'CAST_ROCK') {
             if (qs_formula === 'oneill') {
-                // f_s = β·σ_v', β = 1.5 - 0.245√Z (0.25 < β < 1.20)
                 let beta = 1.5 - 0.245 * Math.sqrt(Math.max(0.1, z_mid));
                 beta = Math.max(0.25, Math.min(1.20, beta));
                 f_unit = Math.min(200.0, beta * sigma_v_prime);
                 formula_str = `&beta;&middot;&sigma;<sub>v</sub>' = ${beta.toFixed(2)}&times;${sigma_v_prime.toFixed(1)} = ${f_unit.toFixed(1)} (max 200)`;
             } else {
-                // 일본건축학회 (2004)
                 if (l.type === 'sand') {
                     let N_lim = Math.min(l.n_val, 50.0);
                     f_unit = 3.3 * N_lim;
                     formula_str = `3.3 &times; N (${N_lim}) = ${f_unit.toFixed(1)}`;
                 } else {
-                    let c_lim = Math.min(l.c_val, 100.0);
+                    let c_lim = Math.min(c_val_i, 100.0);
                     f_unit = 1.0 * c_lim;
                     formula_str = `1.0 &times; c_u (${c_lim}) = ${f_unit.toFixed(1)}`;
                 }
             }
         } else if (method === 'driven') {
             if (qs_formula === 'lh') {
-                if (l.type === 'sand') {
+                if (l.type === 'sand' || l.type === 'rock') {
                     let N_lim = Math.min(l.n_val, 50.0);
                     f_unit = 2.0 * N_lim;
                     formula_str = `2.0 &times; N (${N_lim}) = ${f_unit.toFixed(1)}`;
                 } else {
-                    let c_lim = Math.min(l.c_val, 125.0);
+                    let c_lim = Math.min(c_val_i, 125.0);
                     let q_u = 2.0 * c_lim;
                     f_unit = 5.0 * q_u;
                     formula_str = `5.0 &times; q_u (${q_u.toFixed(1)}) = ${f_unit.toFixed(1)}`;
                 }
             } else {
-                if (l.type === 'sand') {
+                if (l.type === 'sand' || l.type === 'rock') {
                     f_unit = Math.min(2.0 * l.n_val, 100.0);
                     formula_str = `min(2.0 &times; N, 100) = ${f_unit.toFixed(1)}`;
                 } else {
-                    f_unit = Math.min(1.0 * l.c_val, 100.0);
+                    f_unit = Math.min(1.0 * c_val_i, 100.0);
                     formula_str = `min(1.0 &times; c_u, 100) = ${f_unit.toFixed(1)}`;
                 }
             }
         } else {
             if (qs_formula === 'lh') {
-                if (l.type === 'sand') {
+                if (l.type === 'sand' || l.type === 'rock') {
                     let N_lim = Math.min(l.n_val, 50.0);
                     f_unit = 2.0 * N_lim;
                     formula_str = `2.0 &times; N (${N_lim}) = ${f_unit.toFixed(1)}`;
                 } else {
-                    let c_lim = Math.min(l.c_val, 125.0);
+                    let c_lim = Math.min(c_val_i, 125.0);
                     let q_u = 2.0 * c_lim;
                     f_unit = 5.0 * q_u;
                     formula_str = `5.0 &times; q_u (${q_u.toFixed(1)}) = ${f_unit.toFixed(1)}`;
                 }
             } else {
-                if (l.type === 'sand') {
+                if (l.type === 'sand' || l.type === 'rock') {
                     let N_lim = Math.min(l.n_val, 50.0);
                     f_unit = 2.5 * N_lim;
                     formula_str = `2.5 &times; N (${N_lim}) = ${f_unit.toFixed(1)}`;
                 } else {
-                    let c_lim = Math.min(l.c_val, 125.0);
+                    let c_lim = Math.min(c_val_i, 125.0);
                     f_unit = 0.8 * c_lim;
                     formula_str = `0.8 &times; c_u (${c_lim}) = ${f_unit.toFixed(1)}`;
                 }
@@ -744,13 +785,15 @@ function calculatePileCapacity() {
         let Qus_i = fxL * As;
         total_Qus += Qus_i;
 
+        let display_type = l.type === 'rock' ? '기반암' : (l.type === 'sand' ? '사질토' : '점성토');
+
         layer_calc_rows.push({
             name: l.name,
-            type: l.type === 'sand' ? '사질토' : '점성토',
+            type: display_type,
             dz: dz_i,
             n_val: l.n_val,
-            c_val: l.c_val,
             gamma: gamma_i,
+            c_val: c_val_i,
             z_mid: z_mid,
             sigma_v_prime: sigma_v_prime,
             formula: formula_str,
@@ -770,7 +813,7 @@ function calculatePileCapacity() {
 
     // 4. 재료 허용압축하중 (Qas)
     let A_net = 0;
-    if (p_type === 'CAST') {
+    if (p_type === 'CAST' || p_type === 'CAST_ROCK') {
         A_net = Ap; // 원형 실단면
     } else {
         const D_out = D - (t1_mm / 1000.0);
@@ -797,7 +840,7 @@ function calculatePileCapacity() {
     if (p_type === 'PC') n_limit = 80;
     else if (p_type === 'RC') n_limit = 70;
     else if (p_type === 'STEEL') n_limit = 100;
-    else if (p_type === 'CAST') n_limit = 60;
+    else if (p_type === 'CAST' || p_type === 'CAST_ROCK') n_limit = 60;
 
     let mu1 = Math.max(0, L_over_D - n_limit);
 
@@ -805,7 +848,7 @@ function calculatePileCapacity() {
     if (joint_type === 'weld') mu2_base = 5.0;
     else if (joint_type === 'bolt') mu2_base = 10.0;
     
-    let mu2 = (method === 'bored' || p_type === 'CAST') ? (mu2_base * 0.5 * joint_cnt) : (mu2_base * joint_cnt);
+    let mu2 = (method === 'bored' || p_type === 'CAST' || p_type === 'CAST_ROCK') ? (mu2_base * 0.5 * joint_cnt) : (mu2_base * joint_cnt);
 
     const Qas = (1.0 - (mu1 + mu2) / 100.0) * Q_mat_base;
 
@@ -856,11 +899,11 @@ function calculatePileCapacity() {
             </table>
         </div>
 
-        <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정 (구조물기초설계기준 해설 표 5.2.9)</div>
+        <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
-            • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, c = ${c_tip} kN/m²)<br>
+            • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, ${lastLayer.type === 'rock' ? 'q<sub>u</sub>' : 'c'} = ${c_tip} kPa)<br>
             • 단위면적당 극한선단지지력 q<sub>p</sub> = ${qp_calc_detail}<br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
             • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span><br><br>
@@ -879,7 +922,7 @@ function calculatePileCapacity() {
                         <th>지층명</th>
                         <th>토성구분</th>
                         <th>층후 L (m)</th>
-                        <th>N치 / c / &gamma;</th>
+                        <th>N치 / &gamma; / c(q<sub>u</sub>)</th>
                         <th>중앙깊이 Z / 유효응력 &sigma;<sub>v</sub>'</th>
                         <th>단위 마찰력 f<sub>s</sub> (kN/m²)</th>
                         <th>f<sub>s</sub> &times; L</th>
@@ -892,7 +935,7 @@ function calculatePileCapacity() {
                             <td>${r.name}</td>
                             <td>${r.type}</td>
                             <td>${r.dz.toFixed(2)}</td>
-                            <td>${r.n_val} / ${r.c_val} / ${r.gamma.toFixed(1)}</td>
+                            <td>${r.n_val} / ${r.gamma.toFixed(1)} / ${r.c_val}</td>
                             <td>${r.z_mid.toFixed(2)}m / ${r.sigma_v_prime.toFixed(1)}kPa</td>
                             <td>${r.formula}</td>
                             <td>${r.fxL.toFixed(1)}</td>
@@ -915,70 +958,14 @@ function calculatePileCapacity() {
             • 내진시 (F.S = 2.0) : (Q<sub>up</sub> + Q<sub>us</sub>) / 2.0 = (${Qup.toFixed(1)} + ${total_Qus.toFixed(1)}) / 2.0 = <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
         </div>
 
-        <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정 (구조물기초설계기준 해설)</div>
+        <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
-            ${p_type === 'CAST' ? `• 현장타설말뚝 실단면적 A<sub>net</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${A_net.toFixed(5)} m²</strong> (직경 D = ${D_mm.toFixed(1)}mm)<br>` : `• 말뚝 외경 D<sub>out</sub> : D - 부식t<sub>1</sub> = ${D.toFixed(4)}m ${p_type === 'STEEL' ? '- ' + (t1_mm/1000.0).toFixed(4) + 'm = ' + D_out.toFixed(4) + 'm' : '= ' + D_out.toFixed(4) + 'm'}<br>• 말뚝 내경 D<sub>in</sub> : D - 2 &times; t = ${D.toFixed(4)}m - 2 &times; ${(t_mm/1000.0).toFixed(4)}m = <strong>${D_in.toFixed(4)} m</strong><br>• 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = &pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>`}
+            ${(p_type === 'CAST' || p_type === 'CAST_ROCK') ? `• 현장타설말뚝 실단면적 A<sub>net</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${A_net.toFixed(5)} m²</strong> (직경 D = ${D_mm.toFixed(1)}mm)<br>` : `• 말뚝 외경 D<sub>out</sub> : D - 부식t<sub>1</sub> = ${D.toFixed(4)}m ${p_type === 'STEEL' ? '- ' + (t1_mm/1000.0).toFixed(4) + 'm = ' + D_out.toFixed(4) + 'm' : '= ' + D_out.toFixed(4) + 'm'}<br>• 말뚝 내경 D<sub>in</sub> : D - 2 &times; t = ${D.toFixed(4)}m - 2 &times; ${(t_mm/1000.0).toFixed(4)}m = <strong>${D_in.toFixed(4)} m</strong><br>• 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = &pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>`}
             ${qMatBaseDetailStr}<br><br>
             • 산정 공식 : Q<sub>as</sub> = [1 - (&mu;<sub>1</sub> + &mu;<sub>2</sub>)/100] &times; Q<sub>mat_base</sub><br>
             • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
             • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'})<br>
             • <strong>최종 재료 허용압축하중 Q<sub>as</sub></strong> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <span style="color:#8e44ad; font-weight:bold;">${Qas.toFixed(1)} kN</span>
-        </div>
-
-        <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 3. 장경비에 의한 허용응력 감소의 한계치 (구조물기초설계기준 해설 표 5.2.3)</div>
-        <div class="table-container" style="margin-bottom: 15px;">
-            <table class="result-table" style="font-size: 0.8em; text-align: center;">
-                <thead>
-                    <tr style="background-color: #eaeded;">
-                        <th>구 분</th>
-                        <th>RC말뚝</th>
-                        <th>PC말뚝</th>
-                        <th>PHC말뚝</th>
-                        <th>강관말뚝</th>
-                        <th>현장타설말뚝</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>n</strong></td>
-                        <td style="${p_type === 'RC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">70</td>
-                        <td style="${p_type === 'PC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">80</td>
-                        <td style="${p_type === 'PHC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">85</td>
-                        <td style="${p_type === 'STEEL' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">100</td>
-                        <td style="${p_type === 'CAST' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">60</td>
-                    </tr>
-                    <tr>
-                        <td><strong>장경비의 상한계<sup>1)</sup></strong></td>
-                        <td style="${p_type === 'RC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">90</td>
-                        <td style="${p_type === 'PC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">105</td>
-                        <td style="${p_type === 'PHC' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">110</td>
-                        <td style="${p_type === 'STEEL' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">130</td>
-                        <td style="${p_type === 'CAST' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">80</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 4. 말뚝이음에 의한 허용하중 감소율 (구조물기초설계기준 해설 표 5.2.2)</div>
-        <div class="table-container">
-            <table class="result-table" style="font-size: 0.8em; text-align: center;">
-                <thead>
-                    <tr style="background-color: #eaeded;">
-                        <th>이음방법</th>
-                        <th>용접이음</th>
-                        <th>볼트식 이음</th>
-                        <th>비고</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>감소율</strong></td>
-                        <td style="${joint_type === 'weld' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">5% / 개소</td>
-                        <td style="${joint_type === 'bolt' ? 'background-color:#e8f8f5; font-weight:bold; color:#16a085;' : ''}">10% / 개소</td>
-                        <td style="text-align:left; font-size:0.85em; padding:4px 8px;">매입말뚝 경우에는 이음부 손상이 거의 없으므로 이음방법별 감소율 절반(1/2) 적용</td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
     `;
 }
