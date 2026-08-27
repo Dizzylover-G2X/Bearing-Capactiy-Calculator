@@ -95,7 +95,7 @@ export function initPileModule(container) {
 
         <!-- Row 2: 시공 공법 | 선단지지력 식 | 주면마찰력 식 | 이음 방법 및 개소 (4개 그리드박스) -->
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px;">
-            <!-- [1] 시공 공법 선택 (일반 폰트 적용) -->
+            <!-- [1] 시공 공법 선택 (일반 폰트) -->
             <div class="input-group" style="margin:0;">
                 <label>시공 공법</label>
                 <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em; font-weight: normal;">
@@ -131,8 +131,8 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 하단 실시간 산정식 표시 안내 박스 -->
-        <div id="formula_info_box" style="margin-bottom: 15px; font-size: 0.83em; color: #2c3e50; background: #f4f6f7; padding: 6px 10px; border-radius: 4px; border-left: 3px solid #3498db; line-height: 1.4;"></div>
+        <!-- 하단 실시간 산정식 구분 표시 안내 박스 -->
+        <div id="formula_info_box" style="margin-bottom: 15px; font-size: 0.83em; color: #2c3e50; background: #f4f6f7; padding: 8px 12px; border-radius: 4px; border-left: 4px solid #16a085;"></div>
 
         <!-- 2. 작용 하중 입력 -->
         <div style="font-weight: bold; margin-bottom: 8px; color: #d35400; font-size: 0.95em;">■ 작용 하중 (상부구조 반력)</div>
@@ -183,7 +183,7 @@ export function initPileModule(container) {
     `;
 
     // ---------------------------------------------------------
-    // UI 동적 제어 및 산정식 드롭다운/안내문구 업데이트
+    // UI 동적 제어 및 산정식 구체 표기 안내
     // ---------------------------------------------------------
     function updateFormulaInfoText() {
         const method = document.getElementById('pile_method').value;
@@ -197,23 +197,29 @@ export function initPileModule(container) {
         let qsText = "";
 
         if (method === 'driven') {
-            qpText = "q_p = 300·N (N≤60, 상한 15,000 kN/m²)";
-            qsText = "f_s = 2.0·N (사질토), 1.0·c_u (점성토)";
+            qpText = "300·N (사질토, N≤60, 상한 15,000 kN/m²) / 6·c_u (점성토, 상한 12,000 kN/m²)";
+            qsText = "2.0·N (사질토, 상한 100 kN/m²), 1.0·c_u (점성토, 상한 100 kN/m²)";
         } else {
             if (qpVal === 'lh') {
-                qpText = "q_p = 250·N (N≤60)";
+                qpText = "250·N (N≤60)";
             } else {
-                qpText = "q_p = 200·N (사질토, 상한 12,000), 6·c_u (점성토, 상한 12,000)";
+                qpText = "200·N (사질토, 상한 12,000 kN/m²), 6·c_u (점성토, 상한 12,000 kN/m²)";
             }
 
             if (qsVal === 'lh') {
-                qsText = "f_s = 2.0·N (사질토), 5.0·q_u (점성토, q_u=2c_u)";
+                qsText = "2.0·N (사질토), 5.0·q_u (점성토, q_u=2c_u)";
             } else {
-                qsText = "f_s = 2.5·N (사질토, N≤50), 0.8·c_u (점성토, c_u≤125)";
+                qsText = "2.5·N (사질토, N≤50), 0.8·c_u (점성토, c_u≤125)";
             }
         }
 
-        infoBox.innerHTML = `<strong>▶ 적용 산정식 :</strong> [선단지지력] ${qpText} &nbsp;|&nbsp; [주면마찰력] ${qsText}`;
+        infoBox.innerHTML = `
+            <div style="font-weight: bold; color: #16a085; margin-bottom: 2px;">▶ 적용 산정식</div>
+            <div style="margin-left: 6px; line-height: 1.5;">
+                • <strong>선단지지력 :</strong> ${qpText} <span style="color:#7f8c8d; font-size:0.9em;">(최하단 지층 토성구분 기준)</span><br>
+                • <strong>주면마찰력 :</strong> ${qsText} <span style="color:#7f8c8d; font-size:0.9em;">(각 지층별 토성구분 기준)</span>
+            </div>
+        `;
     }
 
     function updateMethodFormulas() {
@@ -499,7 +505,7 @@ function calculatePileCapacity() {
     const P_norm = parseFloat(document.getElementById('pile_P_norm').value);
     const P_seis = parseFloat(document.getElementById('pile_P_seis').value);
 
-    // 1. 선단지지력 (Qup)
+    // 1. 선단지지력 (Qup) - 최하단 지층 토성구분 기준
     let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', type: 'sand', n_val: 50, c_val: 0 };
     let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
     let c_tip = parseFloat(lastLayer.c_val) || 0;
@@ -511,10 +517,15 @@ function calculatePileCapacity() {
     let qp_calc_detail = "";
 
     if (method === 'driven') {
-        qp_formula_name = "항타공법 산정식 (300·N)";
-        let N_used = Math.min(raw_N_tip, 60);
-        q_p = Math.min(300.0 * N_used, 15000.0);
-        qp_calc_detail = `min(300 &times; N, 15,000) = min(300 &times; ${N_used}, 15,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+        qp_formula_name = "항타공법 산정식";
+        if (lastLayer.type === 'sand') {
+            let N_used = Math.min(raw_N_tip, 60);
+            q_p = Math.min(300.0 * N_used, 15000.0);
+            qp_calc_detail = `min(300 &times; N, 15,000) = min(300 &times; ${N_used}, 15,000) = <strong>${q_p.toFixed(1)} kN/m²</strong> (사질토 적용)`;
+        } else {
+            q_p = Math.min(6.0 * c_tip, 12000.0);
+            qp_calc_detail = `min(6 &times; c_u, 12,000) = min(6 &times; ${c_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong> (점성토 적용)`;
+        }
     } else {
         if (qp_formula === 'lh') {
             qp_formula_name = "매입말뚝 - 주택공사 설계개선지침 (2008)";
@@ -525,24 +536,24 @@ function calculatePileCapacity() {
             qp_formula_name = "매입말뚝 - 도로교설계기준해설 (2008)";
             if (lastLayer.type === 'sand') {
                 q_p = Math.min(200.0 * raw_N_tip, 12000.0);
-                qp_calc_detail = `min(200 &times; N, 12,000) = min(200 &times; ${raw_N_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                qp_calc_detail = `min(200 &times; N, 12,000) = min(200 &times; ${raw_N_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong> (사질토 적용)`;
             } else {
                 q_p = Math.min(6.0 * c_tip, 12000.0);
-                qp_calc_detail = `min(6 &times; c_u, 12,000) = min(6 &times; ${c_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                qp_calc_detail = `min(6 &times; c_u, 12,000) = min(6 &times; ${c_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong> (점성토 적용)`;
             }
         }
     }
 
     const Qup = q_p * Ap;
 
-    // 2. 주면마찰력 (Qus)
+    // 2. 주면마찰력 (Qus) - 각 지층별 토성구분 기준
     const As = Math.PI * D;
     let total_Qus = 0;
     let layer_calc_rows = [];
     let qs_formula_name = "";
 
     if (method === 'driven') {
-        qs_formula_name = "항타공법 산정식 (2.0·N / 1.0·c)";
+        qs_formula_name = "항타공법 산정식";
     } else {
         qs_formula_name = qs_formula === 'lh' ? "매입말뚝 - 주택공사 설계개선지침 (2008)" : "매입말뚝 - 도로교설계기준해설 (2008)";
     }
@@ -554,30 +565,30 @@ function calculatePileCapacity() {
         if (method === 'driven') {
             if (l.type === 'sand') {
                 f_unit = Math.min(2.0 * l.n_val, 100.0);
-                formula_str = `min(2.0 &times; N, 100)`;
+                formula_str = `min(2.0 &times; N, 100) = ${f_unit.toFixed(1)}`;
             } else {
                 f_unit = Math.min(1.0 * l.c_val, 100.0);
-                formula_str = `min(1.0 &times; c_u, 100)`;
+                formula_str = `min(1.0 &times; c_u, 100) = ${f_unit.toFixed(1)}`;
             }
         } else {
             if (qs_formula === 'lh') {
                 if (l.type === 'sand') {
                     f_unit = 2.0 * l.n_val;
-                    formula_str = `2.0 &times; N (${l.n_val})`;
+                    formula_str = `2.0 &times; N = ${f_unit.toFixed(1)}`;
                 } else {
                     let q_u = 2.0 * l.c_val;
                     f_unit = 5.0 * q_u;
-                    formula_str = `5.0 &times; q_u (${q_u.toFixed(1)})`;
+                    formula_str = `5.0 &times; q_u = ${f_unit.toFixed(1)}`;
                 }
             } else {
                 if (l.type === 'sand') {
                     let N_lim = Math.min(l.n_val, 50.0);
                     f_unit = 2.5 * N_lim;
-                    formula_str = `2.5 &times; N (${N_lim})`;
+                    formula_str = `2.5 &times; N = ${f_unit.toFixed(1)}`;
                 } else {
                     let c_lim = Math.min(l.c_val, 125.0);
                     f_unit = 0.8 * c_lim;
-                    formula_str = `0.8 &times; c_u (${c_lim})`;
+                    formula_str = `0.8 &times; c_u = ${f_unit.toFixed(1)}`;
                 }
             }
         }
@@ -588,6 +599,7 @@ function calculatePileCapacity() {
 
         layer_calc_rows.push({
             name: l.name,
+            type: l.type === 'sand' ? '사질토' : '점성토',
             dz: l.dz,
             n_val: l.n_val,
             c_val: l.c_val,
@@ -686,8 +698,8 @@ function calculatePileCapacity() {
         <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정 (구조물기초설계기준 해설)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
-            • 적용 시공공법 및 산정식 : <strong>${qp_formula_name}</strong><br>
-            • 선단지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, c = ${c_tip} kN/m²)<br>
+            • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
+            • 최하단 지층 및 토성구분 : <strong>${lastLayer.name}</strong> (${lastLayer.type === 'sand' ? '사질토' : '점성토'}, N = ${raw_N_tip}, c = ${c_tip} kN/m²)<br>
             • 단위면적당 극한선단지지력 q<sub>p</sub> = ${qp_calc_detail}<br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
             • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span><br><br>
@@ -703,9 +715,9 @@ function calculatePileCapacity() {
                 <thead>
                     <tr style="background-color: #eaeded;">
                         <th>지층명</th>
+                        <th>토성구분</th>
                         <th>층후 L (m)</th>
                         <th>N치 / c</th>
-                        <th>산정 산식</th>
                         <th>단위 마찰력 f<sub>s</sub> (kN/m²)</th>
                         <th>f<sub>s</sub> &times; L</th>
                         <th>층별 주면마찰력 Q<sub>us,i</sub> (kN)</th>
@@ -715,10 +727,10 @@ function calculatePileCapacity() {
                     ${layer_calc_rows.map(r => `
                         <tr>
                             <td>${r.name}</td>
+                            <td>${r.type}</td>
                             <td>${r.dz.toFixed(2)}</td>
                             <td>${r.n_val} / ${r.c_val}</td>
                             <td>${r.formula}</td>
-                            <td>${r.f_unit.toFixed(1)}</td>
                             <td>${r.fxL.toFixed(1)}</td>
                             <td style="font-weight:bold;">${r.qusi.toFixed(1)}</td>
                         </tr>
