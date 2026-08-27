@@ -47,6 +47,7 @@ export function initPileModule(container) {
 
     const initialType = getVal('type', 'PHC');
     const initialT1 = parseFloat(getVal('t1', '1.0')).toFixed(1);
+    const initialMethod = getVal('method', 'bored');
 
     container.innerHTML = `
         <h3>1. 설계자료 입력 (말뚝기초 연직지지력 검토)</h3>
@@ -94,33 +95,25 @@ export function initPileModule(container) {
 
         <!-- Row 2: 시공 공법 | 선단지지력 식 | 주면마찰력 식 | 이음 방법 및 개소 (4개 그리드박스) -->
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;">
-            <!-- [1] 시공 공법 -->
+            <!-- [1] 시공 공법 선택 (항타공법 / 매입말뚝공법) -->
             <div class="input-group" style="margin:0;">
                 <label>시공 공법</label>
-                <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.85em;">
-                    <option value="cement_paste" ${getVal('method', 'cement_paste') === 'cement_paste' ? 'selected' : ''}>매입 (시멘트페이스트 주입)</option>
-                    <option value="driven" ${getVal('method', 'cement_paste') === 'driven' ? 'selected' : ''}>타격 공법</option>
-                    <option value="bored_solid" ${getVal('method', 'cement_paste') === 'bored_solid' ? 'selected' : ''}>선굴착 고결 공법</option>
-                    <option value="bored_final" ${getVal('method', 'cement_paste') === 'bored_final' ? 'selected' : ''}>선굴착 최종타격 공법</option>
+                <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em; font-weight: bold;">
+                    <option value="driven" ${initialMethod === 'driven' ? 'selected' : ''}>항타공법</option>
+                    <option value="bored" ${initialMethod === 'bored' ? 'selected' : ''}>매입말뚝공법</option>
                 </select>
             </div>
 
-            <!-- [2] 선단지지력 식 선택 -->
+            <!-- [2] 선단지지력 산정식 선택 -->
             <div class="input-group" style="margin:0;">
                 <label>선단지지력 산정식</label>
-                <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;">
-                    <option value="road" ${getVal('qp_formula', 'road') === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
-                    <option value="lh" ${getVal('qp_formula', 'road') === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
-                </select>
+                <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
             </div>
 
-            <!-- [3] 주면마찰력 식 선택 -->
+            <!-- [3] 주면마찰력 산정식 선택 -->
             <div class="input-group" style="margin:0;">
                 <label>주면마찰력 산정식</label>
-                <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;">
-                    <option value="road" ${getVal('qs_formula', 'road') === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
-                    <option value="lh" ${getVal('qs_formula', 'road') === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
-                </select>
+                <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
             </div>
 
             <!-- [4] 이음 방법 및 개소 -->
@@ -187,8 +180,39 @@ export function initPileModule(container) {
     `;
 
     // ---------------------------------------------------------
-    // UI 동적 제어 함수
+    // UI 동적 제어 및 산정식 드롭다운 업데이트
     // ---------------------------------------------------------
+    function updateMethodFormulas() {
+        const method = document.getElementById('pile_method').value;
+        const qpSelect = document.getElementById('pile_qp_formula');
+        const qsSelect = document.getElementById('pile_qs_formula');
+
+        const savedQp = getVal('qp_formula', 'road');
+        const savedQs = getVal('qs_formula', 'road');
+
+        if (method === 'driven') {
+            // 항타공법: 고정식 반영
+            qpSelect.innerHTML = `<option value="driven_standard" selected>300·N (N≤60 상한)</option>`;
+            qpSelect.disabled = true;
+
+            qsSelect.innerHTML = `<option value="driven_standard" selected>2.0·N (사) / 1.0·c (점)</option>`;
+            qsSelect.disabled = true;
+        } else {
+            // 매입말뚝공법: 도로교 / 주택공사 지침 선택 가능
+            qpSelect.disabled = false;
+            qpSelect.innerHTML = `
+                <option value="road" ${savedQp === 'road' ? 'selected' : ''}>도로교설계기준해설 (200N)</option>
+                <option value="lh" ${savedQp === 'lh' ? 'selected' : ''}>주택공사 설계지침 (250N)</option>
+            `;
+
+            qsSelect.disabled = false;
+            qsSelect.innerHTML = `
+                <option value="road" ${savedQs === 'road' ? 'selected' : ''}>도로교설계기준해설 (2.5N / 0.8c)</option>
+                <option value="lh" ${savedQs === 'lh' ? 'selected' : ''}>주택공사 설계지침 (2.0N / 5.0qu)</option>
+            `;
+        }
+    }
+
     function updateUIState() {
         const type = document.getElementById('pile_type').value;
         const grid2Label = document.getElementById('grid2_label');
@@ -247,6 +271,7 @@ export function initPileModule(container) {
         }
 
         applySpecSelection();
+        updateMethodFormulas();
     }
 
     function applySpecSelection() {
@@ -327,6 +352,9 @@ export function initPileModule(container) {
         if (e.target.id === 'pile_type') {
             updateUIState();
             localStorage.setItem('geo_pile_type', e.target.value);
+        } else if (e.target.id === 'pile_method') {
+            updateMethodFormulas();
+            localStorage.setItem('geo_pile_method', e.target.value);
         } else if (e.target.id === 'phc_class' || e.target.id === 'pile_spec_select') {
             applySpecSelection();
         } else if (e.target.id === 'pile_t_select') {
@@ -406,7 +434,7 @@ export function initPileModule(container) {
 }
 
 // ---------------------------------------------------------
-// 연직지지력 산정 핵심 함수 (표 5.2.9 산정식 적용)
+// 연직지지력 산정 핵심 함수
 // ---------------------------------------------------------
 function calculatePileCapacity() {
     const p_type = document.getElementById('pile_type').value;
@@ -415,7 +443,7 @@ function calculatePileCapacity() {
     const qs_formula = document.getElementById('pile_qs_formula').value;
 
     const D_mm = parseFloat(document.getElementById('pile_D').value) || 500;
-    const D = D_mm / 1000.0; // m 단위 환산
+    const D = D_mm / 1000.0;
 
     const t_mm = parseFloat(document.getElementById('pile_t').value);
     const grid5Val = parseFloat(document.getElementById('grid5_val').value) || 0;
@@ -435,7 +463,7 @@ function calculatePileCapacity() {
     const P_norm = parseFloat(document.getElementById('pile_P_norm').value);
     const P_seis = parseFloat(document.getElementById('pile_P_seis').value);
 
-    // 1. 선단지지력 (Qup) 계산 (해설 표 5.2.9 적용)
+    // 1. 선단지지력 (Qup)
     let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', type: 'sand', n_val: 50, c_val: 0 };
     let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
     let c_tip = parseFloat(lastLayer.c_val) || 0;
@@ -446,52 +474,75 @@ function calculatePileCapacity() {
     let qp_formula_name = "";
     let qp_calc_detail = "";
 
-    if (qp_formula === 'lh') {
-        qp_formula_name = "주택공사 설계개선지침 (2008)";
+    if (method === 'driven') {
+        qp_formula_name = "항타공법 산정식 (300·N)";
         let N_used = Math.min(raw_N_tip, 60);
-        q_p = 250.0 * N_used;
-        qp_calc_detail = `250 &times; N (${N_used}) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
-    } else { // 'road'
-        qp_formula_name = "도로교설계기준해설 (2008)";
-        if (lastLayer.type === 'sand') {
-            q_p = Math.min(200.0 * raw_N_tip, 12000.0);
-            qp_calc_detail = `min(200 &times; N, 12,000) = min(200 &times; ${raw_N_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+        q_p = Math.min(300.0 * N_used, 15000.0);
+        qp_calc_detail = `min(300 &times; N, 15,000) = min(300 &times; ${N_used}, 15,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+    } else {
+        if (qp_formula === 'lh') {
+            qp_formula_name = "매입말뚝 - 주택공사 설계개선지침 (2008)";
+            let N_used = Math.min(raw_N_tip, 60);
+            q_p = 250.0 * N_used;
+            qp_calc_detail = `250 &times; N (${N_used}) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
         } else {
-            q_p = Math.min(6.0 * c_tip, 12000.0);
-            qp_calc_detail = `min(6 &times; c_u, 12,000) = min(6 &times; ${c_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+            qp_formula_name = "매입말뚝 - 도로교설계기준해설 (2008)";
+            if (lastLayer.type === 'sand') {
+                q_p = Math.min(200.0 * raw_N_tip, 12000.0);
+                qp_calc_detail = `min(200 &times; N, 12,000) = min(200 &times; ${raw_N_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+            } else {
+                q_p = Math.min(6.0 * c_tip, 12000.0);
+                qp_calc_detail = `min(6 &times; c_u, 12,000) = min(6 &times; ${c_tip}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+            }
         }
     }
 
     const Qup = q_p * Ap;
 
-    // 2. 주면마찰력 (Qus) 계산 (해설 표 5.2.9 적용)
+    // 2. 주면마찰력 (Qus)
     const As = Math.PI * D;
     let total_Qus = 0;
     let layer_calc_rows = [];
-    let qs_formula_name = qs_formula === 'lh' ? "주택공사 설계개선지침 (2008)" : "도로교설계기준해설 (2008)";
+    let qs_formula_name = "";
+
+    if (method === 'driven') {
+        qs_formula_name = "항타공법 산정식 (2.0·N / 1.0·c)";
+    } else {
+        qs_formula_name = qs_formula === 'lh' ? "매입말뚝 - 주택공사 설계개선지침 (2008)" : "매입말뚝 - 도로교설계기준해설 (2008)";
+    }
 
     pileLayers.forEach(l => {
-        let f_unit = 0; // 단위면적당 주면마찰력 (kN/m²)
+        let f_unit = 0;
         let formula_str = "";
 
-        if (qs_formula === 'lh') {
+        if (method === 'driven') {
             if (l.type === 'sand') {
-                f_unit = 2.0 * l.n_val;
-                formula_str = `2.0 &times; N (${l.n_val})`;
+                f_unit = Math.min(2.0 * l.n_val, 100.0);
+                formula_str = `min(2.0 &times; N, 100)`;
             } else {
-                let q_u = 2.0 * l.c_val; // 일축압축강도 q_u = 2c_u
-                f_unit = 5.0 * q_u;
-                formula_str = `5.0 &times; q_u (${q_u.toFixed(1)})`;
+                f_unit = Math.min(1.0 * l.c_val, 100.0);
+                formula_str = `min(1.0 &times; c_u, 100)`;
             }
-        } else { // 'road'
-            if (l.type === 'sand') {
-                let N_lim = Math.min(l.n_val, 50.0);
-                f_unit = 2.5 * N_lim;
-                formula_str = `2.5 &times; N (${N_lim})`;
+        } else {
+            if (qs_formula === 'lh') {
+                if (l.type === 'sand') {
+                    f_unit = 2.0 * l.n_val;
+                    formula_str = `2.0 &times; N (${l.n_val})`;
+                } else {
+                    let q_u = 2.0 * l.c_val;
+                    f_unit = 5.0 * q_u;
+                    formula_str = `5.0 &times; q_u (${q_u.toFixed(1)})`;
+                }
             } else {
-                let c_lim = Math.min(l.c_val, 125.0);
-                f_unit = 0.8 * c_lim;
-                formula_str = `0.8 &times; c_u (${c_lim})`;
+                if (l.type === 'sand') {
+                    let N_lim = Math.min(l.n_val, 50.0);
+                    f_unit = 2.5 * N_lim;
+                    formula_str = `2.5 &times; N (${N_lim})`;
+                } else {
+                    let c_lim = Math.min(l.c_val, 125.0);
+                    f_unit = 0.8 * c_lim;
+                    formula_str = `0.8 &times; c_u (${c_lim})`;
+                }
             }
         }
 
@@ -548,7 +599,7 @@ function calculatePileCapacity() {
     if (joint_type === 'weld') mu2_base = 5.0;
     else if (joint_type === 'bolt') mu2_base = 10.0;
     
-    let mu2 = (method.includes('bored') || method === 'cement_paste') ? (mu2_base * 0.5 * joint_cnt) : (mu2_base * joint_cnt);
+    let mu2 = (method === 'bored') ? (mu2_base * 0.5 * joint_cnt) : (mu2_base * joint_cnt);
 
     const Qas = (1.0 - (mu1 + mu2) / 100.0) * Q_mat_base;
 
@@ -599,7 +650,7 @@ function calculatePileCapacity() {
         <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정 (구조물기초설계기준 해설 표 5.2.9)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
-            • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
+            • 적용 시공공법 및 산정식 : <strong>${qp_formula_name}</strong><br>
             • 선단지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, c = ${c_tip} kN/m²)<br>
             • 단위면적당 극한선단지지력 q<sub>p</sub> = ${qp_calc_detail}<br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
@@ -660,7 +711,7 @@ function calculatePileCapacity() {
             ${qMatBaseDetailStr}<br><br>
             • 산정 공식 : Q<sub>as</sub> = [1 - (&mu;<sub>1</sub> + &mu;<sub>2</sub>)/100] &times; Q<sub>mat_base</sub><br>
             • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
-            • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'})<br>
+            • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'}${method === 'bored' ? ', 매입말뚝 손상감소율 1/2 적용' : ''})<br>
             • <strong>최종 재료 허용압축하중 Q<sub>as</sub></strong> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <span style="color:#8e44ad; font-weight:bold;">${Qas.toFixed(1)} kN</span>
         </div>
 
