@@ -94,11 +94,11 @@ export function initPileModule(container) {
         </div>
 
         <!-- Row 2: 시공 공법 | 선단지지력 식 | 주면마찰력 식 | 이음 방법 및 개소 (4개 그리드박스) -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;">
-            <!-- [1] 시공 공법 선택 (항타공법 / 매입말뚝공법) -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px;">
+            <!-- [1] 시공 공법 선택 (일반 폰트 적용) -->
             <div class="input-group" style="margin:0;">
                 <label>시공 공법</label>
-                <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em; font-weight: bold;">
+                <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em; font-weight: normal;">
                     <option value="driven" ${initialMethod === 'driven' ? 'selected' : ''}>항타공법</option>
                     <option value="bored" ${initialMethod === 'bored' ? 'selected' : ''}>매입말뚝공법</option>
                 </select>
@@ -107,13 +107,13 @@ export function initPileModule(container) {
             <!-- [2] 선단지지력 산정식 선택 -->
             <div class="input-group" style="margin:0;">
                 <label>선단지지력 산정식</label>
-                <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
+                <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em; font-weight: normal;"></select>
             </div>
 
             <!-- [3] 주면마찰력 산정식 선택 -->
             <div class="input-group" style="margin:0;">
                 <label>주면마찰력 산정식</label>
-                <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
+                <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em; font-weight: normal;"></select>
             </div>
 
             <!-- [4] 이음 방법 및 개소 -->
@@ -130,6 +130,9 @@ export function initPileModule(container) {
                 </div>
             </div>
         </div>
+
+        <!-- 하단 실시간 산정식 표시 안내 박스 -->
+        <div id="formula_info_box" style="margin-bottom: 15px; font-size: 0.83em; color: #2c3e50; background: #f4f6f7; padding: 6px 10px; border-radius: 4px; border-left: 3px solid #3498db; line-height: 1.4;"></div>
 
         <!-- 2. 작용 하중 입력 -->
         <div style="font-weight: bold; margin-bottom: 8px; color: #d35400; font-size: 0.95em;">■ 작용 하중 (상부구조 반력)</div>
@@ -180,8 +183,39 @@ export function initPileModule(container) {
     `;
 
     // ---------------------------------------------------------
-    // UI 동적 제어 및 산정식 드롭다운 업데이트
+    // UI 동적 제어 및 산정식 드롭다운/안내문구 업데이트
     // ---------------------------------------------------------
+    function updateFormulaInfoText() {
+        const method = document.getElementById('pile_method').value;
+        const qpVal = document.getElementById('pile_qp_formula').value;
+        const qsVal = document.getElementById('pile_qs_formula').value;
+        const infoBox = document.getElementById('formula_info_box');
+
+        if (!infoBox) return;
+
+        let qpText = "";
+        let qsText = "";
+
+        if (method === 'driven') {
+            qpText = "q_p = 300·N (N≤60, 상한 15,000 kN/m²)";
+            qsText = "f_s = 2.0·N (사질토), 1.0·c_u (점성토)";
+        } else {
+            if (qpVal === 'lh') {
+                qpText = "q_p = 250·N (N≤60)";
+            } else {
+                qpText = "q_p = 200·N (사질토, 상한 12,000), 6·c_u (점성토, 상한 12,000)";
+            }
+
+            if (qsVal === 'lh') {
+                qsText = "f_s = 2.0·N (사질토), 5.0·q_u (점성토, q_u=2c_u)";
+            } else {
+                qsText = "f_s = 2.5·N (사질토, N≤50), 0.8·c_u (점성토, c_u≤125)";
+            }
+        }
+
+        infoBox.innerHTML = `<strong>▶ 적용 산정식 :</strong> [선단지지력] ${qpText} &nbsp;|&nbsp; [주면마찰력] ${qsText}`;
+    }
+
     function updateMethodFormulas() {
         const method = document.getElementById('pile_method').value;
         const qpSelect = document.getElementById('pile_qp_formula');
@@ -191,26 +225,26 @@ export function initPileModule(container) {
         const savedQs = getVal('qs_formula', 'road');
 
         if (method === 'driven') {
-            // 항타공법: 고정식 반영
-            qpSelect.innerHTML = `<option value="driven_standard" selected>300·N (N≤60 상한)</option>`;
+            qpSelect.innerHTML = `<option value="driven_standard" selected>항타공법 표준식</option>`;
             qpSelect.disabled = true;
 
-            qsSelect.innerHTML = `<option value="driven_standard" selected>2.0·N (사) / 1.0·c (점)</option>`;
+            qsSelect.innerHTML = `<option value="driven_standard" selected>항타공법 표준식</option>`;
             qsSelect.disabled = true;
         } else {
-            // 매입말뚝공법: 도로교 / 주택공사 지침 선택 가능
             qpSelect.disabled = false;
             qpSelect.innerHTML = `
-                <option value="road" ${savedQp === 'road' ? 'selected' : ''}>도로교설계기준해설 (200N)</option>
-                <option value="lh" ${savedQp === 'lh' ? 'selected' : ''}>주택공사 설계지침 (250N)</option>
+                <option value="road" ${savedQp === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
+                <option value="lh" ${savedQp === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
             `;
 
             qsSelect.disabled = false;
             qsSelect.innerHTML = `
-                <option value="road" ${savedQs === 'road' ? 'selected' : ''}>도로교설계기준해설 (2.5N / 0.8c)</option>
-                <option value="lh" ${savedQs === 'lh' ? 'selected' : ''}>주택공사 설계지침 (2.0N / 5.0qu)</option>
+                <option value="road" ${savedQs === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
+                <option value="lh" ${savedQs === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
             `;
         }
+
+        updateFormulaInfoText();
     }
 
     function updateUIState() {
@@ -364,8 +398,10 @@ export function initPileModule(container) {
             document.getElementById('grid5_val').value = STEEL_GRADE_MAP[gradeKey] || 275000;
         } else if (e.target.id === 'pile_qp_formula') {
             localStorage.setItem('geo_pile_qp_formula', e.target.value);
+            updateFormulaInfoText();
         } else if (e.target.id === 'pile_qs_formula') {
             localStorage.setItem('geo_pile_qs_formula', e.target.value);
+            updateFormulaInfoText();
         }
     });
 
@@ -470,7 +506,7 @@ function calculatePileCapacity() {
 
     const Ap = (Math.PI * Math.pow(D, 2)) / 4.0;
     
-    let q_p = 0; // 단위면적당 극한선단지지력 (kN/m²)
+    let q_p = 0; 
     let qp_formula_name = "";
     let qp_calc_detail = "";
 
@@ -647,7 +683,7 @@ function calculatePileCapacity() {
             </table>
         </div>
 
-        <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정 (구조물기초설계기준 해설 표 5.2.9)</div>
+        <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정 (구조물기초설계기준 해설)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 시공공법 및 산정식 : <strong>${qp_formula_name}</strong><br>
