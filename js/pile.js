@@ -15,13 +15,13 @@ export function initPileModule(container) {
     };
 
     const STEEL_DB = {
-        "406.4": [9, 10, 11, 12],
-        "508.0": [9, 10, 11, 12, 13, 14],
-        "609.6": [9, 10, 11, 12, 13, 14, 15, 16],
-        "711.2": [9, 10, 11, 12, 13, 14, 15, 16],
-        "812.8": [9, 10, 11, 12, 13, 14, 15, 16],
-        "914.4": [12, 13, 14, 15, 16, 17, 18, 19],
-        "1016.0": [12, 13, 14, 15, 16, 17, 18, 19]
+        "406.4": { defaultT: 12, displayD: "406" },
+        "508.0": { defaultT: 12, displayD: "508" },
+        "609.6": { defaultT: 14, displayD: "610" },
+        "711.2": { defaultT: 14, displayD: "711" },
+        "812.8": { defaultT: 14, displayD: "813" },
+        "914.4": { defaultT: 16, displayD: "914" },
+        "1016.0": { defaultT: 16, displayD: "1016" }
     };
 
     const STEEL_GRADE_MAP = {
@@ -30,6 +30,10 @@ export function initPileModule(container) {
         "STP380": 380000,
         "STP550": 550000
     };
+
+    // 레거시 저장 데이터(m 단위)를 mm 정수 단위로 보정
+    let savedD = parseFloat(getVal('D', '500'));
+    if (savedD < 10) savedD = Math.round(savedD * 1000);
 
     // 초기 지층 데이터
     let pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
@@ -49,7 +53,7 @@ export function initPileModule(container) {
     container.innerHTML = `
         <h3>1. 설계자료 입력 (말뚝기초 연직지지력 검토)</h3>
         
-        <!-- 1. 말뚝기초 제원 및 시공 조건 (5개 그리드박스 구성) -->
+        <!-- 1. 말뚝기초 제원 및 시공 조건 (5개 그리드박스) -->
         <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.95em;">■ 말뚝기초 제원 및 시공 조건</div>
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px;">
             <!-- [그리드 1] 말뚝 종류 -->
@@ -64,35 +68,35 @@ export function initPileModule(container) {
                 </select>
             </div>
 
-            <!-- [그리드 2] 종류별 세부 옵션 (PHC종 / 강종+부식 / 공란) -->
+            <!-- [그리드 2] 세부 구분 (종별/강종) -->
             <div class="input-group" style="margin:0;">
                 <label id="grid2_label">세부 구분</label>
                 <div id="grid2_content" style="height:32px; display:flex; align-items:center;"></div>
             </div>
 
-            <!-- [그리드 3] 규격 선택 및 직경 D -->
+            <!-- [그리드 3] 규격 선택 및 직경 D (mm) -->
             <div class="input-group" style="margin:0;">
-                <label>규격 선택 / 직경 D (m)</label>
+                <label>규격 선택 / 직경 D (mm)</label>
                 <div style="display:flex; gap:4px; height:32px;">
-                    <select id="pile_spec_select" style="width:55%; height:100%; box-sizing:border-box; padding:2px; font-size:0.82em;"></select>
-                    <input type="number" id="pile_D" value="${getVal('D', '0.500')}" step="0.001" placeholder="D(m)" style="width:45%; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.85em;">
+                    <select id="pile_spec_select" style="width:55%; height:100%; box-sizing:border-box; padding:2px; font-size:0.85em;"></select>
+                    <input type="number" id="pile_D" value="${savedD}" step="1" placeholder="D(mm)" style="width:45%; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.88em;">
                 </div>
             </div>
 
             <!-- [그리드 4] 말뚝 두께 t (mm) -->
             <div class="input-group" style="margin:0;">
                 <label>말뚝 두께 t (mm)</label>
-                <input type="number" id="pile_t" value="${getVal('t', '80')}" step="0.1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center;">
+                <input type="number" id="pile_t" value="${getVal('t', '80')}" step="1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center;">
             </div>
 
             <!-- [그리드 5] 허용축하중 Pa (kN) 또는 허용압축응력 σ_ca -->
             <div class="input-group" style="margin:0;">
-                <label id="grid5_label">허용축하중 Pa (kN)</label>
+                <label id="grid5_label" style="font-size: 0.78em; letter-spacing: -0.6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">허용축하중 Pa (kN)</label>
                 <input type="number" id="grid5_val" value="${getVal('grid5_val', '1730')}" step="0.1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center; font-weight:bold;">
             </div>
         </div>
 
-        <!-- Row 2: 시공공법 및 이음조건 -->
+        <!-- Row 2: 시공공법 및 이음 조건 -->
         <div class="input-grid" style="margin-bottom: 15px; grid-template-columns: repeat(2, 1fr);">
             <div class="input-group">
                 <label>시공 공법</label>
@@ -104,14 +108,15 @@ export function initPileModule(container) {
                 </select>
             </div>
             <div class="input-group">
-                <label>이음 방법 / 개소 수</label>
-                <div style="display:flex; gap:5px; height: 32px;">
-                    <select id="pile_joint_type" style="width:60%; height:100%;">
+                <label>이음 방법 및 개소</label>
+                <div style="display:flex; gap:6px; height: 32px; align-items:center;">
+                    <select id="pile_joint_type" style="flex:1; height:100%; box-sizing:border-box; padding:2px; font-size:0.88em;">
                         <option value="weld" ${getVal('joint_type', 'weld') === 'weld' ? 'selected' : ''}>용접 이음</option>
                         <option value="bolt" ${getVal('joint_type', 'weld') === 'bolt' ? 'selected' : ''}>볼트 이음</option>
                         <option value="none" ${getVal('joint_type', 'weld') === 'none' ? 'selected' : ''}>이음 없음</option>
                     </select>
-                    <input type="number" id="pile_joint_count" value="${getVal('joint_count', '0')}" min="0" style="width:40%; height:100%; text-align:center;">
+                    <input type="number" id="pile_joint_count" value="${getVal('joint_count', '0')}" min="0" style="width:45px; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.88em;">
+                    <span style="font-size:0.85em; font-weight:bold; color:#2c3e50; white-space:nowrap;">개소</span>
                 </div>
             </div>
         </div>
@@ -174,15 +179,13 @@ export function initPileModule(container) {
         const grid5Label = document.getElementById('grid5_label');
         const grid5Val = document.getElementById('grid5_val');
         const specSelect = document.getElementById('pile_spec_select');
-        const dInput = document.getElementById('pile_D');
-        const tInput = document.getElementById('pile_t');
 
         specSelect.innerHTML = '';
 
         if (type === 'PHC') {
             grid2Label.textContent = 'PHC 종 구분';
             grid2Content.innerHTML = `
-                <select id="phc_class" style="width:100%; height:100%; box-sizing:border-box; padding:4px;">
+                <select id="phc_class" style="width:100%; height:100%; box-sizing:border-box; padding:4px; font-size:0.88em;">
                     <option value="A">A종</option>
                     <option value="B">B종</option>
                     <option value="C">C종</option>
@@ -190,36 +193,33 @@ export function initPileModule(container) {
             `;
             grid5Label.textContent = '허용축하중 Pa (kN)';
 
-            // PHC DB 콤보박스 채우기
             specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
             Object.keys(PHC_DB).forEach(d => {
-                specSelect.innerHTML += `<option value="${d}">D${d} (t=${PHC_DB[d].t}mm)</option>`;
+                specSelect.innerHTML += `<option value="${d}">D${d}</option>`;
             });
-            specSelect.value = '500'; // 기본 D500
+            specSelect.value = '500';
 
         } else if (type === 'STEEL') {
             grid2Label.textContent = '강종 / 부식두께(mm)';
             grid2Content.innerHTML = `
                 <div style="display:flex; gap:3px; width:100%; height:100%;">
-                    <select id="steel_grade" style="flex:1; min-width:0; box-sizing:border-box; padding:2px; font-size:0.85em;">
+                    <select id="steel_grade" style="flex:1; min-width:0; box-sizing:border-box; padding:2px; font-size:0.82em;">
                         <option value="STP275">STP 275</option>
                         <option value="STP355">STP 355</option>
                         <option value="STP380">STP 380</option>
                         <option value="STP550">STP 550</option>
                     </select>
-                    <input type="number" id="pile_t1" value="${initialT1}" step="0.1" placeholder="t1" title="부식두께 t1(mm)" style="width:50px; text-align:center; box-sizing:border-box; padding:2px; border:1px solid #ccc; font-size:0.85em;">
+                    <input type="number" id="pile_t1" value="${initialT1}" step="0.1" placeholder="t1" title="부식두께 t1(mm)" style="width:48px; text-align:center; box-sizing:border-box; padding:2px; border:1px solid #ccc; font-size:0.85em;">
                 </div>
             `;
             grid5Label.textContent = '허용압축응력 σ_ca (kN/m²)';
 
-            // 강관 DB 콤보박스 채우기
             specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
             Object.keys(STEEL_DB).forEach(d => {
-                STEEL_DB[d].forEach(t => {
-                    specSelect.innerHTML += `<option value="${d}_${t}">D${d} (t=${t}mm)</option>`;
-                });
+                const dispD = STEEL_DB[d].displayD;
+                specSelect.innerHTML += `<option value="${d}">D${dispD}</option>`;
             });
-            specSelect.value = '508.0_12';
+            specSelect.value = '508.0';
 
         } else {
             grid2Label.textContent = '세부 구분';
@@ -248,7 +248,7 @@ export function initPileModule(container) {
         if (type === 'PHC') {
             const data = PHC_DB[specVal];
             if (data) {
-                dInput.value = (parseFloat(specVal) / 1000.0).toFixed(3);
+                dInput.value = Math.round(parseFloat(specVal)); // 정수 mm
                 tInput.value = data.t;
                 dInput.readOnly = true;
                 tInput.readOnly = true;
@@ -257,10 +257,10 @@ export function initPileModule(container) {
                 grid5Val.value = data[phcClass] || 1730;
             }
         } else if (type === 'STEEL') {
-            const [dStr, tStr] = specVal.split('_');
-            if (dStr && tStr) {
-                dInput.value = (parseFloat(dStr) / 1000.0).toFixed(4);
-                tInput.value = tStr;
+            const data = STEEL_DB[specVal];
+            if (data) {
+                dInput.value = Math.round(parseFloat(specVal)); // 정수 mm (예: 508)
+                tInput.value = data.defaultT;
                 dInput.readOnly = true;
                 tInput.readOnly = true;
 
@@ -355,7 +355,11 @@ export function initPileModule(container) {
 function calculatePileCapacity() {
     const p_type = document.getElementById('pile_type').value;
     const method = document.getElementById('pile_method').value;
-    const D = parseFloat(document.getElementById('pile_D').value);
+    
+    // 입력된 D (mm 단위) -> m 단위 환산
+    const D_mm = parseFloat(document.getElementById('pile_D').value) || 500;
+    const D = D_mm / 1000.0;
+
     const t_mm = parseFloat(document.getElementById('pile_t').value);
     const grid5Val = parseFloat(document.getElementById('grid5_val').value) || 0;
 
@@ -374,7 +378,7 @@ function calculatePileCapacity() {
     const P_norm = parseFloat(document.getElementById('pile_P_norm').value);
     const P_seis = parseFloat(document.getElementById('pile_P_seis').value);
 
-    // 1. 선단지지력 (Qup) : 최하단 지층 N치 연동
+    // 1. 선단지지력 (Qup)
     let lastLayer = pileLayers.length > 0 ? pileLayers[pileLayers.length - 1] : { name: '지지층', n_val: 50 };
     let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
     let N_tip = Math.min(raw_N_tip, 50);
@@ -433,14 +437,13 @@ function calculatePileCapacity() {
 
     let Q_mat_base = 0;
     if (p_type === 'PHC') {
-        Q_mat_base = grid5Val; // 표 기준 장기 허용축하중(kN) 직접 사용
+        Q_mat_base = grid5Val;
     } else if (p_type === 'STEEL') {
-        Q_mat_base = grid5Val * A_net; // grid5Val = σ_ca (kN/m²)
+        Q_mat_base = grid5Val * A_net;
     } else {
-        Q_mat_base = grid5Val * 1000.0 * A_net; // grid5Val = σ_ca (MPa)
+        Q_mat_base = grid5Val * 1000.0 * A_net;
     }
 
-    // 장경비 및 이음 저감율
     const L_over_D = L / D;
     let n_limit = 85; 
     if (p_type === 'PC') n_limit = 80;
@@ -506,7 +509,7 @@ function calculatePileCapacity() {
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 선단지층 : <strong>${lastLayer.name}</strong> (평균 N치 = ${raw_N_tip} &rarr; 설계 N치 = <strong>${N_tip}</strong> [상한 50 적용])<br>
-            • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong><br>
+            • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (직경 D = ${D_mm}mm)<br>
             • 적용 산정식 : Q<sub>up</sub> = ${alpha_p} &times; N &times; A<sub>p</sub><br>
             • Q<sub>up</sub> = ${alpha_p} &times; ${N_tip} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span><br><br>
 
