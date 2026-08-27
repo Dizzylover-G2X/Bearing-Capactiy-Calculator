@@ -14,14 +14,15 @@ export function initPileModule(container) {
         "800": { t: 110, A: 3910, B: 4020, C: 3950 }
     };
 
+    // 제원 캡처표 기반 강관말뚝 직경별 표준 두께 목록 DB
     const STEEL_DB = {
-        "406.4": { defaultT: 12, displayD: "406.4" },
-        "508.0": { defaultT: 12, displayD: "508.0" },
-        "609.6": { defaultT: 14, displayD: "609.6" },
-        "711.2": { defaultT: 14, displayD: "711.2" },
-        "812.8": { defaultT: 14, displayD: "812.8" },
-        "914.4": { defaultT: 16, displayD: "914.4" },
-        "1016.0": { defaultT: 16, displayD: "1016.0" }
+        "406.4": { displayD: "406.4", tList: [9, 10, 11, 12] },
+        "508.0": { displayD: "508.0", tList: [9, 10, 11, 12, 13, 14] },
+        "609.6": { displayD: "609.6", tList: [9, 10, 11, 12, 13, 14, 15, 16] },
+        "711.2": { displayD: "711.2", tList: [9, 10, 11, 12, 13, 14, 15, 16] },
+        "812.8": { displayD: "812.8", tList: [9, 10, 11, 12, 13, 14, 15, 16] },
+        "914.4": { displayD: "914.4", tList: [12, 13, 14, 15, 16, 17, 18, 19] },
+        "1016.0": { displayD: "1016.0", tList: [12, 13, 14, 15, 16, 17, 18, 19] }
     };
 
     const STEEL_GRADE_MAP = {
@@ -83,10 +84,13 @@ export function initPileModule(container) {
                 </div>
             </div>
 
-            <!-- [그리드 4] 말뚝 두께 t (mm) -->
+            <!-- [그리드 4] 두께 선택 / 말뚝 두께 t (mm) -->
             <div class="input-group" style="margin:0;">
-                <label>말뚝 두께 t (mm)</label>
-                <input type="number" id="pile_t" value="${getVal('t', '80')}" step="1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center;">
+                <label>두께 선택 / 두께 t (mm)</label>
+                <div style="display:flex; gap:4px; height:32px;">
+                    <select id="pile_t_select" style="width:55%; height:100%; box-sizing:border-box; padding:2px; font-size:0.85em;"></select>
+                    <input type="number" id="pile_t" value="${getVal('t', '80')}" step="1" style="width:45%; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.88em;">
+                </div>
             </div>
 
             <!-- [그리드 5] 허용축하중 Pa (kN) 또는 허용압축응력 σ_ca -->
@@ -216,7 +220,6 @@ export function initPileModule(container) {
 
             specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
             Object.keys(STEEL_DB).forEach(d => {
-                // 규격을 D???.? 소수점 첫째자리까지 표시
                 const dispD = STEEL_DB[d].displayD;
                 specSelect.innerHTML += `<option value="${d}">D${dispD}</option>`;
             });
@@ -238,10 +241,14 @@ export function initPileModule(container) {
         const specVal = document.getElementById('pile_spec_select').value;
         const dInput = document.getElementById('pile_D');
         const tInput = document.getElementById('pile_t');
+        const tSelect = document.getElementById('pile_t_select');
         const grid5Val = document.getElementById('grid5_val');
+
+        tSelect.innerHTML = '';
 
         if (specVal === 'direct') {
             dInput.readOnly = false;
+            tSelect.innerHTML = `<option value="direct">직접 입력</option>`;
             tInput.readOnly = false;
             return;
         }
@@ -250,8 +257,12 @@ export function initPileModule(container) {
             const data = PHC_DB[specVal];
             if (data) {
                 dInput.value = Math.round(parseFloat(specVal));
-                tInput.value = data.t;
                 dInput.readOnly = true;
+
+                tSelect.innerHTML = `<option value="direct">직접 입력</option>
+                                     <option value="${data.t}">${data.t}mm</option>`;
+                tSelect.value = data.t.toString();
+                tInput.value = data.t;
                 tInput.readOnly = true;
 
                 const phcClass = document.getElementById('phc_class')?.value || 'A';
@@ -260,15 +271,41 @@ export function initPileModule(container) {
         } else if (type === 'STEEL') {
             const data = STEEL_DB[specVal];
             if (data) {
-                // 강관말뚝 소수점 첫째자리 직경 표시 (예: 508.0, 406.4)
                 dInput.value = parseFloat(specVal).toFixed(1);
-                tInput.value = data.defaultT;
                 dInput.readOnly = true;
+
+                // 제원표 기반 선택된 직경의 두께 목록 생성
+                tSelect.innerHTML = `<option value="direct">직접 입력</option>`;
+                data.tList.forEach(t => {
+                    tSelect.innerHTML += `<option value="${t}">${t}mm</option>`;
+                });
+
+                // 기본 두께 선택 (12mm 또는 첫번째 항목)
+                let defaultT = data.tList.includes(12) ? 12 : data.tList[0];
+                tSelect.value = defaultT.toString();
+                tInput.value = defaultT;
                 tInput.readOnly = true;
 
                 const gradeKey = document.getElementById('steel_grade')?.value || 'STP275';
                 grid5Val.value = STEEL_GRADE_MAP[gradeKey] || 275000;
             }
+        } else {
+            dInput.readOnly = false;
+            tSelect.innerHTML = `<option value="direct">직접 입력</option>`;
+            tInput.readOnly = false;
+        }
+    }
+
+    function applyThicknessSelection() {
+        const tSelect = document.getElementById('pile_t_select');
+        const tInput = document.getElementById('pile_t');
+        if (!tSelect || !tInput) return;
+
+        if (tSelect.value === 'direct') {
+            tInput.readOnly = false;
+        } else {
+            tInput.value = tSelect.value;
+            tInput.readOnly = true;
         }
     }
 
@@ -281,6 +318,8 @@ export function initPileModule(container) {
             localStorage.setItem('geo_pile_type', e.target.value);
         } else if (e.target.id === 'phc_class' || e.target.id === 'pile_spec_select') {
             applySpecSelection();
+        } else if (e.target.id === 'pile_t_select') {
+            applyThicknessSelection();
         } else if (e.target.id === 'steel_grade') {
             const gradeKey = e.target.value;
             document.getElementById('grid5_val').value = STEEL_GRADE_MAP[gradeKey] || 275000;
@@ -444,10 +483,10 @@ function calculatePileCapacity() {
         Q_mat_base = grid5Val;
         qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong> (해설 표 5.2.1 표준 허용축하중 적용)`;
     } else if (p_type === 'STEEL') {
-        Q_mat_base = grid5Val * A_net; // σ_ca (kN/m²) × A_net (m²)
+        Q_mat_base = grid5Val * A_net;
         qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = ${grid5Val.toLocaleString()} kN/m² &times; ${A_net.toFixed(5)} m² = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
     } else {
-        Q_mat_base = grid5Val * 1000.0 * A_net; // σ_ca (MPa) × 1000 × A_net (m²)
+        Q_mat_base = grid5Val * 1000.0 * A_net;
         qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> &times; 1000 = ${grid5Val.toFixed(1)} MPa &times; ${A_net.toFixed(5)} m² &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
     }
 
