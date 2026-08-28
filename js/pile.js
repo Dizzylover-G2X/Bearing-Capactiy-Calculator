@@ -247,8 +247,8 @@ export function initPileModule(container) {
         if (type === 'CAST_ROCK') {
             qpSelect.disabled = false;
             qpSelect.innerHTML = `
-                <option value="rock_case1" ${savedQp === 'rock_case1' ? 'selected' : ''}>암반 Case-1 (2.5 q_u)</option>
-                <option value="rock_case2" ${savedQp === 'rock_case2' ? 'selected' : ''}>암반 Case-2 (여러방향 절리)</option>
+                <option value="rock_case1" ${savedQp === 'rock_case1' ? 'selected' : ''}>Case-1 (2.5 q_u)</option>
+                <option value="rock_case2" ${savedQp === 'rock_case2' ? 'selected' : ''}>Case-2 (여러방향 절리)</option>
             `;
             qsSelect.disabled = false;
             qsSelect.innerHTML = `
@@ -1002,7 +1002,7 @@ function calculatePileCapacity() {
 
         <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정</div>
         
-        <!-- (1) 말뚝 선단지지력 (Qup) - 산정과정 박스 폰트 크기 0.9em로 상향 -->
+        <!-- (1) 말뚝 선단지지력 (Qup) - 산정과정 박스 폰트 크기 0.9em -->
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
