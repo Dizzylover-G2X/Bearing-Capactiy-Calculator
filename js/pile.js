@@ -615,7 +615,7 @@ export function initPileModule(container) {
     }
 
     // ---------------------------------------------------------
-    // 연직지지력 산정 핵심 함수 (상세 식 및 테이블 복원)
+    // 연직지지력 산정 핵심 함수
     // ---------------------------------------------------------
     function calculatePileCapacity() {
         const p_type = container.querySelector('#pile_type').value;
@@ -858,13 +858,17 @@ export function initPileModule(container) {
         const Qa_soil_norm = Qu_total / 3.0;
         const Qa_soil_seis = Qu_total / 2.0;
 
-        // 4. 재료 허용압축하중 (Qas)
+        // 4. 재료 허용압축하중 (Qas) - ★ 스코프 에러 수정 (D_out, D_in 전역 선언)
         let A_net = 0;
+        let D_out = D;
+        let D_in = 0;
         if (p_type === 'CAST' || p_type === 'CAST_ROCK') {
             A_net = Ap; 
+            D_out = D;
+            D_in = 0;
         } else {
-            const D_out = D - (t1_mm / 1000.0);
-            const D_in = Math.max(0, D - 2.0 * (t_mm / 1000.0));
+            D_out = D - (t1_mm / 1000.0);
+            D_in = Math.max(0, D - 2.0 * (t_mm / 1000.0));
             A_net = (Math.PI * (Math.pow(D_out, 2) - Math.pow(D_in, 2))) / 4.0;
         }
 
@@ -964,7 +968,7 @@ export function initPileModule(container) {
             `;
         }
 
-        // 6. 결과 렌더링 (모든 상세 표 및 검증 과정 복원)
+        // 6. 결과 렌더링
         const resultDiv = container.querySelector('#pile-result');
         if (!resultDiv) return;
         resultDiv.style.display = 'block';
