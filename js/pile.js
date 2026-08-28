@@ -563,7 +563,7 @@ export function initPileModule(container) {
 // ---------------------------------------------------------
 const HB_TABLE_DATA = [
     { rmr: 3,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7, label: "매우 불량한 암반 (3~23)" },
-    { rmr: 23,  m: { 7: 0.0029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6, label: "불량한 암반 (23~44)" },
+    { rmr: 23,  m: { 7: 0.029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6, label: "불량한 암반 (23~44)" },
     { rmr: 44,  m: { 7: 0.128, 10: 0.183, 15: 0.275, 17: 0.311, 25: 0.458 }, s: 9.0e-5, label: "보통의 암반 (44~65)" },
     { rmr: 65,  m: { 7: 0.575, 10: 0.821, 15: 1.231, 17: 1.395, 25: 2.052 }, s: 0.0029, label: "양호한 암반 (65~85)" },
     { rmr: 85,  m: { 7: 2.400, 10: 3.430, 15: 5.140, 17: 5.820, 25: 8.567 }, s: 0.082,  label: "매우 양호한 암반 (85~100)" },
@@ -578,7 +578,7 @@ const ROCK_TYPE_NAME_MAP = {
     25: "E : 조립결정 화성,변성암"
 };
 
-// 1차 선형 보간 함수
+// 1차 선형 보간 함수 (각 암질의 최솟값(Node)을 정확히 기준으로 삼아 계산)
 function interpolateHoekBrown(rmrVal, miVal) {
     if (rmrVal <= 3) {
         return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 3, r2: 3, m1: HB_TABLE_DATA[0].m[miVal], m2: HB_TABLE_DATA[0].m[miVal], s1: HB_TABLE_DATA[0].s, s2: HB_TABLE_DATA[0].s };
@@ -1002,13 +1002,13 @@ function calculatePileCapacity() {
 
         <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정</div>
         
-        <!-- (1) 말뚝 선단지지력 (Qup) - 산정과정 박스 폰트 크기 및 스타일을 표 1, 2와 동일하게 변경 (font-size: 0.85em, 기본 고딕 계열 폰트 적용) -->
+        <!-- (1) 말뚝 선단지지력 (Qup) - 산정과정 박스 폰트 크기 및 서체 스타일을 표 1, 2와 동일(0.8em, monospace 제거)하게 일치시킴 -->
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
             • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, ${lastLayer.type === 'rock' ? 'q<sub>u</sub>' : 'c'} = ${c_tip} kPa)<br>
             • 단위면적당 극한선단지지력 q<sub>p</sub> :<br>
-            <div style="margin-left: 15px; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.85em; border: 1px solid #fae5d3;">${qp_calc_detail}</div><br>
+            <div style="margin-left: 15px; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.8em; color: #2c3e50; border: 1px solid #fae5d3;">${qp_calc_detail}</div><br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
             • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span>
 
