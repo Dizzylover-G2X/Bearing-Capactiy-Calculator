@@ -1002,13 +1002,13 @@ function calculatePileCapacity() {
 
         <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정</div>
         
-        <!-- (1) 말뚝 선단지지력 (Qup) - 산정과정 박스 폰트 크기 및 서체 스타일을 표 1, 2와 동일(0.8em, monospace 제거)하게 일치시킴 -->
+        <!-- (1) 말뚝 선단지지력 (Qup) - 산정과정 박스 폰트 크기 0.9em로 상향 -->
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
             • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, ${lastLayer.type === 'rock' ? 'q<sub>u</sub>' : 'c'} = ${c_tip} kPa)<br>
             • 단위면적당 극한선단지지력 q<sub>p</sub> :<br>
-            <div style="margin-left: 15px; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.8em; color: #2c3e50; border: 1px solid #fae5d3;">${qp_calc_detail}</div><br>
+            <div style="margin-left: 15px; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.9em; color: #2c3e50; border: 1px solid #fae5d3;">${qp_calc_detail}</div><br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
             • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span>
 
