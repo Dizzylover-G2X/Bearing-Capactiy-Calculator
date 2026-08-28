@@ -74,7 +74,7 @@ export function initPileModule(container) {
             </div>
 
             <div class="input-group" style="margin:0;">
-                <label>규격 선택 / 직경 D (mm)</label>
+                <label>규격/직경 D(mm)</label>
                 <div style="display:flex; gap:4px; height:32px;">
                     <select id="pile_spec_select" style="width:55%; height:100%; box-sizing:border-box; padding:2px; font-size:0.85em;"></select>
                     <input type="number" id="pile_D" value="${savedD}" step="0.1" placeholder="D(mm)" style="width:45%; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.88em;">
@@ -341,7 +341,6 @@ export function initPileModule(container) {
         } else if (type === 'CAST' || type === 'CAST_ROCK') {
             if (type === 'CAST_ROCK') {
                 grid2Label.innerHTML = '암의 유형 / RMR';
-                // 좌측 정렬 및 지정 드롭다운 항목 반영
                 grid2Content.innerHTML = `
                     <div style="display:flex; gap:3px; width:100%; height:100%;">
                         <select id="pile_rock_type" style="flex:1.8; min-width:0; text-align:left; padding-left:4px; box-sizing:border-box; border:1px solid #ccc; font-size:0.75em;" title="암의 유형 (Hoek & Brown, 1988)">
