@@ -904,7 +904,7 @@ function calculatePileCapacity() {
     const status_norm = P_norm <= Q_app_norm ? `안정 (O.K) (${ratio_norm.toFixed(1)}%)` : `NG (${ratio_norm.toFixed(1)}%)`;
     const status_seis = P_seis <= Q_app_seis ? `안정 (O.K) (${ratio_seis.toFixed(1)}%)` : `NG (${ratio_seis.toFixed(1)}%)`;
 
-    // Case-2 적용 시 표 1 및 표 2 HTML 생성 (표 1 폰트 크기 0.8em 적용)
+    // Case-2 적용 시 표 1 및 표 2 HTML 생성 (표 1 폰트 크기 0.8em 통일)
     let extraRockTablesHtml = "";
     if (p_type === 'CAST_ROCK' && qp_formula === 'rock_case2') {
         extraRockTablesHtml = `
@@ -1002,13 +1002,13 @@ function calculatePileCapacity() {
 
         <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정</div>
         
-        <!-- (1) 말뚝 선단지지력 (Qup) 및 산정과정 폰트 크기 확대 적용 -->
+        <!-- (1) 말뚝 선단지지력 (Qup) - 산정과정 박스 폰트 크기 및 스타일을 표 1, 2와 동일하게 변경 (font-size: 0.85em, 기본 고딕 계열 폰트 적용) -->
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
             • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, ${lastLayer.type === 'rock' ? 'q<sub>u</sub>' : 'c'} = ${c_tip} kPa)<br>
             • 단위면적당 극한선단지지력 q<sub>p</sub> :<br>
-            <div style="margin-left: 15px; font-family: monospace; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.95em;">${qp_calc_detail}</div><br>
+            <div style="margin-left: 15px; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.85em; border: 1px solid #fae5d3;">${qp_calc_detail}</div><br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
             • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span>
 
@@ -1045,7 +1045,7 @@ function calculatePileCapacity() {
                                 <td>${r.dz.toFixed(2)}</td>
                                 <td>${r.n_val} / ${r.gamma.toFixed(1)} / ${r.c_val}</td>
                                 <td>${r.z_mid.toFixed(2)}m /<br>${r.sigma_v_prime.toFixed(1)}kPa</td>
-                                <td style="text-align: left; padding: 4px 8px; font-family: monospace;">${r.formula}</td>
+                                <td style="text-align: left; padding: 4px 8px;">${r.formula}</td>
                                 <td>${r.fxL.toFixed(1)}</td>
                                 <td style="font-weight:bold; color:#2980b9;">${r.qusi.toFixed(1)}</td>
                             </tr>
