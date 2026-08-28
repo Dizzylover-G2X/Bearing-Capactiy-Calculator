@@ -891,6 +891,8 @@ export function initPileModule(container) {
 
         let cum_depth = 0;
         let cum_sigma_v = 0; 
+        let c_factor = (method === 'driven') ? 2.0 : 2.5;
+        let c_factor_c = (method === 'driven') ? 1.0 : 0.8;
 
         pileLayersData.forEach(l => {
             let f_unit = 0;
@@ -914,22 +916,32 @@ export function initPileModule(container) {
                 formula_str = `min(0.65·<i>α<sub>E</sub></i>·<i>P<sub>a</sub></i>·(<i>q<sub>u</sub></i>/<i>P<sub>a</sub></i>)<sup>0.5</sup>, 7.8·<i>P<sub>a</sub></i>·(<i>f'<sub>c</sub></i>/<i>P<sub>a</sub></i>)<sup>0.5</sup>)<br>` +
                               `= min(0.65×${alpha_e_val.toFixed(3)}×${P_a}×(${qu_MPa.toFixed(2)}/${P_a})<sup>0.5</sup>, 7.8×${P_a}×(${user_fck}/${P_a})<sup>0.5</sup>)<br>` +
                               `= min(${(fs_MPa*1000).toFixed(1)}, ${(fs_limit_MPa*1000).toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
-            } else if (l.type === 'rock' && p_type === 'CAST') {
-                let P_a = 0.101; 
-                let qu_MPa = c_val_i / 1000.0; 
-                let fs_MPa = 0.65 * 0.37 * P_a * Math.pow(qu_MPa / P_a, 0.5); 
-                let fs_limit_MPa = 7.8 * P_a * Math.pow(27.0 / P_a, 0.5); 
-                let f_unit_MPa = Math.min(fs_MPa, fs_limit_MPa);
-                f_unit = f_unit_MPa * 1000.0; 
-                formula_str = `Horvath & Kenney<br>= <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
             } else if (p_type === 'CAST' || p_type === 'CAST_ROCK') {
-                let beta = 1.5 - 0.245 * Math.sqrt(Math.max(0.1, z_mid));
-                beta = Math.max(0.25, Math.min(1.20, beta));
-                f_unit = Math.min(200.0, beta * sigma_v_prime);
-                formula_str = `<i>β</i>·<i>σ'<sub>v</sub></i> = ${f_unit.toFixed(1)}`;
+                if (l.type === 'sand' || l.type === 'rock') {
+                    let beta = 1.5 - 0.245 * Math.sqrt(Math.max(0.1, z_mid));
+                    beta = Math.max(0.25, Math.min(1.20, beta));
+                    let calc_val = beta * sigma_v_prime;
+                    f_unit = Math.min(200.0, calc_val);
+                    formula_str = `min(200, <i>β</i>·<i>σ'<sub>v</sub></i>) = min(200, ${beta.toFixed(3)}×${sigma_v_prime.toFixed(1)})<br>` +
+                                  `= min(200, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                } else {
+                    let calc_val = 0.55 * c_val_i;
+                    f_unit = Math.min(100.0, calc_val);
+                    formula_str = `min(100, 0.55·<i>c<sub>u</sub></i>) = min(100, 0.55×${c_val_i})<br>` +
+                                  `= min(100, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                }
             } else {
-                f_unit = (l.type === 'sand' || l.type === 'rock') ? Math.min(2.5 * l.n_val, 100.0) : Math.min(0.8 * c_val_i, 100.0);
-                formula_str = `표준식 = ${f_unit.toFixed(1)}`;
+                if (l.type === 'sand' || l.type === 'rock') {
+                    let calc_val = c_factor * l.n_val;
+                    f_unit = Math.min(100.0, calc_val);
+                    formula_str = `min(100, ${c_factor}·<i>N</i>) = min(100, ${c_factor}×${l.n_val})<br>` +
+                                  `= min(100, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                } else {
+                    let calc_val = c_factor_c * c_val_i;
+                    f_unit = Math.min(100.0, calc_val);
+                    formula_str = `min(100, ${c_factor_c}·<i>c<sub>u</sub></i>) = min(100, ${c_factor_c}×${c_val_i})<br>` +
+                                  `= min(100, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                }
             }
 
             let fxL = f_unit * dz_i;
@@ -1166,14 +1178,14 @@ export function initPileModule(container) {
                 • <strong>총 극한주면마찰력 Q<sub>us</sub></strong> = &sum; (<i>f<sub>s</sub></i> &times; <i>L</i>) &times; <i>A<sub>s</sub></i> = <span style="font-weight:bold; color:#8e44ad;">${total_Qus.toFixed(1)} kN</span>
 
                 <div class="table-container" style="margin-top: 10px; margin-bottom: 5px;">
-                    <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                    <table class="result-table" style="font-size: 0.92em; text-align: center;">
                         <thead>
                             <tr style="background-color: #eaeded;">
                                 <th>지층명</th>
                                 <th>토성구분</th>
                                 <th>층후 L<br>(m)</th>
                                 <th>N치 / &gamma; / c(<i>q<sub>u</sub></i>)</th>
-                                <th style="min-width: 220px;">단위 마찰력 <i>f<sub>s</sub></i> (kN/m²)</th>
+                                <th style="min-width: 260px;">단위 마찰력 <i>f<sub>s</sub></i> 계산 과정 (kN/m²)</th>
                                 <th><i>f<sub>s</sub></i> &times; L</th>
                                 <th>층별 주면마찰력<br>Q<sub>us,i</sub> (kN)</th>
                             </tr>
@@ -1185,7 +1197,7 @@ export function initPileModule(container) {
                                     <td>${r.type}</td>
                                     <td>${r.dz.toFixed(2)}</td>
                                     <td>${r.n_val} / ${r.gamma.toFixed(1)} / ${r.c_val}</td>
-                                    <td style="text-align: left; padding: 4px 8px;">${r.formula}</td>
+                                    <td style="text-align: left; padding: 6px 10px; line-height: 1.4;">${r.formula}</td>
                                     <td>${r.fxL.toFixed(1)}</td>
                                     <td style="font-weight:bold; color:#2980b9;">${r.qusi.toFixed(1)}</td>
                                 </tr>
