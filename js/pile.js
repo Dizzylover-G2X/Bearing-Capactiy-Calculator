@@ -279,7 +279,7 @@ export function initPileModule(container) {
             qpSelect.disabled = false;
             qpSelect.innerHTML = `
                 <option value="road" ${savedQp === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
-                <option value="lh" ${savedQs === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
+                <option value="lh" ${savedQp === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
             `;
             qsSelect.disabled = false;
             qsSelect.innerHTML = `
@@ -904,14 +904,14 @@ function calculatePileCapacity() {
     const status_norm = P_norm <= Q_app_norm ? `안정 (O.K) (${ratio_norm.toFixed(1)}%)` : `NG (${ratio_norm.toFixed(1)}%)`;
     const status_seis = P_seis <= Q_app_seis ? `안정 (O.K) (${ratio_seis.toFixed(1)}%)` : `NG (${ratio_seis.toFixed(1)}%)`;
 
-    // Case-2 적용 시 표 1 및 표 2 HTML 생성
+    // Case-2 적용 시 표 1 및 표 2 HTML 생성 (표 1 폰트 크기 0.8em 적용)
     let extraRockTablesHtml = "";
     if (p_type === 'CAST_ROCK' && qp_formula === 'rock_case2') {
         extraRockTablesHtml = `
             <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
                 <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 1. 비선형 강도 정의상 암질과 재료상수의 대략적인 관계 (Hoek & Brown, 1988)</div>
                 <div class="table-container" style="margin-bottom: 12px;">
-                    <table class="result-table" style="font-size: 0.75em; text-align: center;">
+                    <table class="result-table" style="font-size: 0.8em; text-align: center;">
                         <thead>
                             <tr style="background-color: #eaeded;">
                                 <th rowspan="2">암 질</th><th rowspan="2">정수</th>
@@ -1002,13 +1002,13 @@ function calculatePileCapacity() {
 
         <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정</div>
         
-        <!-- (1) 말뚝 선단지지력 (Qup) 및 참조 표 이동배치 -->
+        <!-- (1) 말뚝 선단지지력 (Qup) 및 산정과정 폰트 크기 확대 적용 -->
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
             • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, ${lastLayer.type === 'rock' ? 'q<sub>u</sub>' : 'c'} = ${c_tip} kPa)<br>
             • 단위면적당 극한선단지지력 q<sub>p</sub> :<br>
-            <div style="margin-left: 15px; font-family: monospace; background: #fdf2e9; padding: 8px; border-radius: 4px; margin: 4px 0; line-height: 1.6;">${qp_calc_detail}</div><br>
+            <div style="margin-left: 15px; font-family: monospace; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.95em;">${qp_calc_detail}</div><br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
             • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span>
 
