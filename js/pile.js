@@ -279,7 +279,7 @@ export function initPileModule(container) {
             qpSelect.disabled = false;
             qpSelect.innerHTML = `
                 <option value="road" ${savedQp === 'road' ? 'selected' : ''}>도로교설계기준해설 (2008)</option>
-                <option value="lh" ${savedQp === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
+                <option value="lh" ${savedQs === 'lh' ? 'selected' : ''}>주택공사 설계개선지침 (2008)</option>
             `;
             qsSelect.disabled = false;
             qsSelect.innerHTML = `
@@ -559,6 +559,55 @@ export function initPileModule(container) {
 }
 
 // ---------------------------------------------------------
+// Hoek & Brown (1988) 표 1 표준 데이터베이스
+// ---------------------------------------------------------
+const HB_TABLE_DATA = [
+    { rmr: 3,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7, label: "매우 불량한 암반 (3~23)" },
+    { rmr: 23,  m: { 7: 0.0029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6, label: "불량한 암반 (23~44)" },
+    { rmr: 44,  m: { 7: 0.128, 10: 0.183, 15: 0.275, 17: 0.311, 25: 0.458 }, s: 9.0e-5, label: "보통의 암반 (44~65)" },
+    { rmr: 65,  m: { 7: 0.575, 10: 0.821, 15: 1.231, 17: 1.395, 25: 2.052 }, s: 0.0029, label: "양호한 암반 (65~85)" },
+    { rmr: 85,  m: { 7: 2.400, 10: 3.430, 15: 5.140, 17: 5.820, 25: 8.567 }, s: 0.082,  label: "매우 양호한 암반 (85~100)" },
+    { rmr: 100, m: { 7: 7.000, 10: 10.000, 15: 15.000, 17: 17.000, 25: 25.000 }, s: 1.00,   label: "신선암 시료 (100)" }
+];
+
+const ROCK_TYPE_NAME_MAP = {
+    7: "A : 벽개발달 탄산염암",
+    10: "B : 석화 이질암",
+    15: "C : 뚜렷한 벽개 사질암",
+    17: "D : 세립결정 화성암",
+    25: "E : 조립결정 화성,변성암"
+};
+
+// 1차 선형 보간 함수
+function interpolateHoekBrown(rmrVal, miVal) {
+    if (rmrVal <= 3) {
+        return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 3, r2: 3, m1: HB_TABLE_DATA[0].m[miVal], m2: HB_TABLE_DATA[0].m[miVal], s1: HB_TABLE_DATA[0].s, s2: HB_TABLE_DATA[0].s };
+    }
+    if (rmrVal >= 100) {
+        return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s, r1: 100, r2: 100, m1: HB_TABLE_DATA[5].m[miVal], m2: HB_TABLE_DATA[5].m[miVal], s1: HB_TABLE_DATA[5].s, s2: HB_TABLE_DATA[5].s };
+    }
+    for (let i = 0; i < HB_TABLE_DATA.length - 1; i++) {
+        const row1 = HB_TABLE_DATA[i];
+        const row2 = HB_TABLE_DATA[i + 1];
+        if (rmrVal >= row1.rmr && rmrVal <= row2.rmr) {
+            const t = (rmrVal - row1.rmr) / (row2.rmr - row1.rmr);
+            const m1 = row1.m[miVal];
+            const m2 = row2.m[miVal];
+            const s1 = row1.s;
+            const s2 = row2.s;
+            return {
+                m: m1 + t * (m2 - m1),
+                s: s1 + t * (s2 - s1),
+                r1: row1.rmr,
+                r2: row2.rmr,
+                m1, m2, s1, s2, t
+            };
+        }
+    }
+    return { m: HB_TABLE_DATA[2].m[miVal], s: HB_TABLE_DATA[2].s, r1: 44, r2: 44 };
+}
+
+// ---------------------------------------------------------
 // 연직지지력 산정 핵심 함수
 // ---------------------------------------------------------
 function calculatePileCapacity() {
@@ -600,8 +649,8 @@ function calculatePileCapacity() {
     let qp_formula_name = "";
     let qp_calc_detail = "";
 
-    // Hoek-Brown 파라미터 변수 초기화
     let hb_m = 0, hb_s = 0, hb_mi = 0, input_rmr = 0; 
+    let hbRes = null;
 
     if (p_type === 'CAST_ROCK') {
         if (qp_formula === 'rock_case1') {
@@ -609,18 +658,21 @@ function calculatePileCapacity() {
             q_p = 2.5 * c_tip;
             qp_calc_detail = `2.5 &times; q<sub>u</sub><br>&nbsp;&nbsp;= 2.5 &times; ${c_tip}<br>&nbsp;&nbsp;= <strong>${q_p.toFixed(1)} kN/m²</strong>`;
         } else {
-            qp_formula_name = "현장타설말뚝(기반암) - Case-2 (여러방향 절리, Hoek & Brown 1988 적용)";
-            hb_mi = parseFloat(document.getElementById('pile_rock_type')?.value) || 17;
+            qp_formula_name = "현장타설말뚝(기반암) - Case-2 (여러방향 절리, Hoek & Brown 1988 보간 산정 적용)";
+            hb_mi = parseInt(document.getElementById('pile_rock_type')?.value) || 17;
             input_rmr = parseFloat(document.getElementById('pile_rmr')?.value) || 30;
             
-            hb_s = Math.exp((input_rmr - 100) / 6.0); 
-            hb_m = hb_mi * Math.exp((input_rmr - 100) / 14.0);
+            hbRes = interpolateHoekBrown(input_rmr, hb_mi);
+            hb_m = hbRes.m;
+            hb_s = hbRes.s;
             
             let factor = Math.sqrt(hb_s) + Math.sqrt(hb_m * Math.sqrt(hb_s) + hb_s);
             q_p = factor * c_tip;
             
-            qp_calc_detail = `[&radic;s + &radic;(m&radic;s + s)] &times; q<sub>u</sub><br>` +
-                             `&nbsp;&nbsp;= [&radic;${hb_s.toFixed(5)} + &radic;(${hb_m.toFixed(3)}&times;&radic;${hb_s.toFixed(5)} + ${hb_s.toFixed(5)})] &times; ${c_tip}<br>` +
+            qp_calc_detail = `• 입력 파라미터 : RMR = ${input_rmr}, 암의 유형 = ${ROCK_TYPE_NAME_MAP[hb_mi]} (m<sub>i</sub> = ${hb_mi})<br>` +
+                             `• 표 1 1차 보간 결과 : m = <strong>${hb_m.toFixed(5)}</strong>, s = <strong>${hb_s.toExponential(4)}</strong> (RMR ${hbRes.r1} ~ ${hbRes.r2} 구간)<br>` +
+                             `• q<sub>p</sub> 산정 공식 : [&radic;s + &radic;(m&radic;s + s)] &times; q<sub>u</sub><br>` +
+                             `&nbsp;&nbsp;= [&radic;${hb_s.toExponential(3)} + &radic;(${hb_m.toFixed(4)}&times;&radic;${hb_s.toExponential(3)} + ${hb_s.toExponential(3)})] &times; ${c_tip}<br>` +
                              `&nbsp;&nbsp;= ${factor.toFixed(4)} &times; ${c_tip}<br>` +
                              `&nbsp;&nbsp;= <strong>${q_p.toFixed(1)} kN/m²</strong>`;
         }
@@ -852,46 +904,61 @@ function calculatePileCapacity() {
     const status_norm = P_norm <= Q_app_norm ? `안정 (O.K) (${ratio_norm.toFixed(1)}%)` : `NG (${ratio_norm.toFixed(1)}%)`;
     const status_seis = P_seis <= Q_app_seis ? `안정 (O.K) (${ratio_seis.toFixed(1)}%)` : `NG (${ratio_seis.toFixed(1)}%)`;
 
-    // 추가 테이블 블록 렌더링 (Case-2 인 경우)
-    let extraTableHtml = "";
+    // Case-2 적용 시 표 1 및 표 2 HTML 생성
+    let extraRockTablesHtml = "";
     if (p_type === 'CAST_ROCK' && qp_formula === 'rock_case2') {
-        extraTableHtml = `
-            <div style="font-weight: bold; margin-bottom: 6px; margin-top:20px; color: #2c3e50; font-size: 0.85em;">■ 표 1. 비선형 강도 정의상 암질과 재료상수의 대략적인 관계 (Hoek & Brown, 1988)</div>
-            <div class="table-container" style="margin-bottom: 15px;">
-                <table class="result-table" style="font-size: 0.75em; text-align: center;">
-                    <thead>
-                        <tr style="background-color: #eaeded;">
-                            <th rowspan="2">암 질</th><th rowspan="2">정수</th>
-                            <th colspan="5">암의 유형 (m<sub>i</sub> 기준)</th>
-                        </tr>
-                        <tr style="background-color: #f2f4f4;">
-                            <th>A: 벽개발달 탄산염암 (7.00)</th><th>B: 석화 이질암 (10.00)</th><th>C: 뚜렷한 벽개 사질암 (15.00)</th><th>D: 세립결정 화성암 (17.00)</th><th>E: 조립결정 화성,변성암 (25.00)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>신선암 시료 (RMR=100)</td><td>m<br>s</td><td>7.00<br>1.00</td><td>10.00<br>1.00</td><td>15.00<br>1.00</td><td style="${hb_mi==17?'background:#fffbcc;font-weight:bold;':''}">17.00<br>1.00</td><td>25.00<br>1.00</td></tr>
-                        <tr><td>매우 양호한 암반 (RMR=85)</td><td>m<br>s</td><td>2.400<br>0.082</td><td>3.430<br>0.082</td><td>5.140<br>0.082</td><td style="${hb_mi==17?'background:#fffbcc;font-weight:bold;':''}">5.820<br>0.082</td><td>8.567<br>0.082</td></tr>
-                        <tr><td>양호한 암반 (RMR=65)</td><td>m<br>s</td><td>0.575<br>0.0029</td><td>0.821<br>0.0029</td><td>1.231<br>0.0029</td><td style="${hb_mi==17?'background:#fffbcc;font-weight:bold;':''}">1.395<br>0.0029</td><td>2.052<br>0.0029</td></tr>
-                        <tr><td>보통의 암반 (RMR=44)</td><td>m<br>s</td><td>0.128<br>9.0E-05</td><td>0.183<br>9.0E-05</td><td>0.275<br>9.0E-05</td><td style="${hb_mi==17?'background:#fffbcc;font-weight:bold;':''}">0.311<br>9.0E-05</td><td>0.458<br>9.0E-05</td></tr>
-                        <tr><td>불량한 암반 (RMR=23)</td><td>m<br>s</td><td>0.029<br>3.0E-06</td><td>0.041<br>3.0E-06</td><td>0.061<br>3.0E-06</td><td style="${hb_mi==17?'background:#fffbcc;font-weight:bold;':''}">0.069<br>3.0E-06</td><td>0.102<br>3.0E-06</td></tr>
-                        <tr><td>매우 불량한 암반 (RMR=3)</td><td>m<br>s</td><td>0.007<br>1.0E-07</td><td>0.010<br>1.0E-07</td><td>0.015<br>1.0E-07</td><td style="${hb_mi==17?'background:#fffbcc;font-weight:bold;':''}">0.017<br>1.0E-07</td><td>0.025<br>1.0E-07</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 2. RMR을 이용한 암반의 분류 (Hoek & Brown, 1988)</div>
-            <div class="table-container" style="margin-bottom: 15px;">
-                <table class="result-table" style="font-size: 0.8em; text-align: center;">
-                    <thead><tr style="background-color: #eaeded;"><th>Rock Quality</th><th>RMR Range</th><th>적용 여부</th></tr></thead>
-                    <tbody>
-                        <tr style="${input_rmr>=85 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>신선암 시료</td><td>85 ~ 100</td><td>${input_rmr>=85 ? 'O' : ''}</td></tr>
-                        <tr style="${input_rmr>=65 && input_rmr<85 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>매우 양호한 암반</td><td>65 ~ 85</td><td>${input_rmr>=65 && input_rmr<85 ? 'O' : ''}</td></tr>
-                        <tr style="${input_rmr>=44 && input_rmr<65 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>양호한 암반</td><td>44 ~ 65</td><td>${input_rmr>=44 && input_rmr<65 ? 'O' : ''}</td></tr>
-                        <tr style="${input_rmr>=23 && input_rmr<44 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>보통의 암반</td><td>23 ~ 44</td><td>${input_rmr>=23 && input_rmr<44 ? 'O' : ''}</td></tr>
-                        <tr style="${input_rmr>=3 && input_rmr<23 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>불량한 암반</td><td>3 ~ 23</td><td>${input_rmr>=3 && input_rmr<23 ? 'O' : ''}</td></tr>
-                        <tr style="${input_rmr<3 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>매우 불량한 암반</td><td>0 ~ 3</td><td>${input_rmr<3 ? 'O' : ''}</td></tr>
-                    </tbody>
-                </table>
+        extraRockTablesHtml = `
+            <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
+                <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 1. 비선형 강도 정의상 암질과 재료상수의 대략적인 관계 (Hoek & Brown, 1988)</div>
+                <div class="table-container" style="margin-bottom: 12px;">
+                    <table class="result-table" style="font-size: 0.75em; text-align: center;">
+                        <thead>
+                            <tr style="background-color: #eaeded;">
+                                <th rowspan="2">암 질</th><th rowspan="2">정수</th>
+                                <th colspan="5">암의 유형 (m<sub>i</sub>)</th>
+                            </tr>
+                            <tr style="background-color: #f2f4f4;">
+                                <th style="${hb_mi===7?'background:#d4efdf;font-weight:bold;':''}">A: 벽개발달 탄산염암</th>
+                                <th style="${hb_mi===10?'background:#d4efdf;font-weight:bold;':''}">B: 석화 이질암</th>
+                                <th style="${hb_mi===15?'background:#d4efdf;font-weight:bold;':''}">C: 뚜렷한 벽개 사질암</th>
+                                <th style="${hb_mi===17?'background:#d4efdf;font-weight:bold;':''}">D: 세립결정 화성암</th>
+                                <th style="${hb_mi===25?'background:#d4efdf;font-weight:bold;':''}">E: 조립결정 화성,변성암</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${HB_TABLE_DATA.map(row => {
+                                const isTargetRow = (row.rmr === hbRes.r1 || row.rmr === hbRes.r2);
+                                const rowStyle = isTargetRow ? 'background-color:#fef9e7; font-weight:bold;' : '';
+                                return `
+                                    <tr style="${rowStyle}">
+                                        <td>${row.label}</td>
+                                        <td>m<br>s</td>
+                                        <td style="${hb_mi===7 && isTargetRow ? 'background:#d4efdf;color:#117a65;':''}">${row.m[7].toFixed(row.rmr<=23?4:3)}<br>${row.s.toExponential(1)}</td>
+                                        <td style="${hb_mi===10 && isTargetRow ? 'background:#d4efdf;color:#117a65;':''}">${row.m[10].toFixed(row.rmr<=23?3:3)}<br>${row.s.toExponential(1)}</td>
+                                        <td style="${hb_mi===15 && isTargetRow ? 'background:#d4efdf;color:#117a65;':''}">${row.m[15].toFixed(row.rmr<=23?3:3)}<br>${row.s.toExponential(1)}</td>
+                                        <td style="${hb_mi===17 && isTargetRow ? 'background:#d4efdf;color:#117a65;':''}">${row.m[17].toFixed(row.rmr<=23?3:3)}<br>${row.s.toExponential(1)}</td>
+                                        <td style="${hb_mi===25 && isTargetRow ? 'background:#d4efdf;color:#117a65;':''}">${row.m[25].toFixed(row.rmr<=23?3:3)}<br>${row.s.toExponential(1)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 2. RMR을 이용한 암반의 분류 (Hoek & Brown, 1988)</div>
+                <div class="table-container">
+                    <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                        <thead><tr style="background-color: #eaeded;"><th>Rock Quality</th><th>RMR Range</th><th>적용 여부</th></tr></thead>
+                        <tbody>
+                            <tr style="${input_rmr>=85 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>신선암 시료</td><td>85 ~ 100</td><td>${input_rmr>=85 ? 'O' : ''}</td></tr>
+                            <tr style="${input_rmr>=65 && input_rmr<85 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>매우 양호한 암반</td><td>65 ~ 85</td><td>${input_rmr>=65 && input_rmr<85 ? 'O' : ''}</td></tr>
+                            <tr style="${input_rmr>=44 && input_rmr<65 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>양호한 암반</td><td>44 ~ 65</td><td>${input_rmr>=44 && input_rmr<65 ? 'O' : ''}</td></tr>
+                            <tr style="${input_rmr>=23 && input_rmr<44 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>보통의 암반</td><td>23 ~ 44</td><td>${input_rmr>=23 && input_rmr<44 ? 'O' : ''}</td></tr>
+                            <tr style="${input_rmr>=3 && input_rmr<23 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>불량한 암반</td><td>3 ~ 23</td><td>${input_rmr>=3 && input_rmr<23 ? 'O' : ''}</td></tr>
+                            <tr style="${input_rmr<3 ? 'background:#e8f8f5;font-weight:bold;color:#16a085;':''}"><td>매우 불량한 암반</td><td>0 ~ 3</td><td>${input_rmr<3 ? 'O' : ''}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
@@ -934,59 +1001,67 @@ function calculatePileCapacity() {
         </div>
 
         <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정</div>
+        
+        <!-- (1) 말뚝 선단지지력 (Qup) 및 참조 표 이동배치 -->
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
             • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
             • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, ${lastLayer.type === 'rock' ? 'q<sub>u</sub>' : 'c'} = ${c_tip} kPa)<br>
-            • 단위면적당 극한선단지지력 q<sub>p</sub> = <br>
-            <div style="margin-left: 20px; font-family: monospace; background: #fdf2e9; padding: 6px; display: inline-block; border-radius: 4px;">${qp_calc_detail}</div><br>
+            • 단위면적당 극한선단지지력 q<sub>p</sub> :<br>
+            <div style="margin-left: 15px; font-family: monospace; background: #fdf2e9; padding: 8px; border-radius: 4px; margin: 4px 0; line-height: 1.6;">${qp_calc_detail}</div><br>
             • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong> (D = ${D_mm.toFixed(1)}mm)<br>
-            • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span><br><br>
+            • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span>
 
+            ${extraRockTablesHtml}
+        </div>
+
+        <!-- (2) 말뚝 주면마찰력 (Qus) 및 계산 표 이동배치 -->
+        <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             <strong>(2) 말뚝 주면마찰력 (Q<sub>us</sub>)</strong><br>
             • 적용 산정식 : <strong>${qs_formula_name}</strong><br>
             • 지하수위 GWT : <strong>GL. -${gwt.toFixed(1)} m</strong><br>
             • 말뚝 둘레 A<sub>s</sub> = &pi; &times; D = &pi; &times; ${D.toFixed(3)} = <strong>${As.toFixed(3)} m</strong><br>
-            • <strong>총 극한주면마찰력 Q<sub>us</sub></strong> = &sum; (f<sub>s</sub> &times; L) &times; A<sub>s</sub> = <strong>${total_Qus.toFixed(1)} kN</strong>
-        </div>
+            • <strong>총 극한주면마찰력 Q<sub>us</sub></strong> = &sum; (f<sub>s</sub> &times; L) &times; A<sub>s</sub> = <span style="font-weight:bold; color:#8e44ad;">${total_Qus.toFixed(1)} kN</span>
 
-        <div class="table-container" style="margin-bottom: 15px;">
-            <table class="result-table" style="font-size: 0.8em; text-align: center;">
-                <thead>
-                    <tr style="background-color: #eaeded;">
-                        <th>지층명</th>
-                        <th>토성구분</th>
-                        <th>층후 L<br>(m)</th>
-                        <th>N치 / &gamma; / c(q<sub>u</sub>)</th>
-                        <th>중앙깊이 Z /<br>유효응력 &sigma;<sub>v</sub>'</th>
-                        <th style="min-width: 150px;">단위 마찰력 f<sub>s</sub> (kN/m²)</th>
-                        <th>f<sub>s</sub> &times; L</th>
-                        <th>층별 주면마찰력<br>Q<sub>us,i</sub> (kN)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${layer_calc_rows.map(r => `
-                        <tr>
-                            <td>${r.name}</td>
-                            <td>${r.type}</td>
-                            <td>${r.dz.toFixed(2)}</td>
-                            <td>${r.n_val} / ${r.gamma.toFixed(1)} / ${r.c_val}</td>
-                            <td>${r.z_mid.toFixed(2)}m /<br>${r.sigma_v_prime.toFixed(1)}kPa</td>
-                            <td style="text-align: left; padding: 4px 8px; font-family: monospace;">${r.formula}</td>
-                            <td>${r.fxL.toFixed(1)}</td>
-                            <td style="font-weight:bold; color:#2980b9;">${r.qusi.toFixed(1)}</td>
+            <div class="table-container" style="margin-top: 10px; margin-bottom: 5px;">
+                <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                    <thead>
+                        <tr style="background-color: #eaeded;">
+                            <th>지층명</th>
+                            <th>토성구분</th>
+                            <th>층후 L<br>(m)</th>
+                            <th>N치 / &gamma; / c(q<sub>u</sub>)</th>
+                            <th>중앙깊이 Z /<br>유효응력 &sigma;<sub>v</sub>'</th>
+                            <th style="min-width: 150px;">단위 마찰력 f<sub>s</sub> (kN/m²)</th>
+                            <th>f<sub>s</sub> &times; L</th>
+                            <th>층별 주면마찰력<br>Q<sub>us,i</sub> (kN)</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-                <tfoot>
-                    <tr style="background-color: #f5eef8; font-weight: bold;">
-                        <td colspan="7">주면마찰력 합계 (&sum;)</td>
-                        <td style="color:#27ae60; font-size:1.1em;">${total_Qus.toFixed(1)}</td>
-                    </tr>
-                </tfoot>
-            </table>
+                    </thead>
+                    <tbody>
+                        ${layer_calc_rows.map(r => `
+                            <tr>
+                                <td>${r.name}</td>
+                                <td>${r.type}</td>
+                                <td>${r.dz.toFixed(2)}</td>
+                                <td>${r.n_val} / ${r.gamma.toFixed(1)} / ${r.c_val}</td>
+                                <td>${r.z_mid.toFixed(2)}m /<br>${r.sigma_v_prime.toFixed(1)}kPa</td>
+                                <td style="text-align: left; padding: 4px 8px; font-family: monospace;">${r.formula}</td>
+                                <td>${r.fxL.toFixed(1)}</td>
+                                <td style="font-weight:bold; color:#2980b9;">${r.qusi.toFixed(1)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: #f5eef8; font-weight: bold;">
+                            <td colspan="7">주면마찰력 합계 (&sum;)</td>
+                            <td style="color:#27ae60; font-size:1.1em;">${total_Qus.toFixed(1)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         </div>
 
+        <!-- (3) 지반 허용지지력 (Qa_soil) -->
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px;">
             <strong>(3) 지반 허용지지력 (Q<sub>a,soil</sub>)</strong><br>
             • 평상시 (F.S = 3.0) : (Q<sub>up</sub> + Q<sub>us</sub>) / 3.0 = (${Qup.toFixed(1)} + ${total_Qus.toFixed(1)}) / 3.0 = <strong>${Qa_soil_norm.toFixed(1)} kN</strong><br>
@@ -1002,7 +1077,5 @@ function calculatePileCapacity() {
             • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong> (${joint_type === 'none' ? '이음없음' : joint_type + ' ' + joint_cnt + '개소'})<br>
             • <strong>최종 재료 허용압축하중 Q<sub>as</sub></strong> = [1 - ${(mu1 + mu2).toFixed(1)}/100] &times; ${Q_mat_base.toFixed(1)} = <span style="color:#8e44ad; font-weight:bold;">${Qas.toFixed(1)} kN</span>
         </div>
-
-        ${extraTableHtml}
     `;
 }
