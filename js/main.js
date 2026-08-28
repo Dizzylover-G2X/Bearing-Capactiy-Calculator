@@ -5,6 +5,23 @@ import { initSlopeModule } from './slope.js';
 import { initPileModule } from './pile.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 상단 전체 초기화 버튼 전역 이벤트 리스너
+    const globalResetBtn = document.getElementById('global_reset_btn');
+    if (globalResetBtn) {
+        globalResetBtn.addEventListener('click', () => {
+            if (confirm("모든 탭에 입력된 설계 자료, 지층 정보 및 계산 결과가 초기화됩니다. 계속하시겠습니까?")) {
+                // 'geo_'로 시작하는 모든 로컬 스토리지 데이터 일괄 삭제
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('geo_')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                alert("모든 데이터가 초기화되었습니다.");
+                location.reload();
+            }
+        });
+    }
+
     const contentContainer = document.getElementById('app-content');
     const tabButtons = document.querySelectorAll('.tab-btn, .nav-tab');
 
