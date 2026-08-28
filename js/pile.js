@@ -107,7 +107,7 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- Row 2: 시공 공법 등 (동적 렌더링 영역) -->
+        <!-- Row 2: 산정식 및 조건 (선단지지력식이 맨 앞으로 오도록 배치) -->
         <div id="pile_row2_container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px;"></div>
 
         <div id="formula_info_box" style="margin-bottom: 15px; font-size: 0.83em; color: #2c3e50; background: #f4f6f7; padding: 8px 12px; border-radius: 4px; border-left: 4px solid #16a085;"></div>
@@ -181,21 +181,21 @@ export function initPileModule(container) {
 
         if (type === 'CAST_ROCK') {
             if (qpVal === 'rock_case1') qpText = "q_p = 2.5·q_u (암반절리 미고려 / 신선암)";
-            else qpText = "q_p = [√s + √(m√s + s)]·q_u (여러방향 절리, Hoek-Brown 1988 적용)";
-            qsText = "토사: O'Neill & Reese (1999) / 암반: Horvath & Kenney (1979) [Q_s = 0.65·α_E·P_a·(q_u/P_a)^0.5 ≤ 7.8·P_a·(f_c'/P_a)^0.5]";
+            else qpText = "q_p = [√s + √(m·√s + s)]·q_u (여러방향 절리, Hoek-Brown 1988 적용)";
+            qsText = "토사: O'Neill & Reese (1999) / 암반: Horvath & Kenney (1979) [Q_s = 0.65·α_E·P_a·(q_u/P_a)^0.5 ≤ 7.8·P_a·(f'_c/P_a)^0.5]";
         } else if (type === 'CAST') {
             if (qpVal === 'oneill') qpText = "57.4·N (N≤75) / 4,309.2 kN/m² (N>75) [O'Neill & Reese (1999)]";
             else qpText = "100·N_bar (사질토) / 6·c_u (점성토) [건축기초 구조설계지침 (2004)]";
-            if (qsVal === 'oneill') qsText = "f_s = β·σ_v' (β = 1.5 - 0.245√Z, 상한 200 kPa) [O'Neill & Reese (1999)]";
+            if (qsVal === 'oneill') qsText = "f_s = β·σ_v' (β = 1.5 - 0.245·√Z, 상한 200 kPa) [O'Neill & Reese (1999)]";
             else qsText = "3.3·N (사질토, N≤50) / 1.0·c_u (점성토, c_u≤100 kPa) [건축기초 구조설계지침 (2004)]";
         } else if (method === 'driven') {
             qpText = "300·N (N≤60)";
-            if (qsVal === 'lh') qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
+            if (qsVal === 'lh') qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2·c_u, c_u≤125 kN/m²)";
             else qsText = "2.0·N (사질토, 상한 100 kN/m²), 1.0·c_u (점성토, 상한 100 kN/m²)";
         } else {
             if (qpVal === 'lh') qpText = "250·N (N≤60)";
             else qpText = "200·N (사질토, 상한 12,000 kN/m²), 6·c_u (점성토, 상한 12,000 kN/m²)";
-            if (qsVal === 'lh') qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2c_u, c_u≤125 kN/m²)";
+            if (qsVal === 'lh') qsText = "2.0·N (사질토, N≤50), 5.0·q_u (점성토, q_u=2·c_u, c_u≤125 kN/m²)";
             else qsText = "2.5·N (사질토, N≤50), 0.8·c_u (점성토, c_u≤125 kN/m²)";
         }
 
@@ -297,19 +297,19 @@ export function initPileModule(container) {
 
             row2Container.innerHTML = `
                 <div class="input-group" style="margin:0;">
-                    <label>시공 공법</label>
-                    <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;">
-                        <option value="driven">항타공법</option>
-                        <option value="bored" selected>매입말뚝공법</option>
-                    </select>
-                </div>
-                <div class="input-group" style="margin:0;">
                     <label>선단지지력 산정식</label>
                     <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
                 </div>
                 <div class="input-group" style="margin:0;">
                     <label>주면마찰력 산정식</label>
                     <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
+                </div>
+                <div class="input-group" style="margin:0;">
+                    <label>시공 공법</label>
+                    <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;">
+                        <option value="driven">항타공법</option>
+                        <option value="bored" selected>매입말뚝공법</option>
+                    </select>
                 </div>
                 <div class="input-group" style="margin:0;">
                     <label>이음 방법 및 개소</label>
@@ -344,19 +344,19 @@ export function initPileModule(container) {
 
             row2Container.innerHTML = `
                 <div class="input-group" style="margin:0;">
-                    <label>시공 공법</label>
-                    <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;">
-                        <option value="driven" ${initialMethod === 'driven' ? 'selected' : ''}>항타공법</option>
-                        <option value="bored" ${initialMethod === 'bored' ? 'selected' : ''}>매입말뚝공법</option>
-                    </select>
-                </div>
-                <div class="input-group" style="margin:0;">
                     <label>선단지지력 산정식</label>
                     <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
                 </div>
                 <div class="input-group" style="margin:0;">
                     <label>주면마찰력 산정식</label>
                     <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
+                </div>
+                <div class="input-group" style="margin:0;">
+                    <label>시공 공법</label>
+                    <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;">
+                        <option value="driven" ${initialMethod === 'driven' ? 'selected' : ''}>항타공법</option>
+                        <option value="bored" ${initialMethod === 'bored' ? 'selected' : ''}>매입말뚝공법</option>
+                    </select>
                 </div>
                 <div class="input-group" style="margin:0;">
                     <label>이음 방법 및 개소</label>
@@ -401,7 +401,11 @@ export function initPileModule(container) {
 
                 row2Container.innerHTML = `
                     <div class="input-group" style="margin:0;">
-                        <label>콘크리트 압축강도 f_ck (MPa)</label>
+                        <label>선단지지력 산정식</label>
+                        <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
+                    </div>
+                    <div class="input-group" style="margin:0;">
+                        <label>콘크리트 압축강도 f'_c (MPa)</label>
                         <input type="number" id="pile_fck" value="${initialFck}" step="0.1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center;">
                     </div>
                     <div class="input-group" style="margin:0;">
@@ -415,19 +419,9 @@ export function initPileModule(container) {
                         <label>RQD (%)</label>
                         <input type="number" id="pile_rqd" value="${initialRqd}" step="0.1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center;">
                     </div>
-                    <div class="input-group" style="margin:0;">
-                        <label>선단지지력 산정식</label>
-                        <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
-                    </div>
                 `;
             } else {
                 row2Container.innerHTML = `
-                    <div class="input-group" style="margin:0;">
-                        <label>시공 공법</label>
-                        <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;" disabled>
-                            <option value="bored" selected>매입말뚝공법 (현장타설)</option>
-                        </select>
-                    </div>
                     <div class="input-group" style="margin:0;">
                         <label>선단지지력 산정식</label>
                         <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
@@ -435,6 +429,12 @@ export function initPileModule(container) {
                     <div class="input-group" style="margin:0;">
                         <label>주면마찰력 산정식</label>
                         <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
+                    </div>
+                    <div class="input-group" style="margin:0;">
+                        <label>시공 공법</label>
+                        <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;" disabled>
+                            <option value="bored" selected>매입말뚝공법 (현장타설)</option>
+                        </select>
                     </div>
                     <div class="input-group" style="margin:0;">
                         <label>이음 방법 및 개소</label>
@@ -459,19 +459,19 @@ export function initPileModule(container) {
 
             row2Container.innerHTML = `
                 <div class="input-group" style="margin:0;">
-                    <label>시공 공법</label>
-                    <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;">
-                        <option value="driven">항타공법</option>
-                        <option value="bored" selected>매입말뚝공법</option>
-                    </select>
-                </div>
-                <div class="input-group" style="margin:0;">
                     <label>선단지지력 산정식</label>
                     <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
                 </div>
                 <div class="input-group" style="margin:0;">
                     <label>주면마찰력 산정식</label>
                     <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
+                </div>
+                <div class="input-group" style="margin:0;">
+                    <label>시공 공법</label>
+                    <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;">
+                        <option value="driven">항타공법</option>
+                        <option value="bored" selected>매입말뚝공법</option>
+                    </select>
                 </div>
                 <div class="input-group" style="margin:0;">
                     <label>이음 방법 및 개소</label>
@@ -707,7 +707,7 @@ export function initPileModule(container) {
         25: "E : 조립결정 화성,변성암"
     };
 
-    // 표 3. RQD에 따른 Em/Ei (O'Neill & Reese, 1999)
+    // 표 3. RQD에 따른 E_m / E_i (O'Neill & Reese, 1999)
     const TABLE_EM_EI = [
         { rqd: 0,   closed: 0.0,  open: 0.0 },
         { rqd: 20,  closed: 0.05, open: 0.05 },
@@ -869,7 +869,7 @@ export function initPileModule(container) {
         } else if (p_type === 'CAST') {
             qp_formula_name = "현장타설말뚝 - O'Neill & Reese (1999)";
             q_p = raw_N_tip <= 75 ? 57.4 * raw_N_tip : 4309.2;
-            qp_calc_detail = `q_p = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+            qp_calc_detail = `q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
         } else if (method === 'driven') {
             qp_formula_name = "항타공법 산정식 (300·N)";
             let N_used = Math.min(raw_N_tip, 60);
@@ -878,7 +878,7 @@ export function initPileModule(container) {
         } else {
             qp_formula_name = "매입말뚝 표준식";
             q_p = (lastLayer.type === 'sand' || lastLayer.type === 'rock') ? Math.min(200.0 * raw_N_tip, 12000.0) : Math.min(6.0 * c_tip, 12000.0);
-            qp_calc_detail = `q_p = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+            qp_calc_detail = `q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
         }
 
         const Qup = q_p * Ap;
@@ -911,7 +911,9 @@ export function initPileModule(container) {
                 let fs_limit_MPa = 7.8 * P_a * Math.pow(user_fck / P_a, 0.5); 
                 let f_unit_MPa = Math.min(fs_MPa, fs_limit_MPa);
                 f_unit = f_unit_MPa * 1000.0; 
-                formula_str = `0.65&times;&alpha;<sub>E</sub>&times;P<sub>a</sub>&times;(q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup><br>= 0.65&times;${alpha_e_val.toFixed(3)}&times;${P_a}&times;(${qu_MPa.toFixed(2)}/${P_a})<sup>0.5</sup><br>= <strong>${f_unit.toFixed(1)} kN/m²</strong> (상한:${(fs_limit_MPa*1000).toFixed(1)})`;
+                formula_str = `min(0.65·<i>α<sub>E</sub></i>·<i>P<sub>a</sub></i>·(<i>q<sub>u</sub></i>/<i>P<sub>a</sub></i>)<sup>0.5</sup>, 7.8·<i>P<sub>a</sub></i>·(<i>f'<sub>c</sub></i>/<i>P<sub>a</sub></i>)<sup>0.5</sup>)<br>` +
+                              `= min(0.65×${alpha_e_val.toFixed(3)}×${P_a}×(${qu_MPa.toFixed(2)}/${P_a})<sup>0.5</sup>, 7.8×${P_a}×(${user_fck}/${P_a})<sup>0.5</sup>)<br>` +
+                              `= min(${(fs_MPa*1000).toFixed(1)}, ${(fs_limit_MPa*1000).toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
             } else if (l.type === 'rock' && p_type === 'CAST') {
                 let P_a = 0.101; 
                 let qu_MPa = c_val_i / 1000.0; 
@@ -924,7 +926,7 @@ export function initPileModule(container) {
                 let beta = 1.5 - 0.245 * Math.sqrt(Math.max(0.1, z_mid));
                 beta = Math.max(0.25, Math.min(1.20, beta));
                 f_unit = Math.min(200.0, beta * sigma_v_prime);
-                formula_str = `&beta;&times;&sigma;<sub>v</sub>' = ${f_unit.toFixed(1)}`;
+                formula_str = `<i>β</i>·<i>σ'<sub>v</sub></i> = ${f_unit.toFixed(1)}`;
             } else {
                 f_unit = (l.type === 'sand' || l.type === 'rock') ? Math.min(2.5 * l.n_val, 100.0) : Math.min(0.8 * c_val_i, 100.0);
                 formula_str = `표준식 = ${f_unit.toFixed(1)}`;
@@ -955,7 +957,7 @@ export function initPileModule(container) {
             cum_sigma_v += gamma_i * dz_i;
         });
 
-        // 3. 지반 허용지지력 (Qa_soil) 
+        // 3. 지반 허용지지력 및 극한지지력 (Q_u, Qa_soil) 
         const Qu_total = Qup + total_Qus;
         const Qa_soil_norm = Qu_total / 3.0;
         const Qa_soil_seis = Qu_total / 2.0;
@@ -982,10 +984,10 @@ export function initPileModule(container) {
             qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
         } else if (p_type === 'STEEL') {
             Q_mat_base = grid5Val * A_net;
-            qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = ${grid5Val.toLocaleString()} &times; ${A_net.toFixed(5)} = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
+            qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <i>σ<sub>ca</sub></i> &times; <i>A<sub>net</sub></i> = ${grid5Val.toLocaleString()} &times; ${A_net.toFixed(5)} = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
         } else {
             Q_mat_base = grid5Val * 1000.0 * A_net;
-            qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> &times; 1000 = ${grid5Val.toFixed(1)} &times; ${A_net.toFixed(5)} &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
+            qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <i>σ<sub>ca</sub></i> &times; <i>A<sub>net</sub></i> &times; 1000 = ${grid5Val.toFixed(1)} &times; ${A_net.toFixed(5)} &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
         }
 
         const L_over_D = L / D;
@@ -1016,7 +1018,7 @@ export function initPileModule(container) {
                             <thead>
                                 <tr style="background-color: #eaeded;">
                                     <th rowspan="2">암 질</th><th rowspan="2">정수</th>
-                                    <th colspan="5">암의 유형 (m<sub>i</sub>)</th>
+                                    <th colspan="5">암의 유형 (<i>m<sub>i</sub></i>)</th>
                                 </tr>
                                 <tr style="background-color: #f2f4f4;">
                                     <th style="${hb_mi===7?'background:#d4efdf;font-weight:bold;':''}">A: 탄산염암</th>
@@ -1054,14 +1056,14 @@ export function initPileModule(container) {
         if (p_type === 'CAST_ROCK') {
             extraRockQsTablesHtml = `
                 <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
-                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 3. RQD에 따른 E_m / E_i (O'Neill & Reese, 1999)</div>
+                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 3. RQD에 따른 <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> (O'Neill & Reese, 1999)</div>
                     <div class="table-container" style="margin-bottom: 10px;">
                         <table class="result-table" style="font-size: 0.8em; text-align: center;">
                             <thead>
                                 <tr style="background-color: #eaeded;">
                                     <th>RQD (%)</th>
-                                    <th>Closed Joints (E_m / E_i)</th>
-                                    <th>Open Joints (E_m / E_i)</th>
+                                    <th>Closed Joints (<i>E<sub>m</sub></i> / <i>E<sub>i</sub></i>)</th>
+                                    <th>Open Joints (<i>E<sub>m</sub></i> / <i>E<sub>i</sub></i>)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1076,16 +1078,16 @@ export function initPileModule(container) {
                         </table>
                     </div>
                     <div style="font-size: 0.82em; color: #2c3e50; margin-bottom: 12px; background:#e8f8f5; padding:6px; border-radius:3px;">
-                        • 입력 RQD = <strong>${user_rqd}%</strong> (${user_joint_state === 'closed' ? 'Closed Joints' : 'Open Joints'}) &rarr; 1차 보간 산정된 <strong>E_m / E_i = ${em_ei_val.toFixed(3)}</strong>
+                        • 입력 RQD = <strong>${user_rqd}%</strong> (${user_joint_state === 'closed' ? 'Closed Joints' : 'Open Joints'}) &rarr; 1차 보간 산정된 <strong><i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> = ${em_ei_val.toFixed(3)}</strong>
                     </div>
 
-                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 4. 감소계수 알파_E (O'Neill & Reese, 1999)</div>
+                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 4. 감소계수 <i>α<sub>E</sub></i> (O'Neill & Reese, 1999)</div>
                     <div class="table-container" style="margin-bottom: 10px;">
                         <table class="result-table" style="font-size: 0.8em; text-align: center;">
                             <thead>
                                 <tr style="background-color: #eaeded;">
-                                    <th>E_m / E_i</th>
-                                    <th>감소계수 알파_E</th>
+                                    <th><i>E<sub>m</sub></i> / <i>E<sub>i</sub></i></th>
+                                    <th>감소계수 <i>α<sub>E</sub></i></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1099,7 +1101,7 @@ export function initPileModule(container) {
                         </table>
                     </div>
                     <div style="font-size: 0.82em; color: #2c3e50; background:#e8f8f5; padding:6px; border-radius:3px;">
-                        • E_m / E_i = ${em_ei_val.toFixed(3)} 적용 &rarr; 1차 보간 산정된 <strong>감소계수 알파_E = ${alpha_e_val.toFixed(3)}</strong>
+                        • <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> = ${em_ei_val.toFixed(3)} 적용 &rarr; 1차 보간 산정된 <strong>감소계수 <i>α<sub>E</sub></i> = ${alpha_e_val.toFixed(3)}</strong>
                     </div>
                 </div>
             `;
@@ -1148,11 +1150,11 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
                 <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
                 • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
-                • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, q<sub>u</sub> = ${c_tip} kPa)<br>
-                • 단위면적당 극한선단지지력 q<sub>p</sub> :<br>
+                • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, <i>q<sub>u</sub></i> = ${c_tip} kPa)<br>
+                • 단위면적당 극한선단지지력 <i>q<sub>p</sub></i> :<br>
                 <div style="margin-left: 15px; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.9em; color: #2c3e50; border: 1px solid #fae5d3;">${qp_calc_detail}</div><br>
-                • 선단면적 A<sub>p</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong><br>
-                • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span>
+                • 선단면적 <i>A<sub>p</sub></i> = &pi; &times; <i>D</i>² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong><br>
+                • <strong>극한선단지지력 Q<sub>up</sub></strong> = <i>q<sub>p</sub></i> &times; <i>A<sub>p</sub></i> = <span style="font-weight:bold; color:#8e44ad;">${Qup.toFixed(1)} kN</span>
 
                 ${extraRockTablesHtml}
             </div>
@@ -1160,8 +1162,8 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
                 <strong>(2) 말뚝 주면마찰력 (Q<sub>us</sub>)</strong><br>
                 • 적용 산정식 : <strong>${qs_formula_name}</strong><br>
-                • 말뚝 둘레 A<sub>s</sub> = &pi; &times; D = <strong>${As.toFixed(3)} m</strong><br>
-                • <strong>총 극한주면마찰력 Q<sub>us</sub></strong> = &sum; (f<sub>s</sub> &times; L) &times; A<sub>s</sub> = <span style="font-weight:bold; color:#8e44ad;">${total_Qus.toFixed(1)} kN</span>
+                • 말뚝 둘레 <i>A<sub>s</sub></i> = &pi; &times; <i>D</i> = <strong>${As.toFixed(3)} m</strong><br>
+                • <strong>총 극한주면마찰력 Q<sub>us</sub></strong> = &sum; (<i>f<sub>s</sub></i> &times; <i>L</i>) &times; <i>A<sub>s</sub></i> = <span style="font-weight:bold; color:#8e44ad;">${total_Qus.toFixed(1)} kN</span>
 
                 <div class="table-container" style="margin-top: 10px; margin-bottom: 5px;">
                     <table class="result-table" style="font-size: 0.8em; text-align: center;">
@@ -1170,9 +1172,9 @@ export function initPileModule(container) {
                                 <th>지층명</th>
                                 <th>토성구분</th>
                                 <th>층후 L<br>(m)</th>
-                                <th>N치 / &gamma; / c(q<sub>u</sub>)</th>
-                                <th style="min-width: 180px;">단위 마찰력 f<sub>s</sub> (kN/m²)</th>
-                                <th>f<sub>s</sub> &times; L</th>
+                                <th>N치 / &gamma; / c(<i>q<sub>u</sub></i>)</th>
+                                <th style="min-width: 220px;">단위 마찰력 <i>f<sub>s</sub></i> (kN/m²)</th>
+                                <th><i>f<sub>s</sub></i> &times; L</th>
                                 <th>층별 주면마찰력<br>Q<sub>us,i</sub> (kN)</th>
                             </tr>
                         </thead>
@@ -1202,14 +1204,15 @@ export function initPileModule(container) {
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px;">
-                <strong>(3) 지반 허용지지력 (Q<sub>a,soil</sub>)</strong><br>
-                • 평상시 (F.S = 3.0) : (Q<sub>up</sub> + Q<sub>us</sub>) / 3.0 = <strong>${Qa_soil_norm.toFixed(1)} kN</strong><br>
-                • 내진시 (F.S = 2.0) : (Q<sub>up</sub> + Q<sub>us</sub>) / 2.0 = <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
+                <strong>(3) 지반에 의한 극한지지력 및 허용지지력 (Q<sub>u</sub>, Q<sub>a,soil</sub>)</strong><br>
+                • 극한지지력 Q<sub>u</sub> = Q<sub>up</sub> + Q<sub>us</sub> = ${Qup.toFixed(1)} + ${total_Qus.toFixed(1)} = <strong>${Qu_total.toFixed(1)} kN</strong><br>
+                • 평상시 허용지지력 (F.S = 3.0) : Q<sub>u</sub> / 3.0 = ${Qu_total.toFixed(1)} / 3.0 = <strong>${Qa_soil_norm.toFixed(1)} kN</strong><br>
+                • 내진시 허용지지력 (F.S = 2.0) : Q<sub>u</sub> / 2.0 = ${Qu_total.toFixed(1)} / 2.0 = <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
             </div>
 
             <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정</div>
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
-                • 단면적 A<sub>net</sub> = <strong>${A_net.toFixed(5)} m²</strong><br>
+                • 단면적 <i>A<sub>net</sub></i> = <strong>${A_net.toFixed(5)} m²</strong><br>
                 ${qMatBaseDetailStr}<br><br>
                 • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (한계치 n = ${n_limit}) &rarr; 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
                 • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong><br>
