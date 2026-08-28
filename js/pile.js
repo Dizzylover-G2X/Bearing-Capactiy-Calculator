@@ -145,7 +145,7 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 3. 지층 정보 (위치 변경 및 폭 조정) -->
+        <!-- 3. 지층 정보 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <span style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 지층 정보</span>
@@ -341,14 +341,15 @@ export function initPileModule(container) {
         } else if (type === 'CAST' || type === 'CAST_ROCK') {
             if (type === 'CAST_ROCK') {
                 grid2Label.innerHTML = '암의 유형 / RMR';
+                // 좌측 정렬 및 지정 드롭다운 항목 반영
                 grid2Content.innerHTML = `
                     <div style="display:flex; gap:3px; width:100%; height:100%;">
-                        <select id="pile_rock_type" style="flex:1.5; min-width:0; text-align:center; box-sizing:border-box; padding:2px; border:1px solid #ccc; font-size:0.75em;" title="암의 유형 (Hoek & Brown, 1988)">
-                            <option value="7">A: 탄산염암</option>
-                            <option value="10">B: 이질암</option>
-                            <option value="15">C: 사질암</option>
-                            <option value="17" selected>D: 세립화성/변성암</option>
-                            <option value="25">E: 조립화성/변성암</option>
+                        <select id="pile_rock_type" style="flex:1.8; min-width:0; text-align:left; padding-left:4px; box-sizing:border-box; border:1px solid #ccc; font-size:0.75em;" title="암의 유형 (Hoek & Brown, 1988)">
+                            <option value="7">A : 벽개발달 탄산염암</option>
+                            <option value="10">B : 석화 이질암</option>
+                            <option value="15">C : 뚜렷한 벽개 사질암</option>
+                            <option value="17" selected>D : 세립결정 화성암</option>
+                            <option value="25">E : 조립결정 화성,변성암</option>
                         </select>
                         <input type="number" id="pile_rmr" value="${getVal('rmr', '30')}" step="1" placeholder="RMR" title="RMR 값 (0~100)" style="flex:1; min-width:0; text-align:center; box-sizing:border-box; padding:2px; border:1px solid #ccc; font-size:0.85em;">
                     </div>
@@ -613,7 +614,6 @@ function calculatePileCapacity() {
             hb_mi = parseFloat(document.getElementById('pile_rock_type')?.value) || 17;
             input_rmr = parseFloat(document.getElementById('pile_rmr')?.value) || 30;
             
-            // Hoek & Brown 1988 산정식 (구조계산서 기준)
             hb_s = Math.exp((input_rmr - 100) / 6.0); 
             hb_m = hb_mi * Math.exp((input_rmr - 100) / 14.0);
             
@@ -686,7 +686,7 @@ function calculatePileCapacity() {
 
     let cum_depth = 0;
     let cum_sigma_v = 0; 
-    let default_fck = 27.0;  // 주면마찰력 검토용 내부 기본값
+    let default_fck = 27.0;  
     let default_alpha_e = 0.37;
 
     pileLayers.forEach(l => {
@@ -866,7 +866,7 @@ function calculatePileCapacity() {
                             <th colspan="5">암의 유형 (m<sub>i</sub> 기준)</th>
                         </tr>
                         <tr style="background-color: #f2f4f4;">
-                            <th>A: 탄산염암 (7.00)</th><th>B: 이질암 (10.00)</th><th>C: 사질암 (15.00)</th><th>D: 화성/변성 세립 (17.00)</th><th>E: 화성/변성 조립 (25.00)</th>
+                            <th>A: 벽개발달 탄산염암 (7.00)</th><th>B: 석화 이질암 (10.00)</th><th>C: 뚜렷한 벽개 사질암 (15.00)</th><th>D: 세립결정 화성암 (17.00)</th><th>E: 조립결정 화성,변성암 (25.00)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -996,7 +996,7 @@ function calculatePileCapacity() {
 
         <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
-            ${(p_type === 'CAST' || p_type === 'CAST_ROCK') ? `• 현장타설말뚝 실단면적 A<sub>net</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${A_net.toFixed(5)} m²</strong> (직경 D = ${D_mm.toFixed(1)}mm)<br>` : `• 말뚝 외경 D<sub>out</sub> : D - 부식t<sub>1</sub> = ${D.toFixed(4)}m ${p_type === 'STEEL' ? '- ' + (t1_mm/1000.0).toFixed(4) + 'm = ' + D_out.toFixed(4) + 'm' : '= ' + D_out.toFixed(4) + 'm'}<br>• 말뚝 내경 D<sub>in</sub> : D - 2 &times; t = ${D.toFixed(4)}m - 2 &times; ${(t_mm/1000.0).toFixed(4)}m = <strong>${D_in.toFixed(4)} m</strong><br>• 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = &pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>`}
+            ${(p_type === 'CAST' || p_type === 'CAST_ROCK') ? `• 현장타설말뚝 실단면적 A<sub>net</sub> = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${A_net.toFixed(5)} m²</strong> (직경 D = ${D_mm.toFixed(1)}mm)<br>` : `• 말뚝 외경 D<sub>out</sub> : D - 부식t<sub>1</sub> = ${D.toFixed(4)}m ${p_type === 'STEEL' ? '- ' + (t1_mm/1000.0).toFixed(4) + 'm = ' + D_out.toFixed(4) + 'm' : '= ' + D_out.toFixed(4)}m<br>• 말뚝 내경 D<sub>in</sub> : D - 2 &times; t = ${D.toFixed(4)}m - 2 &times; ${(t_mm/1000.0).toFixed(4)}m = <strong>${D_in.toFixed(4)} m</strong><br>• 유효 단면적 A<sub>net</sub> = &pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²) / 4 = &pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²) / 4 = <strong>${A_net.toFixed(5)} m²</strong><br>`}
             ${qMatBaseDetailStr}<br><br>
             • 산정 공식 : Q<sub>as</sub> = [1 - (&mu;<sub>1</sub> + &mu;<sub>2</sub>)/100] &times; Q<sub>mat_base</sub><br>
             • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (한계치 n = ${n_limit}) &rarr; 장경비 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
