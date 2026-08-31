@@ -808,6 +808,26 @@ export function initPileModule(container) {
     // ---------------------------------------------------------
     function calculatePileCapacity() {
         const p_type = container.querySelector('#pile_type').value;
+        let pileLayersData = pileLayers;
+
+        // [유효성 검사] 현장타설말뚝(기반암) 선택 시 최하단 지층이 기반암인지 확인
+        if (p_type === 'CAST_ROCK') {
+            const lastLayerCheck = pileLayersData.length > 0 ? pileLayersData[pileLayersData.length - 1] : null;
+            if (!lastLayerCheck || lastLayerCheck.type !== 'rock') {
+                alert("⚠️ 현장타설말뚝(기반암)이 선택되었습니다.\n최하단 지층의 토성 구분을 '기반암(연암/경암)'으로 설정해 주세요.");
+                const resultDiv = container.querySelector('#pile-result');
+                if (resultDiv) {
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <div style="color: #c0392b; font-weight: bold; padding: 15px; background: #fadbd8; border: 1px solid #e74c3c; border-radius: 4px; text-align: center; font-size: 0.95em;">
+                            ⚠️ [계산 중단] 현장타설말뚝(기반암) 검토를 위해 최하단 지층의 토성 구분을 '기반암(연암/경암)'으로 선택해야 합니다.
+                        </div>
+                    `;
+                }
+                return;
+            }
+        }
+
         const method = container.querySelector('#pile_method')?.value || 'bored';
         const qp_formula = container.querySelector('#pile_qp_formula').value;
         const qs_formula = container.querySelector('#pile_qs_formula')?.value || 'oneill';
@@ -839,7 +859,6 @@ export function initPileModule(container) {
             alpha_e_val = interpolateAlphaE(em_ei_val);
         }
 
-        let pileLayersData = pileLayers;
         const L = pileLayersData.reduce((sum, l) => sum + (parseFloat(l.dz) || 0), 0);
 
         const joint_type = container.querySelector('#pile_joint_type')?.value || 'none';
