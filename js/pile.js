@@ -1204,11 +1204,17 @@ export function initPileModule(container) {
         const status_seis = P_seis <= Q_app_seis ? `안정 (O.K)` : `NG`;
 
         // ==========================================
-        // 5. 침하량 검토 (기성말뚝일 경우에만 계산)
+        // 5. 침하량 검토 (평상시 및 지진시)
         // ==========================================
-        let S_vesic = 0, Ss_mm = 0, Sp_mm = 0, Sps_mm = 0, Cs = 0;
-        let S_cfem = 0, term1_cfem_mm = 0, term2_cfem_mm = 0;
-        let Qpa = 0, Qfs = 0;
+        // (1) 평상시 침하량 변수
+        let S_vesic_norm = 0, Ss_norm_mm = 0, Sp_norm_mm = 0, Sps_norm_mm = 0, Cs = 0;
+        let S_cfem_norm = 0, term1_cfem_mm = 0, term2_cfem_norm_mm = 0;
+        let Qpa_norm = 0, Qfs_norm = 0;
+
+        // (2) 지진시 침하량 변수
+        let S_vesic_seis = 0, Ss_seis_mm = 0, Sp_seis_mm = 0, Sps_seis_mm = 0;
+        let S_cfem_seis = 0, term2_cfem_seis_mm = 0;
+        let Qpa_seis = 0, Qfs_seis = 0;
 
         // C_p (경험계수) 자동 산정 로직
         let Cp_min = 0, Cp_max = 0, Cp_avg = 0;
@@ -1250,27 +1256,50 @@ export function initPileModule(container) {
             allow_settle = parseFloat(container.querySelector('#pile_allow_settle')?.value) || 25.0;
 
             if (Qu_total > 0) {
-                Qpa = P_norm * (Qup / Qu_total); 
-                Qfs = P_norm * (total_Qus / Qu_total);
+                // 평상시 하중 분배
+                Qpa_norm = P_norm * (Qup / Qu_total); 
+                Qfs_norm = P_norm * (total_Qus / Qu_total);
+
+                // 지진시 하중 분배
+                Qpa_seis = P_seis * (Qup / Qu_total);
+                Qfs_seis = P_seis * (total_Qus / Qu_total);
             }
 
+            // --- 1) 평상시 침하량 계산 ---
             // Vesic Method
             if (A_net > 0 && Ep > 0) {
-                Ss_mm = ((Qpa + alpha_s * Qfs) * L) / (A_net * Ep) * 1000;
+                Ss_norm_mm = ((Qpa_norm + alpha_s * Qfs_norm) * L) / (A_net * Ep) * 1000;
             }
             if (D > 0 && q_p > 0) {
-                Sp_mm = (Cp * Qpa) / (D * q_p) * 1000;
+                Sp_norm_mm = (Cp * Qpa_norm) / (D * q_p) * 1000;
                 Cs = (0.93 + 0.16 * Math.sqrt(L / D)) * Cp;
-                Sps_mm = (Cs * Qfs) / (L * q_p) * 1000;
+                Sps_norm_mm = (Cs * Qfs_norm) / (L * q_p) * 1000;
             }
-            S_vesic = Ss_mm + Sp_mm + Sps_mm;
+            S_vesic_norm = Ss_norm_mm + Sp_norm_mm + Sps_norm_mm;
 
             // CFEM Method
             term1_cfem_mm = (D / 100) * 1000;
             if (A_net > 0 && Ep > 0) {
-                term2_cfem_mm = (P_norm * L) / (A_net * Ep) * 1000;
+                term2_cfem_norm_mm = (P_norm * L) / (A_net * Ep) * 1000;
             }
-            S_cfem = term1_cfem_mm + term2_cfem_mm;
+            S_cfem_norm = term1_cfem_mm + term2_cfem_norm_mm;
+
+            // --- 2) 지진시 침하량 계산 ---
+            // Vesic Method
+            if (A_net > 0 && Ep > 0) {
+                Ss_seis_mm = ((Qpa_seis + alpha_s * Qfs_seis) * L) / (A_net * Ep) * 1000;
+            }
+            if (D > 0 && q_p > 0) {
+                Sp_seis_mm = (Cp * Qpa_seis) / (D * q_p) * 1000;
+                Sps_seis_mm = (Cs * Qfs_seis) / (L * q_p) * 1000;
+            }
+            S_vesic_seis = Ss_seis_mm + Sp_seis_mm + Sps_seis_mm;
+
+            // CFEM Method
+            if (A_net > 0 && Ep > 0) {
+                term2_cfem_seis_mm = (P_seis * L) / (A_net * Ep) * 1000;
+            }
+            S_cfem_seis = term1_cfem_mm + term2_cfem_seis_mm;
         }
 
         // ==========================================
@@ -1292,22 +1321,34 @@ export function initPileModule(container) {
             </tr>
             ${isPrecast ? `
             <tr>
-                <td rowspan="2" style="background:#f5eef8; font-weight:bold;">침하량 검토<br><span style="font-size:0.8em; font-weight:normal;">(평상시 하중)</span></td>
+                <td rowspan="2" style="background:#f5eef8; font-weight:bold;">침하량 검토<br><span style="font-size:0.8em; color:#2980b9; font-weight:bold;">(평상시 하중)</span></td>
                 <td>반경험적 (Vesic)</td>
-                <td style="font-weight:bold; color:#8e44ad;">${S_vesic.toFixed(2)} mm</td>
+                <td style="font-weight:bold; color:#8e44ad;">${S_vesic_norm.toFixed(2)} mm</td>
                 <td rowspan="2" style="vertical-align: middle;">${allow_settle.toFixed(1)} mm</td>
-                <td style="font-weight:bold; color:${S_vesic <= allow_settle ? '#27ae60' : '#c0392b'};">${S_vesic <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
+                <td style="font-weight:bold; color:${S_vesic_norm <= allow_settle ? '#27ae60' : '#c0392b'};">${S_vesic_norm <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
             </tr>
             <tr>
                 <td>경험적 (CFEM)</td>
-                <td style="font-weight:bold; color:#8e44ad;">${S_cfem.toFixed(2)} mm</td>
-                <td style="font-weight:bold; color:${S_cfem <= allow_settle ? '#27ae60' : '#c0392b'};">${S_cfem <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
+                <td style="font-weight:bold; color:#8e44ad;">${S_cfem_norm.toFixed(2)} mm</td>
+                <td style="font-weight:bold; color:${S_cfem_norm <= allow_settle ? '#27ae60' : '#c0392b'};">${S_cfem_norm <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
+            </tr>
+            <tr>
+                <td rowspan="2" style="background:#f5eef8; font-weight:bold;">침하량 검토<br><span style="font-size:0.8em; color:#c0392b; font-weight:bold;">(지진시 하중)</span></td>
+                <td>반경험적 (Vesic)</td>
+                <td style="font-weight:bold; color:#8e44ad;">${S_vesic_seis.toFixed(2)} mm</td>
+                <td rowspan="2" style="vertical-align: middle;">${allow_settle.toFixed(1)} mm</td>
+                <td style="font-weight:bold; color:${S_vesic_seis <= allow_settle ? '#27ae60' : '#c0392b'};">${S_vesic_seis <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
+            </tr>
+            <tr>
+                <td>경험적 (CFEM)</td>
+                <td style="font-weight:bold; color:#8e44ad;">${S_cfem_seis.toFixed(2)} mm</td>
+                <td style="font-weight:bold; color:${S_cfem_seis <= allow_settle ? '#27ae60' : '#c0392b'};">${S_cfem_seis <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
             </tr>
             ` : ''}
         `;
 
         const settlementDetailHtml = isPrecast ? `
-            <div class="section-title">[검증 3] 말뚝 연직침하량 산정 상세 (상시 작용하중 P<sub>norm</sub> 기준 - 기성말뚝)</div>
+            <div class="section-title">[검증 3] 말뚝 연직침하량 산정 상세 (기성말뚝)</div>
             
             <div style="margin: 10px 0;">
                 <strong style="color:#2c3e50;">■ [참조] 흙의 종류와 말뚝시공법에 따른 경험계수 C<sub>p</sub> 값</strong>
@@ -1343,26 +1384,42 @@ export function initPileModule(container) {
                 </div>
             </div>
 
+            <!-- (1) 평상시 하중 침하량 산정 -->
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>(1) 침하량 산정용 전달하중 분배</strong><br>
-                • 상시 작용하중 (Q<sub>va</sub>) = P<sub>norm</sub> = <strong>${P_norm.toFixed(1)} kN</strong><br>
-                • 극한지지력 비율 분배 (총 극한지지력 Q<sub>u</sub> = ${Qu_total.toFixed(1)} kN) :<br>
-                &nbsp;&nbsp;- 선단 전달하중 (Q<sub>pa</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(`${Qup.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qpa.toFixed(1)} kN</strong><br>
-                &nbsp;&nbsp;- 주면 전달하중 (Q<sub>fs</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(`${total_Qus.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qfs.toFixed(1)} kN</strong><br><br>
+                <strong style="color:#2980b9; font-size:1.05em;">(1) 평상시 작용하중 (P<sub>norm</sub> = ${P_norm.toFixed(1)} kN) 기준 침하량</strong><br>
+                • <strong>침하량 산정용 전달하중 분배 :</strong><br>
+                &nbsp;&nbsp;- 선단 전달하중 (Q<sub>pa</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(`${Qup.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qpa_norm.toFixed(1)} kN</strong><br>
+                &nbsp;&nbsp;- 주면 전달하중 (Q<sub>fs</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(`${total_Qus.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qfs_norm.toFixed(1)} kN</strong><br><br>
 
-                <strong>(2) 반경험적 방법에 의한 침하량 (Vesic, 1977 / 구조물기초설계기준해설)</strong><br>
-                • 말뚝 자체 압축 (S<sub>s</sub>) 공식: S<sub>s</sub> = ${frac("(Q<sub>pa</sub> + &alpha;<sub>s</sub> &times; Q<sub>fs</sub>) &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000<br>
-                &nbsp;&nbsp;&nbsp;= ${frac(`(${Qpa.toFixed(1)} + ${alpha_s} &times; ${Qfs.toFixed(1)}) &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${Ss_mm.toFixed(3)} mm</strong><br>
-                • 선단 하중 전달 침하 (S<sub>p</sub>) 공식: S<sub>p</sub> = ${frac("C<sub>p</sub> &times; Q<sub>pa</sub>", "D &times; q<sub>p</sub>")} &times; 1000<br>
-                &nbsp;&nbsp;&nbsp;= ${frac(`${Cp} &times; ${Qpa.toFixed(1)}`, `${D.toFixed(3)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sp_mm.toFixed(3)} mm</strong><br>
-                • 주면 하중 전달 침하 (S<sub>ps</sub>) 공식: S<sub>ps</sub> = ${frac("C<sub>s</sub> &times; Q<sub>fs</sub>", "L &times; q<sub>p</sub>")} &times; 1000 <span style="font-size:0.85em; color:#7f8c8d;">[C<sub>s</sub> = (0.93 + 0.16 &times; &radic;${frac("L", "D")}) &times; C<sub>p</sub> = ${Cs.toFixed(4)}]</span><br>
-                &nbsp;&nbsp;&nbsp;= ${frac(`${Cs.toFixed(4)} &times; ${Qfs.toFixed(1)}`, `${L.toFixed(2)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sps_mm.toFixed(3)} mm</strong><br>
-                ▶ <strong>S<sub>vesic</sub></strong> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = <strong><span style="color:#8e44ad;">${S_vesic.toFixed(3)} mm</span></strong><br><br>
+                • <strong>반경험적 방법에 의한 침하량 (Vesic, 1977) :</strong><br>
+                &nbsp;&nbsp;- 말뚝 자체 압축 (S<sub>s</sub>) = ${frac(`(${Qpa_norm.toFixed(1)} + ${alpha_s} &times; ${Qfs_norm.toFixed(1)}) &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${Ss_norm_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;- 선단 전달 침하 (S<sub>p</sub>) = ${frac(`${Cp} &times; ${Qpa_norm.toFixed(1)}`, `${D.toFixed(3)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sp_norm_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;- 주면 전달 침하 (S<sub>ps</sub>) = ${frac(`${Cs.toFixed(4)} &times; ${Qfs_norm.toFixed(1)}`, `${L.toFixed(2)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sps_norm_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;▶ <strong>S<sub>vesic,norm</sub></strong> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = <strong><span style="color:#8e44ad;">${S_vesic_norm.toFixed(3)} mm</span></strong><br><br>
 
-                <strong>(3) 경험적 방법에 의한 침하량 (CFEM, 1992 / 강관말뚝 설계와 시공)</strong><br>
-                • 말뚝 직경에 의한 침하 항 공식: ${frac("D", "100")} = ${frac(`${D.toFixed(3)}`, "100")} (m) = <strong>${term1_cfem_mm.toFixed(3)} mm</strong><br>
-                • 말뚝 탄성 압축 항 공식: ${frac("Q<sub>va</sub> &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 = ${frac(`${P_norm.toFixed(1)} &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${term2_cfem_mm.toFixed(3)} mm</strong><br>
-                ▶ <strong>S<sub>cfem</sub></strong> = 직경 항 + 탄성 압축 항 = <strong><span style="color:#8e44ad;">${S_cfem.toFixed(3)} mm</span></strong>
+                • <strong>경험적 방법에 의한 침하량 (CFEM, 1992) :</strong><br>
+                &nbsp;&nbsp;- 직경 항 = ${frac(`${D.toFixed(3)}`, "100")} = <strong>${term1_cfem_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;- 탄성 압축 항 = ${frac(`${P_norm.toFixed(1)} &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${term2_cfem_norm_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;▶ <strong>S<sub>cfem,norm</sub></strong> = 직경 항 + 탄성 압축 항 = <strong><span style="color:#8e44ad;">${S_cfem_norm.toFixed(3)} mm</span></strong>
+            </div>
+
+            <!-- (2) 지진시 하중 침하량 산정 -->
+            <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
+                <strong style="color:#c0392b; font-size:1.05em;">(2) 지진시 작용하중 (P<sub>seis</sub> = ${P_seis.toFixed(1)} kN) 기준 침하량</strong><br>
+                • <strong>침하량 산정용 전달하중 분배 :</strong><br>
+                &nbsp;&nbsp;- 선단 전달하중 (Q<sub>pa</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_seis.toFixed(1)} &times; ${frac(`${Qup.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qpa_seis.toFixed(1)} kN</strong><br>
+                &nbsp;&nbsp;- 주면 전달하중 (Q<sub>fs</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_seis.toFixed(1)} &times; ${frac(`${total_Qus.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qfs_seis.toFixed(1)} kN</strong><br><br>
+
+                • <strong>반경험적 방법에 의한 침하량 (Vesic, 1977) :</strong><br>
+                &nbsp;&nbsp;- 말뚝 자체 압축 (S<sub>s</sub>) = ${frac(`(${Qpa_seis.toFixed(1)} + ${alpha_s} &times; ${Qfs_seis.toFixed(1)}) &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${Ss_seis_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;- 선단 전달 침하 (S<sub>p</sub>) = ${frac(`${Cp} &times; ${Qpa_seis.toFixed(1)}`, `${D.toFixed(3)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sp_seis_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;- 주면 전달 침하 (S<sub>ps</sub>) = ${frac(`${Cs.toFixed(4)} &times; ${Qfs_seis.toFixed(1)}`, `${L.toFixed(2)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sps_seis_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;▶ <strong>S<sub>vesic,seis</sub></strong> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = <strong><span style="color:#8e44ad;">${S_vesic_seis.toFixed(3)} mm</span></strong><br><br>
+
+                • <strong>경험적 방법에 의한 침하량 (CFEM, 1992) :</strong><br>
+                &nbsp;&nbsp;- 직경 항 = ${frac(`${D.toFixed(3)}`, "100")} = <strong>${term1_cfem_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;- 탄성 압축 항 = ${frac(`${P_seis.toFixed(1)} &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${term2_cfem_seis_mm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;▶ <strong>S<sub>cfem,seis</sub></strong> = 직경 항 + 탄성 압축 항 = <strong><span style="color:#8e44ad;">${S_cfem_seis.toFixed(3)} mm</span></strong>
             </div>
         ` : '';
 
