@@ -281,7 +281,6 @@ export function initPileModule(container) {
         if (!specSelect || !grid2Content || !row2Container) return;
         specSelect.innerHTML = '';
 
-        // 현장타설말뚝(토사/기반암)인 경우 2번째 행(row2) 박스를 5개로 변경
         if (type === 'CAST' || type === 'CAST_ROCK') {
             row2Container.style.gridTemplateColumns = 'repeat(5, 1fr)';
         } else {
@@ -406,10 +405,10 @@ export function initPileModule(container) {
             const initialRebarFy = getVal('rebar_fy', '400');
             const initialRebarCount = getVal('rebar_count', '20');
 
-            // 보강철근 입력 박스 HTML
+            // 보강철근 입력 박스 HTML (직접 입력 형태로 변경)
             const rebarBoxHtml = `
                 <div class="input-group" style="margin:0;">
-                    <label>보강철근 (직경 / 강도 / 개수)</label>
+                    <label>보강철근 제원</label>
                     <div style="display:flex; gap:2px; height:32px; align-items:center;">
                         <select id="pile_rebar_d" style="flex:1.2; min-width:0; height:100%; box-sizing:border-box; padding:2px; font-size:0.78em;" title="철근 직경">
                             <option value="9.53" ${initialRebarD === '9.53' ? 'selected' : ''}>D10</option>
@@ -427,7 +426,7 @@ export function initPileModule(container) {
                             <option value="400" ${initialRebarFy === '400' ? 'selected' : ''}>SD400</option>
                             <option value="500" ${initialRebarFy === '500' ? 'selected' : ''}>SD500</option>
                         </select>
-                        <input type="number" id="pile_rebar_count" value="${initialRebarCount}" min="0" step="1" title="철근 개수(EA)" style="width:34px; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.85em;">
+                        <input type="text" id="pile_rebar_count" value="${initialRebarCount}" title="철근 개수(EA)" placeholder="개수" style="width:38px; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.85em;">
                         <span style="font-size:0.75em; font-weight:bold; color:#2c3e50; white-space:nowrap;">개</span>
                     </div>
                 </div>
