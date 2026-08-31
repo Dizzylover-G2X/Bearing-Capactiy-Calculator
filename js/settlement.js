@@ -224,6 +224,8 @@ function getInfluenceFactor(shape, rigidity, position, ratio) {
 }
 
 function calculateSettlement() {
+    const frac = (num, den) => `<span style="display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 4px;"><span style="border-bottom:1px solid #2c3e50; padding:1px 4px;">${num}</span><span style="padding:1px 4px;">${den}</span></span>`;
+
     const B = parseFloat(document.getElementById('set_B').value);
     const L = parseFloat(document.getElementById('set_L').value);
     const Df = parseFloat(document.getElementById('set_Df').value);
@@ -462,8 +464,8 @@ function calculateSettlement() {
         <div class="section-title">[검증 1] 탄성&#8203;이론에 의한 침하량 산정 (구조물&#8203;기초설계기준 해설. 2018. P235)</div>
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             ▶ 탄성&#8203;이론 기본 계산식 (Df = 0, 기초하부 침하발생 지반의 두께가 매우 클 경우)<br><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;<strong>Se = q &times; B &times; [ (1 - &nu;&sup2;) / E ] &times; Is</strong><br><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ( 1.0 &minus; ${(u_sq).toFixed(3)} ) / ${E.toFixed(1)} &times; Is<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<strong>Se = q &times; B &times; [ ${frac('1 - &nu;&sup2;', 'E')} ] &times; Is</strong><br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;= ${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ${frac(`1.0 &minus; ${(u_sq).toFixed(3)}`, E.toFixed(1))} &times; Is<br>
         </div>
 
         <div class="calc-step" style="margin-bottom: 12px;">
@@ -481,7 +483,7 @@ function calculateSettlement() {
                     <tr style="background-color: #ebf5fb;">
                         <th>구분 (Case)</th>
                         <th>영향계수 (Is)</th>
-                        <th>산정식 [q &times; B &times; (1-&nu;&sup2;) / E &times; Is]</th>
+                        <th>산정식 [q &times; B &times; ${frac('1-&nu;&sup2;', 'E')} &times; Is]</th>
                         <th>발생 침하량 (mm)</th>
                         <th>적용 상태</th>
                     </tr>
@@ -490,35 +492,35 @@ function calculateSettlement() {
                     <tr style="${rigidity === 'rigid' ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
                         <td><strong>강성&#8203;기초</strong></td>
                         <td>${Is_rigid.toFixed(2)}</td>
-                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_rigid.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ${frac(`1 - ${u_sq.toFixed(3)}`, E.toFixed(1))} &times; ${Is_rigid.toFixed(2)}</td>
                         <td style="color:#e67e22; font-weight:bold;">${Se_rigid_mm.toFixed(2)} mm</td>
                         <td>${rigidity === 'rigid' ? '<span style="color:#27ae60; font-weight:bold;">● 선택됨 (요약표 반영)</span>' : '-'}</td>
                     </tr>
                     <tr style="${rigidity === 'flexible' ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
                         <td><strong>연성&#8203;기초 (중심점 [최대])</strong></td>
                         <td>${Is_center.toFixed(2)}</td>
-                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_center.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ${frac(`1 - ${u_sq.toFixed(3)}`, E.toFixed(1))} &times; ${Is_center.toFixed(2)}</td>
                         <td style="color:#e67e22; font-weight:bold;">${Se_center_mm.toFixed(2)} mm</td>
                         <td>${rigidity === 'flexible' ? '<span style="color:#27ae60; font-weight:bold;">● 선택됨 (요약표 반영)</span>' : '-'}</td>
                     </tr>
                     <tr>
                         <td>연성&#8203;기초 (외변&#8203;중점)</td>
                         <td>${Is_midside.toFixed(2)}</td>
-                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_midside.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ${frac(`1 - ${u_sq.toFixed(3)}`, E.toFixed(1))} &times; ${Is_midside.toFixed(2)}</td>
                         <td>${Se_midside_mm.toFixed(2)} mm</td>
                         <td>-</td>
                     </tr>
                     <tr style="${rigidity === 'flexible' ? 'background-color: #e8f8f5; font-weight: bold;' : ''}">
                         <td><strong>연성&#8203;기초 (모서리&#8203;점 [최소])</strong></td>
                         <td>${Is_corner.toFixed(2)}</td>
-                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_corner.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ${frac(`1 - ${u_sq.toFixed(3)}`, E.toFixed(1))} &times; ${Is_corner.toFixed(2)}</td>
                         <td style="color:#e67e22; font-weight:bold;">${Se_corner_mm.toFixed(2)} mm</td>
                         <td>${rigidity === 'flexible' ? '<span style="color:#27ae60; font-weight:bold;">● 선택됨 (요약표 반영)</span>' : '-'}</td>
                     </tr>
                     <tr>
                         <td>연성&#8203;기초 (평균)</td>
                         <td>${Is_average.toFixed(2)}</td>
-                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; (1 - ${u_sq.toFixed(3)}) / ${E.toFixed(1)} &times; ${Is_average.toFixed(2)}</td>
+                        <td>${qb.toFixed(1)} &times; ${B.toFixed(2)} &times; ${frac(`1 - ${u_sq.toFixed(3)}`, E.toFixed(1))} &times; ${Is_average.toFixed(2)}</td>
                         <td>${Se_average_mm.toFixed(2)} mm</td>
                         <td>-</td>
                     </tr>
@@ -602,7 +604,7 @@ function calculateSettlement() {
         
         <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
             ▶ Schmert&#8203;mann 침하량 기본 산정식<br><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;<strong>S<sub>i</sub> = C<sub>1</sub> &times; C<sub>2</sub> &times; (q<sub>b</sub> - &sigma;<sub>v0</sub>') &times; &sum; [ (I<sub>zi</sub> / E<sub>i</sub>) &times; &Delta;z<sub>i</sub> ]</strong><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<strong>S<sub>i</sub> = C<sub>1</sub> &times; C<sub>2</sub> &times; (q<sub>b</sub> - &sigma;<sub>v0</sub>') &times; &sum; [ ${frac('I_{zi}', 'E_i')} &times; &Delta;z<sub>i</sub> ]</strong><br>
         </div>
 
         <div class="calc-step">
@@ -611,14 +613,14 @@ function calculateSettlement() {
             • 최대 영향계수 발생심도 (Z<sub>fp</sub>) : <strong>${zfp.toFixed(2)} m</strong> [적용식: B &times; (0.5 + 0.0555 &times; (${sch_ratio.toFixed(2)} - 1)) = ${B.toFixed(2)} &times; ${zfp_ratio.toFixed(3)}]<br>
             • 기초바닥 영향계수 (I<sub>z0</sub>) : <strong>${Iz0.toFixed(3)}</strong> [적용식: 0.1 + 0.0111 &times; (${sch_ratio.toFixed(2)} - 1)]<br>
             • Z<sub>fp</sub> 위치의 유효응력 (&sigma;<sub>vp</sub>') : <strong>${sigma_vp_prime.toFixed(2)} kN/m²</strong><br>
-            • <strong>최대 영향계수 (I<sub>zp</sub>)</strong> : <strong>${Izp.toFixed(3)}</strong> [적용식: 0.5 + 0.1 &times; &radic;( (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)}) / ${sigma_vp_prime.toFixed(2)} )]<br><br>
+            • <strong>최대 영향계수 (I<sub>zp</sub>)</strong> : <strong>${Izp.toFixed(3)}</strong> [적용식: 0.5 + 0.1 &times; &radic;${frac(`${qb.toFixed(2)} - ${sigma_v0.toFixed(2)}`, sigma_vp_prime.toFixed(2))}]<br><br>
             
             <strong>2. 보정계수 산정</strong><br>
-            • 근입깊이 보정계수 C<sub>1</sub> : <strong>${C1.toFixed(3)}</strong> [적용식: max(0.5, 1 - 0.5 &times; (${sigma_v0.toFixed(2)} / (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)})))]<br>
-            • Creep 보정계수 C<sub>2</sub> : <strong>${C2.toFixed(3)}</strong> [적용식: 1 + 0.2 &times; log<sub>10</sub>(${t_years} / 0.1)]<br><br>
+            • 근입깊이 보정계수 C<sub>1</sub> : <strong>${C1.toFixed(3)}</strong> [적용식: max(0.5, 1 - 0.5 &times; ${frac(sigma_v0.toFixed(2), `${qb.toFixed(2)} - ${sigma_v0.toFixed(2)}`)})]<br>
+            • Creep 보정계수 C<sub>2</sub> : <strong>${C2.toFixed(3)}</strong> [적용식: 1 + 0.2 &times; log<sub>10</sub>(${frac(t_years.toFixed(1), '0.1')})]<br><br>
 
             <strong>3. 최종 침하량 산정</strong><br>
-            • 지층별 변형영향계수 적분 합계 (&sum; (I<sub>z</sub> / E) &Delta;z) : <strong>${sum_iz_e_dz.toExponential(4)} m²/kN</strong><br>
+            • 지층별 변형영향계수 적분 합계 (&sum; ${frac('I_z', 'E')} &Delta;z) : <strong>${sum_iz_e_dz.toExponential(4)} m²/kN</strong><br>
             • <strong>발생 침하량 S<sub>i</sub> : ${C1.toFixed(3)} &times; ${C2.toFixed(3)} &times; (${qb.toFixed(2)} - ${sigma_v0.toFixed(2)}) &times; ${sum_iz_e_dz.toExponential(4)} &times; 1000 = <span style="color:#8e44ad;">${Si_mm.toFixed(2)} mm</span></strong>
         </div>
 
@@ -635,7 +637,7 @@ function calculateSettlement() {
                         <th>중앙 심도 Z_mid (m)</th>
                         <th>변형계수 E (kN/m²)</th>
                         <th>중앙 영향계수 I<sub>z</sub></th>
-                        <th>(I<sub>z</sub> / E) &times; &Delta;z</th>
+                        <th>${frac('I_z', 'E')} &times; &Delta;z</th>
                         <th>비고</th>
                     </tr>
                 </thead>
