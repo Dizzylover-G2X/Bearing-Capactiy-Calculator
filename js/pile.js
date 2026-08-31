@@ -62,6 +62,9 @@ export function initPileModule(container) {
     const initialMethod = getVal('method', 'bored');
     const initialGWT = getVal('gwt', '2.0');
 
+    // 말뚝 종류 초기값에 따른 Ep 기본값 설정
+    const defaultEp = initialType === 'STEEL' ? '200000000' : '39200000';
+
     container.innerHTML = `
         <h3>1. 설계자료 입력 (말뚝기초 지지력 및 침하량 검토)</h3>
         
@@ -125,8 +128,8 @@ export function initPileModule(container) {
             <div style="font-weight: bold; margin-bottom: 8px; color: #8e44ad; font-size: 0.95em;">■ 침하량 산정 조건 (Vesic 및 CFEM - 기성말뚝)</div>
             <div class="input-grid" style="margin-bottom: 15px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2;">
                 <div class="input-group" style="background:#fff;">
-                    <label style="color:#8e44ad;">말뚝 탄성계수 Ep (kN/m²)</label>
-                    <input type="number" id="pile_Ep" value="${getVal('Ep', '39200000')}" step="100000">
+                    <label style="color:#8e44ad;">말뚝 탄성계수 E<sub>p</sub> (kN/m²)</label>
+                    <input type="number" id="pile_Ep" value="${getVal('Ep', defaultEp)}" step="100000">
                 </div>
                 <div class="input-group" style="background:#fff;">
                     <label>주면마찰 분포계수 α_s</label>
@@ -299,13 +302,23 @@ export function initPileModule(container) {
         const specSelect = container.querySelector('#pile_spec_select');
         const row2Container = container.querySelector('#pile_row2_container');
         const settlementSec = container.querySelector('#pile_settlement_input_sec');
+        const epInput = container.querySelector('#pile_Ep');
 
         if (!specSelect || !grid2Content || !row2Container) return;
 
-        // 기성말뚝(PHC, STEEL) 선택시에만 침하량 입력박스 노출
+        // 기성말뚝(PHC, STEEL) 선택시에만 침하량 입력박스 노출 및 Ep 기본값 조정
         const isPrecast = (type === 'PHC' || type === 'STEEL');
         if (settlementSec) {
             settlementSec.style.display = isPrecast ? 'block' : 'none';
+        }
+
+        if (epInput) {
+            if (type === 'STEEL') {
+                epInput.value = '200000000';
+            } else if (type === 'PHC') {
+                epInput.value = '39200000';
+            }
+            try { localStorage.setItem('geo_pile_Ep', epInput.value); } catch(e){}
         }
 
         specSelect.innerHTML = '';
@@ -1187,10 +1200,11 @@ export function initPileModule(container) {
         let S_cfem = 0, term1_cfem_mm = 0, term2_cfem_mm = 0;
         let Qpa = 0, Qfs = 0;
 
-        let Ep = 39200000, alpha_s = 0.67, Cp = 0.09, allow_settle = 25.0;
+        let Ep = p_type === 'STEEL' ? 200000000 : 39200000;
+        let alpha_s = 0.67, Cp = 0.09, allow_settle = 25.0;
 
         if (isPrecast) {
-            Ep = parseFloat(container.querySelector('#pile_Ep')?.value) || 39200000;
+            Ep = parseFloat(container.querySelector('#pile_Ep')?.value) || Ep;
             alpha_s = parseFloat(container.querySelector('#pile_alpha_s')?.value) || 0.67;
             Cp = parseFloat(container.querySelector('#pile_Cp')?.value) || 0.09;
             allow_settle = parseFloat(container.querySelector('#pile_allow_settle')?.value) || 25.0;
@@ -1262,17 +1276,17 @@ export function initPileModule(container) {
                 &nbsp;&nbsp;- 주면 전달하중 (Q<sub>fs</sub>) 공식: Q<sub>va</sub> &times; (Q<sub>us</sub> / Q<sub>u</sub>) = ${P_norm.toFixed(1)} &times; (${total_Qus.toFixed(1)} / ${Qu_total.toFixed(1)}) = <strong>${Qfs.toFixed(1)} kN</strong><br><br>
 
                 <strong>(2) 반경험적 방법에 의한 침하량 (Vesic, 1977 / 구조물기초설계기준해설)</strong><br>
-                • 말뚝 자체 압축 (S<sub>s</sub>) 공식: (Q<sub>pa</sub> + &alpha;<sub>s</sub>&cdot;Q<sub>fs</sub>) &times; L / (A<sub>net</sub> &times; E<sub>p</sub>)<br>
+                • 말뚝 자체 압축 (S<sub>s</sub>) 공식: S<sub>s</sub> = (Q<sub>pa</sub> + &alpha;<sub>s</sub> &times; Q<sub>fs</sub>) &times; L / (A<sub>net</sub> &times; E<sub>p</sub>)<br>
                 &nbsp;&nbsp;&nbsp;= (${Qpa.toFixed(1)} + ${alpha_s} &times; ${Qfs.toFixed(1)}) &times; ${L.toFixed(2)} / (${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}) &times; 1000 = <strong>${Ss_mm.toFixed(3)} mm</strong><br>
-                • 선단 하중 전달 침하 (S<sub>p</sub>) 공식: (C<sub>p</sub>&cdot;Q<sub>pa</sub>) / (B&cdot;q<sub>p</sub>)<br>
+                • 선단 하중 전달 침하 (S<sub>p</sub>) 공식: S<sub>p</sub> = (C<sub>p</sub> &times; Q<sub>pa</sub>) / (D &times; q<sub>p</sub>)<br>
                 &nbsp;&nbsp;&nbsp;= (${Cp} &times; ${Qpa.toFixed(1)}) / (${D.toFixed(3)} &times; ${q_p.toFixed(1)}) &times; 1000 = <strong>${Sp_mm.toFixed(3)} mm</strong><br>
-                • 주면 하중 전달 침하 (S<sub>ps</sub>) 공식: (C<sub>s</sub>&cdot;Q<sub>fs</sub>) / (L&cdot;q<sub>p</sub>) <span style="font-size:0.85em; color:#7f8c8d;">[C<sub>s</sub> = (0.93 + 0.16&radic;(L/D))&cdot;C<sub>p</sub> = ${Cs.toFixed(4)}]</span><br>
+                • 주면 하중 전달 침하 (S<sub>ps</sub>) 공식: S<sub>ps</sub> = (C<sub>s</sub> &times; Q<sub>fs</sub>) / (L &times; q<sub>p</sub>) <span style="font-size:0.85em; color:#7f8c8d;">[C<sub>s</sub> = (0.93 + 0.16 &times; &radic;(L / D)) &times; C<sub>p</sub> = ${Cs.toFixed(4)}]</span><br>
                 &nbsp;&nbsp;&nbsp;= (${Cs.toFixed(4)} &times; ${Qfs.toFixed(1)}) / (${L.toFixed(2)} &times; ${q_p.toFixed(1)}) &times; 1000 = <strong>${Sps_mm.toFixed(3)} mm</strong><br>
                 ▶ <strong>S<sub>vesic</sub></strong> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = <strong><span style="color:#8e44ad;">${S_vesic.toFixed(3)} mm</span></strong><br><br>
 
                 <strong>(3) 경험적 방법에 의한 침하량 (CFEM, 1992 / 강관말뚝 설계와 시공)</strong><br>
                 • 말뚝 직경에 의한 침하 항 공식: B / 100 = ${D.toFixed(3)} / 100 (m) = <strong>${term1_cfem_mm.toFixed(3)} mm</strong><br>
-                • 말뚝 탄성 압축 항 공식: (Q<sub>va</sub>&cdot;L) / (A<sub>net</sub>&cdot;E<sub>p</sub>) = (${P_norm.toFixed(1)} &times; ${L.toFixed(2)}) / (${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}) &times; 1000 = <strong>${term2_cfem_mm.toFixed(3)} mm</strong><br>
+                • 말뚝 탄성 압축 항 공식: (Q<sub>va</sub> &times; L) / (A<sub>net</sub> &times; E<sub>p</sub>) = (${P_norm.toFixed(1)} &times; ${L.toFixed(2)}) / (${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}) &times; 1000 = <strong>${term2_cfem_mm.toFixed(3)} mm</strong><br>
                 ▶ <strong>S<sub>cfem</sub></strong> = 직경 항 + 탄성 압축 항 = <strong><span style="color:#8e44ad;">${S_cfem.toFixed(3)} mm</span></strong>
             </div>
         ` : '';
