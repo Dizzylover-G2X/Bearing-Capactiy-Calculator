@@ -8,7 +8,7 @@ export function initPileModule(container) {
     };
 
     // ---------------------------------------------------------
-    // 표준 제원 DB (해설 표 5.2.1 및 강관말뚝 치수표)
+    // 표준 제원 DB (해설 표 5.2.1 및 강관말뚝, 철근 치수표)
     // ---------------------------------------------------------
     const PHC_DB = {
         "350": { t: 60, A: 900, B: 920, C: 910 },
@@ -281,6 +281,13 @@ export function initPileModule(container) {
         if (!specSelect || !grid2Content || !row2Container) return;
         specSelect.innerHTML = '';
 
+        // 현장타설말뚝(토사/기반암)인 경우 2번째 행(row2) 박스를 5개로 변경
+        if (type === 'CAST' || type === 'CAST_ROCK') {
+            row2Container.style.gridTemplateColumns = 'repeat(5, 1fr)';
+        } else {
+            row2Container.style.gridTemplateColumns = 'repeat(4, 1fr)';
+        }
+
         if (type === 'PHC') {
             grid2Label.textContent = 'PHC 종 구분';
             grid2Content.innerHTML = `
@@ -394,8 +401,39 @@ export function initPileModule(container) {
             specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
             grid5Val.value = getVal('grid5_val', '35.0');
 
+            const initialFck = getVal('fck', '27');
+            const initialRebarD = getVal('rebar_d', '25.40');
+            const initialRebarFy = getVal('rebar_fy', '400');
+            const initialRebarCount = getVal('rebar_count', '20');
+
+            // 보강철근 입력 박스 HTML
+            const rebarBoxHtml = `
+                <div class="input-group" style="margin:0;">
+                    <label>보강철근 (직경 / 강도 / 개수)</label>
+                    <div style="display:flex; gap:2px; height:32px; align-items:center;">
+                        <select id="pile_rebar_d" style="flex:1.2; min-width:0; height:100%; box-sizing:border-box; padding:2px; font-size:0.78em;" title="철근 직경">
+                            <option value="9.53" ${initialRebarD === '9.53' ? 'selected' : ''}>D10</option>
+                            <option value="12.70" ${initialRebarD === '12.70' ? 'selected' : ''}>D13</option>
+                            <option value="15.90" ${initialRebarD === '15.90' ? 'selected' : ''}>D16</option>
+                            <option value="19.10" ${initialRebarD === '19.10' ? 'selected' : ''}>D19</option>
+                            <option value="22.20" ${initialRebarD === '22.20' ? 'selected' : ''}>D22</option>
+                            <option value="25.40" ${initialRebarD === '25.40' ? 'selected' : ''}>D25</option>
+                            <option value="28.60" ${initialRebarD === '28.60' ? 'selected' : ''}>D29</option>
+                            <option value="31.80" ${initialRebarD === '31.80' ? 'selected' : ''}>D32</option>
+                            <option value="34.90" ${initialRebarD === '34.90' ? 'selected' : ''}>D35</option>
+                            <option value="38.10" ${initialRebarD === '38.10' ? 'selected' : ''}>D38</option>
+                        </select>
+                        <select id="pile_rebar_fy" style="flex:1.3; min-width:0; height:100%; box-sizing:border-box; padding:2px; font-size:0.78em;" title="항복강도">
+                            <option value="400" ${initialRebarFy === '400' ? 'selected' : ''}>SD400</option>
+                            <option value="500" ${initialRebarFy === '500' ? 'selected' : ''}>SD500</option>
+                        </select>
+                        <input type="number" id="pile_rebar_count" value="${initialRebarCount}" min="0" step="1" title="철근 개수(EA)" style="width:34px; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.85em;">
+                        <span style="font-size:0.75em; font-weight:bold; color:#2c3e50; white-space:nowrap;">개</span>
+                    </div>
+                </div>
+            `;
+
             if (type === 'CAST_ROCK') {
-                const initialFck = getVal('fck', '27');
                 const initialJointState = getVal('joint_state', 'closed');
                 const initialRqd = getVal('rqd', '4.0');
 
@@ -405,7 +443,7 @@ export function initPileModule(container) {
                         <select id="pile_qp_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
                     </div>
                     <div class="input-group" style="margin:0;">
-                        <label>콘크리트 압축강도 f'_c (MPa)</label>
+                        <label>콘크리트 강도 f'_c (MPa)</label>
                         <input type="number" id="pile_fck" value="${initialFck}" step="0.1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center;">
                     </div>
                     <div class="input-group" style="margin:0;">
@@ -419,6 +457,7 @@ export function initPileModule(container) {
                         <label>RQD (%)</label>
                         <input type="number" id="pile_rqd" value="${initialRqd}" step="0.1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center;">
                     </div>
+                    ${rebarBoxHtml}
                 `;
             } else {
                 row2Container.innerHTML = `
@@ -431,23 +470,16 @@ export function initPileModule(container) {
                         <select id="pile_qs_formula" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.82em;"></select>
                     </div>
                     <div class="input-group" style="margin:0;">
+                        <label>콘크리트 강도 f'_c (MPa)</label>
+                        <input type="number" id="pile_fck" value="${initialFck}" step="0.1" style="width:100%; height:32px; box-sizing:border-box; padding:4px; text-align:center;">
+                    </div>
+                    <div class="input-group" style="margin:0;">
                         <label>시공 공법</label>
                         <select id="pile_method" style="width: 100%; height: 32px; box-sizing: border-box; padding: 4px; font-size: 0.88em;" disabled>
                             <option value="bored" selected>매입말뚝공법 (현장타설)</option>
                         </select>
                     </div>
-                    <div class="input-group" style="margin:0;">
-                        <label>이음 방법 및 개소</label>
-                        <div style="display:flex; gap:4px; height: 32px; align-items:center;">
-                            <select id="pile_joint_type" style="flex:1; height:100%; box-sizing:border-box; padding:2px; font-size:0.85em;">
-                                <option value="weld">용접 이음</option>
-                                <option value="bolt">볼트 이음</option>
-                                <option value="none" selected>이음 없음</option>
-                            </select>
-                            <input type="number" id="pile_joint_count" value="0" min="0" style="width:40px; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.85em;">
-                            <span style="font-size:0.82em; font-weight:bold; color:#2c3e50; white-space:nowrap;">개소</span>
-                        </div>
-                    </div>
+                    ${rebarBoxHtml}
                 `;
             }
         } else {
@@ -608,7 +640,7 @@ export function initPileModule(container) {
     container.addEventListener('change', (e) => {
         if (e.target.id === 'pile_type') {
             updateUIState();
-            renderLayers(); // 말뚝 종류 변경 시 지층 토성 드롭다운 옵션도 갱신
+            renderLayers();
             try { localStorage.setItem('geo_pile_type', e.target.value); } catch(err){}
         } else if (e.target.id === 'pile_method') {
             updateMethodFormulas();
@@ -639,6 +671,12 @@ export function initPileModule(container) {
             try { localStorage.setItem('geo_pile_joint_state', e.target.value); } catch(err){}
         } else if (e.target.id === 'pile_rqd') {
             try { localStorage.setItem('geo_pile_rqd', e.target.value); } catch(err){}
+        } else if (e.target.id === 'pile_rebar_d') {
+            try { localStorage.setItem('geo_pile_rebar_d', e.target.value); } catch(err){}
+        } else if (e.target.id === 'pile_rebar_fy') {
+            try { localStorage.setItem('geo_pile_rebar_fy', e.target.value); } catch(err){}
+        } else if (e.target.id === 'pile_rebar_count') {
+            try { localStorage.setItem('geo_pile_rebar_count', e.target.value); } catch(err){}
         }
 
         if (e.target.classList.contains('pl-name')) pileLayers[e.target.dataset.idx].name = e.target.value;
@@ -672,14 +710,11 @@ export function initPileModule(container) {
 
         tbody.innerHTML = '';
         pileLayers.forEach((l, idx) => {
-            // 현장타설말뚝(토사)인 경우 기존 지층이 기반암(rock)이면 풍화암(weathered_rock)으로 자동 변경
             if (currentPileType === 'CAST' && l.type === 'rock') {
                 l.type = 'weathered_rock';
             }
 
             const gammaVal = l.gamma !== undefined ? l.gamma : 19.0;
-
-            // 현장타설말뚝(토사)일 때는 기반암 옵션을 드롭다운에서 제외
             const rockOptionHtml = currentPileType === 'CAST' ? '' : `<option value="rock" ${l.type === 'rock' ? 'selected' : ''}>기반암(연암/경암)</option>`;
 
             tbody.innerHTML += `
@@ -851,12 +886,23 @@ export function initPileModule(container) {
         let em_ei_val = 0.01;
         let alpha_e_val = 0.370;
 
-        if (p_type === 'CAST_ROCK') {
+        // 보강철근 변수
+        let user_rebar_d_mm = 25.40;
+        let user_rebar_fy_MPa = 400;
+        let user_rebar_count = 20;
+
+        if (p_type === 'CAST' || p_type === 'CAST_ROCK') {
             user_fck = parseFloat(container.querySelector('#pile_fck')?.value) || 27.0;
-            user_joint_state = container.querySelector('#pile_joint_state')?.value || 'closed';
-            user_rqd = parseFloat(container.querySelector('#pile_rqd')?.value) || 4.0;
-            em_ei_val = interpolateEmEi(user_rqd, user_joint_state);
-            alpha_e_val = interpolateAlphaE(em_ei_val);
+            user_rebar_d_mm = parseFloat(container.querySelector('#pile_rebar_d')?.value) || 25.40;
+            user_rebar_fy_MPa = parseFloat(container.querySelector('#pile_rebar_fy')?.value) || 400;
+            user_rebar_count = parseInt(container.querySelector('#pile_rebar_count')?.value) || 0;
+
+            if (p_type === 'CAST_ROCK') {
+                user_joint_state = container.querySelector('#pile_joint_state')?.value || 'closed';
+                user_rqd = parseFloat(container.querySelector('#pile_rqd')?.value) || 4.0;
+                em_ei_val = interpolateEmEi(user_rqd, user_joint_state);
+                alpha_e_val = interpolateAlphaE(em_ei_val);
+            }
         }
 
         const L = pileLayersData.reduce((sum, l) => sum + (parseFloat(l.dz) || 0), 0);
@@ -926,7 +972,6 @@ export function initPileModule(container) {
         let layer_calc_rows = [];
         let qs_formula_name = p_type === 'CAST_ROCK' || (p_type === 'CAST' && qs_formula === 'oneill') ? "AASHTO LRFD (2012) 및 O'Neill & Reese (1999)" : "일반 주면마찰력 산정식";
 
-        // 토사층 평균 N_60 산정 (기반암 제외: 사질토, 점성토, 자갈층, 풍화암 대상)
         let soilLayers = pileLayersData.filter(l => l.type !== 'rock');
         let sum_N_dz = 0, sum_dz = 0;
         soilLayers.forEach(l => {
@@ -1044,32 +1089,61 @@ export function initPileModule(container) {
         const Qa_soil_norm = Qu_total / 3.0;
         const Qa_soil_seis = Qu_total / 2.0;
 
-        // 4. 재료 허용압축하중 (Qas)
-        let A_net = 0;
-        let D_out = D;
-        let D_in = 0;
-        if (p_type === 'CAST' || p_type === 'CAST_ROCK') {
-            A_net = Ap; 
-            D_out = D;
-            D_in = 0;
-        } else {
-            D_out = D - (t1_mm / 1000.0);
-            D_in = Math.max(0, D - 2.0 * (t_mm / 1000.0));
-            A_net = (Math.PI * (Math.pow(D_out, 2) - Math.pow(D_in, 2))) / 4.0;
-        }
-
+        // 4. 재료 허용압축하중 (Qas) / 본체부 말뚝 내하력
         let Q_mat_base = 0;
         let qMatBaseDetailStr = "";
+        let A_net = 0;
 
-        if (p_type === 'PHC') {
-            Q_mat_base = grid5Val;
-            qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
-        } else if (p_type === 'STEEL') {
-            Q_mat_base = grid5Val * A_net;
-            qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <i>σ<sub>ca</sub></i> &times; <i>A<sub>net</sub></i> = ${grid5Val.toLocaleString()} &times; ${A_net.toFixed(5)} = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
+        if (p_type === 'CAST' || p_type === 'CAST_ROCK') {
+            const Ac_gross = Ap; // 말뚝 단면적 (m²)
+            const db_m = user_rebar_d_mm / 1000.0;
+            const Ab_single = (Math.PI * Math.pow(db_m, 2)) / 4.0; // 철근 1개 단면적 (m²)
+            const Ast = user_rebar_count * Ab_single; // 보강철근 단면적 (m²)
+            const Ac_net = Math.max(0, Ac_gross - Ast); // 콘크리트 순 단면적 (m²)
+            A_net = Ac_gross;
+
+            // 콘크리트 장기허용압축강도 (f_ca): 0.25 * f_ck <= 8,500 kN/m² (8.5 MPa)
+            const fca_calc_MPa = 0.25 * user_fck;
+            const fca_MPa = Math.min(fca_calc_MPa, 8.5);
+            const fca_kNm2 = fca_MPa * 1000.0; // kN/m²
+
+            // 보강철근 장기허용압축강도 (f_sa,rebar): 0.40 * f_y (kN/m²)
+            const fsa_rebar_MPa = 0.40 * user_rebar_fy_MPa;
+            const fsa_rebar_kNm2 = fsa_rebar_MPa * 1000.0; // kN/m²
+
+            // f_sa A = f_ca * Ac_net + f_sa_rebar * Ast
+            const fsa_A = (fca_kNm2 * Ac_net) + (fsa_rebar_kNm2 * Ast); // kN
+            Q_mat_base = fsa_A;
+
+            const rebarDSelect = container.querySelector('#pile_rebar_d');
+            const rebarDText = rebarDSelect ? rebarDSelect.options[rebarDSelect.selectedIndex]?.text : `D${user_rebar_d_mm}`;
+            const rebarFyText = `SD${user_rebar_fy_MPa}`;
+
+            qMatBaseDetailStr = `
+                • <strong>말뚝의 장기허용압축강도 (f<sub>sa</sub> A) 산정 :</strong><br>
+                &nbsp;&nbsp;- 말뚝의 단면적 (A) = &pi; &times; D² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ac_gross.toFixed(4)} m²</strong><br>
+                &nbsp;&nbsp;- 보강철근 단면적 (A<sub>st</sub>) = ${user_rebar_count}개 &times; (&pi; &times; ${(user_rebar_d_mm/1000).toFixed(4)}² / 4) [${rebarDText}] = <strong>${Ast.toFixed(6)} m²</strong><br>
+                &nbsp;&nbsp;- 콘크리트 순 단면적 (A<sub>c</sub>) = A - A<sub>st</sub> = <strong>${Ac_net.toFixed(4)} m²</strong><br>
+                &nbsp;&nbsp;- 말뚝(콘크리트) 장기허용압축강도 (f<sub>ca</sub>) = min(0.25 &times; f'<sub>c</sub>, 8.5 MPa) = min(0.25 &times; ${user_fck}, 8.5) = <strong>${fca_MPa.toFixed(3)} MPa (${fca_kNm2.toLocaleString()} kN/m²)</strong><br>
+                &nbsp;&nbsp;- 보강철근 장기허용압축강도 (f<sub>sa,rebar</sub>) = 0.40 &times; f<sub>y</sub> [${rebarFyText}] = 0.40 &times; ${user_rebar_fy_MPa} = <strong>${fsa_rebar_MPa.toFixed(1)} MPa (${fsa_rebar_kNm2.toLocaleString()} kN/m²)</strong><br>
+                &nbsp;&nbsp;- f<sub>sa</sub> A = f<sub>ca</sub> &times; A<sub>c</sub> + f<sub>sa,rebar</sub> &times; A<sub>st</sub><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;= (${fca_kNm2.toLocaleString()} &times; ${Ac_net.toFixed(4)}) + (${fsa_rebar_kNm2.toLocaleString()} &times; ${Ast.toFixed(6)}) = <strong>${fsa_A.toFixed(1)} kN</strong>
+            `;
         } else {
-            Q_mat_base = grid5Val * 1000.0 * A_net;
-            qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <i>σ<sub>ca</sub></i> &times; <i>A<sub>net</sub></i> &times; 1000 = ${grid5Val.toFixed(1)} &times; ${A_net.toFixed(5)} &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
+            let D_out = D - (t1_mm / 1000.0);
+            let D_in = Math.max(0, D - 2.0 * (t_mm / 1000.0));
+            A_net = (Math.PI * (Math.pow(D_out, 2) - Math.pow(D_in, 2))) / 4.0;
+
+            if (p_type === 'PHC') {
+                Q_mat_base = grid5Val;
+                qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
+            } else if (p_type === 'STEEL') {
+                Q_mat_base = grid5Val * A_net;
+                qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <i>σ<sub>ca</sub></i> &times; <i>A<sub>net</sub></i> = ${grid5Val.toLocaleString()} &times; ${A_net.toFixed(5)} = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
+            } else {
+                Q_mat_base = grid5Val * 1000.0 * A_net;
+                qMatBaseDetailStr = `• 기본 허용압축하중 Q<sub>mat_base</sub> = <i>σ<sub>ca</sub></i> &times; <i>A<sub>net</sub></i> &times; 1000 = ${grid5Val.toFixed(1)} &times; ${A_net.toFixed(5)} &times; 1000 = <strong>${Q_mat_base.toFixed(1)} kN</strong>`;
+            }
         }
 
         const L_over_D = L / D;
@@ -1133,7 +1207,6 @@ export function initPileModule(container) {
             `;
         }
 
-        // 주면마찰력 관련 표 3 및 표 4 렌더링 (CAST_ROCK인 경우)
         let extraRockQsTablesHtml = "";
         if (p_type === 'CAST_ROCK') {
             extraRockQsTablesHtml = `
@@ -1295,13 +1368,14 @@ export function initPileModule(container) {
                 • 내진시 허용지지력 (F.S = 2.0) : Q<sub>u</sub> / 2.0 = ${Qu_total.toFixed(1)} / 2.0 = <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
             </div>
 
-            <div class="section-title">[검증 2] 말뚝 재료에 의한 허용압축하중 산정</div>
-            <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px;">
-                • 단면적 <i>A<sub>net</sub></i> = <strong>${A_net.toFixed(5)} m²</strong><br>
-                ${qMatBaseDetailStr}<br><br>
-                • 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (한계치 n = ${n_limit}) &rarr; 저감율 &mu;<sub>1</sub> = <strong>${mu1.toFixed(1)} %</strong><br>
-                • 이음 저감율 &mu;<sub>2</sub> = <strong>${mu2.toFixed(1)} %</strong><br>
-                • <strong>최종 재료 허용압축하중 Q<sub>as</sub></strong> = <span style="color:#8e44ad; font-weight:bold;">${Qas.toFixed(1)} kN</span>
+            <div class="section-title">[검증 2] 본체부 말뚝 내하력 (재료 허용압축하중 Q<sub>as</sub>) 산정</div>
+            <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
+                ${qMatBaseDetailStr}<br>
+                • <strong>장경비 감소율 (&mu;) 산정 :</strong><br>
+                &nbsp;&nbsp;- 장경비 L/D = ${L.toFixed(2)} / ${D.toFixed(3)} = ${L_over_D.toFixed(2)} (현장타설말뚝 한계치 n = ${n_limit})<br>
+                &nbsp;&nbsp;- 장경비에 의한 감소율 &mu; = L/D - n = max(0, ${L_over_D.toFixed(2)} - ${n_limit}) = <strong>${mu1.toFixed(2)} %</strong><br><br>
+                • <strong>본체부 말뚝 내하력 계산 :</strong><br>
+                &nbsp;&nbsp;- q<sub>as</sub> = (1 - &mu;/100) &times; f<sub>sa</sub> A = (1 - ${mu1.toFixed(2)} / 100) &times; ${Q_mat_base.toFixed(1)} = <span style="color:#8e44ad; font-weight:bold; font-size:1.05em;">${Qas.toFixed(1)} kN</span>
             </div>
         `;
     }
