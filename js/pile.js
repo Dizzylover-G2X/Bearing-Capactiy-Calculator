@@ -66,6 +66,9 @@ export function initPileModule(container) {
     const initialT1 = parseFloat(getVal('t1', '1.0')).toFixed(1);
     const initialMethod = getVal('method', 'bored');
     const initialGWT = getVal('gwt', '2.0');
+    
+    // C_p 산정방식 초기값 불러오기
+    const cpType = getVal('Cp_type', 'avg');
 
     // 말뚝 종류 초기값에 따른 Ep 기본값 설정
     const defaultEp = initialType === 'STEEL' ? '200000000' : '39200000';
@@ -143,9 +146,17 @@ export function initPileModule(container) {
                         <option value="0.67" ${getVal('alpha_s', '0.67') === '0.67' ? 'selected' : ''}>0.67 (삼각형)</option>
                     </select>
                 </div>
-                <div class="input-group" style="background:#f4f6f7;">
-                    <label>경험계수 C<sub>p</sub></label>
-                    <input type="text" value="지층/공법별 자동산정" readonly style="color:#7f8c8d; text-align:center; font-size:0.85em; border:1px solid #ccc; background:#ebeeef;">
+                <div class="input-group" style="background:#fff;">
+                    <label>경험계수 C<sub>p</sub> 산정방식</label>
+                    <div style="display:flex; gap:4px; height:32px;">
+                        <select id="pile_Cp_type" style="flex:1; height:100%; box-sizing:border-box; padding:2px; font-size:0.85em;">
+                            <option value="avg" ${cpType === 'avg' ? 'selected' : ''}>평균 적용</option>
+                            <option value="min" ${cpType === 'min' ? 'selected' : ''}>최소 적용</option>
+                            <option value="max" ${cpType === 'max' ? 'selected' : ''}>최대 적용</option>
+                            <option value="custom" ${cpType === 'custom' ? 'selected' : ''}>임의(직접입력)</option>
+                        </select>
+                        <input type="number" id="pile_Cp_custom" value="${getVal('Cp_custom', '0.09')}" step="0.01" style="width:45%; height:100%; text-align:center; box-sizing:border-box; padding:2px; font-size:0.88em; ${cpType === 'custom' ? 'display:block;' : 'display:none;'}">
+                    </div>
                 </div>
                 <div class="input-group" style="background:#fff;">
                     <label style="color:#d35400;">허용 침하량 (mm)</label>
@@ -342,7 +353,7 @@ export function initPileModule(container) {
                     <option value="C">C종</option>
                 </select>
             `;
-            grid5Label.textContent = '허용축하중 P_a (kN)';
+            grid5Label.innerHTML = '허용축하중 P<sub>a</sub> (kN)';
             specSelect.innerHTML = `<option value="direct">직접 입력</option>`;
             Object.keys(PHC_DB).forEach(d => { specSelect.innerHTML += `<option value="${d}">D${d}</option>`; });
             specSelect.value = '500';
@@ -725,6 +736,12 @@ export function initPileModule(container) {
             try { localStorage.setItem('geo_pile_Ep', e.target.value); } catch(err){}
         } else if (e.target.id === 'pile_alpha_s') {
             try { localStorage.setItem('geo_pile_alpha_s', e.target.value); } catch(err){}
+        } else if (e.target.id === 'pile_Cp_type') {
+            const customInput = container.querySelector('#pile_Cp_custom');
+            if (customInput) customInput.style.display = e.target.value === 'custom' ? 'block' : 'none';
+            try { localStorage.setItem('geo_pile_Cp_type', e.target.value); } catch(err){}
+        } else if (e.target.id === 'pile_Cp_custom') {
+            try { localStorage.setItem('geo_pile_Cp_custom', e.target.value); } catch(err){}
         } else if (e.target.id === 'pile_allow_settle') {
             try { localStorage.setItem('geo_pile_allow_settle', e.target.value); } catch(err){}
         }
@@ -1210,7 +1227,22 @@ export function initPileModule(container) {
         Cp_avg = (Cp_min + Cp_max) / 2.0;
 
         let Ep = p_type === 'STEEL' ? 200000000 : 39200000;
-        let alpha_s = 0.67, Cp = Cp_avg, allow_settle = 25.0;
+        let alpha_s = 0.67, allow_settle = 25.0;
+        
+        // 사용자가 선택한 Cp 방식에 따른 변수 할당
+        let Cp = Cp_avg; 
+        let cpSelectType = container.querySelector('#pile_Cp_type')?.value || 'avg';
+        
+        if (cpSelectType === 'min') Cp = Cp_min;
+        else if (cpSelectType === 'max') Cp = Cp_max;
+        else if (cpSelectType === 'custom') Cp = parseFloat(container.querySelector('#pile_Cp_custom')?.value) || 0.09;
+
+        // 화면 표기를 위한 산출 방식 텍스트 정의
+        let cpFormulaText = "";
+        if (cpSelectType === 'avg') cpFormulaText = `평균 산정식: ${frac(`${Cp_min} + ${Cp_max}`, "2")} = <strong>${Cp.toFixed(3)}</strong>`;
+        else if (cpSelectType === 'min') cpFormulaText = `최소값 적용 = <strong>${Cp.toFixed(3)}</strong>`;
+        else if (cpSelectType === 'max') cpFormulaText = `최대값 적용 = <strong>${Cp.toFixed(3)}</strong>`;
+        else cpFormulaText = `사용자 임의 입력값 적용 = <strong>${Cp.toFixed(3)}</strong>`;
 
         if (isPrecast) {
             Ep = parseFloat(container.querySelector('#pile_Ep')?.value) || Ep;
@@ -1307,7 +1339,7 @@ export function initPileModule(container) {
                 </table>
                 <div style="margin-top: 5px; font-size: 0.9em; background:#f4f6f7; padding:8px; border-radius:4px; border-left:4px solid #f1c40f;">
                     • 선단 지지층 흙 종류: <strong>${soilLabel}</strong> / 적용 시공법: <strong>${methodLabel}</strong><br>
-                    • 경험계수 C<sub>p</sub> 자동 산정식: ${frac(`${Cp_min} + ${Cp_max}`, "2")} = <strong>${Cp_avg.toFixed(3)}</strong>
+                    • 경험계수 C<sub>p</sub> 산정: ${cpFormulaText}
                 </div>
             </div>
 
