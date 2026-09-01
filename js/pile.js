@@ -824,7 +824,6 @@ export function initPileModule(container) {
         return 0.370;
     }
 
-    // [오류 수정] 2차원 선형 보간 수식 정상화
     function getIps(dr_br, ec_em) {
         const x_vals = [0, 0.5, 1, 2, 3, 5];
         const y_ratios = [0.2, 0.5, 1, 2, 10, 50, 1000];
@@ -852,7 +851,7 @@ export function initPileModule(container) {
         let v00 = grid[r0][c0], v01 = grid[r0][c1];
         let v10 = grid[r1][c0], v11 = grid[r1][c1];
         let v0 = v00 + tx * (v01 - v00);
-        let v1 = v10 + tx * (v11 - v10); // 수정 완료
+        let v1 = v10 + tx * (v11 - v10);
         return v0 + ty * (v1 - v0);
     }
 
@@ -937,7 +936,8 @@ export function initPileModule(container) {
             let soilInfo = calcSoilAvgWithinDepth(invBeta_fukuoka, layers);
             avgN_fukuoka = soilInfo.avgN;
 
-            kh_fukuoka = 0.691 * Math.pow(avgN_fukuoka, 0.406) * 1000.0;
+            // [단위 수정] 1 kgf/cm³ = 9806.65 kN/m³ 환산 적용
+            kh_fukuoka = 0.691 * Math.pow(avgN_fukuoka, 0.406) * 9806.65;
 
             let newBetaF = Math.pow((kh_fukuoka * D) / (4.0 * EI), 0.25);
             let err = Math.abs((newBetaF - betaF) / betaF) * 100.0;
@@ -1619,7 +1619,7 @@ export function initPileModule(container) {
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>2. 수평지반반력계수 k<sub>h</sub> 산정 (후쿠오카 공식 축차계산법)</strong><br>
-                &nbsp;&nbsp;• 공식: k<sub>h</sub> = 0.691 &times; N<sup>0.406</sup> &times; 1000 (kN/m³)<br>
+                &nbsp;&nbsp;• 공식: k<sub>h</sub> = 0.691 &times; N<sup>0.406</sup> &times; 9,806.65 (kN/m³)<br>
                 &nbsp;&nbsp;• <strong><u>[가정값: 초기가정 &beta;<sub>0</sub> = 0.20000 m<sup>-1</sup>]</u></strong><br>
 
                 <div style="font-weight:bold; margin-top:8px; color:#2c3e50;">(1) 평상시 축차계산 과정 (후쿠오카 공식)</div>
