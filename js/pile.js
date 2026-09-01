@@ -1455,6 +1455,8 @@ export function initPileModule(container) {
         if (!resultDiv) return;
         resultDiv.style.display = 'block';
 
+        const initBHVal = Math.sqrt(D / 0.20000);
+
         resultDiv.innerHTML = `
             <div class="section-title">[말뚝기초 지지력, 수평력 및 침하량 최종 검토 요약]</div>
             <div class="table-container">
@@ -1580,6 +1582,8 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>1. 수평지반반력계수 k<sub>h</sub> 산정 (도로교 표준시방서 축차계산법)</strong><br>
                 &nbsp;&nbsp;• 공식: k<sub>h</sub> = k<sub>h0</sub> &times; ( ${frac("1", "0.3")} &times; B<sub>H</sub> )<sup>-3/4</sup> = { ${frac("1", "0.3")} &times; &alpha; &times; E<sub>0</sub> } &times; { ${frac("1", "0.3")} &times; (${frac("D", "&beta;")})<sup>1/2</sup> }<sup>-3/4</sup><br>
+                &nbsp;&nbsp;• <strong>환산재하폭 (B<sub>H</sub>) 산정 공식 :</strong> B<sub>H</sub> = (${frac("D", "&beta;")})<sup>1/2</sup> = &radic;(${frac("D", "&beta;")})<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 초기가정 대입 계산: B<sub>H</sub> = &radic;(${frac(D.toFixed(3), "0.20000")}) = <strong>${initBHVal.toFixed(3)} m</strong><br>
                 &nbsp;&nbsp;• <strong><u>[가정값: 초기가정 &beta;<sub>0</sub> = 0.20000 m<sup>-1</sup>]</u></strong>, <strong><u>[가정값: 추정계수 &alpha; = 상시 1, 지진시 2]</u></strong><br>
 
                 <div style="font-weight:bold; margin-top:8px; color:#2c3e50;">(1) 평상시 축차계산 과정 (&alpha; = 1)</div>
