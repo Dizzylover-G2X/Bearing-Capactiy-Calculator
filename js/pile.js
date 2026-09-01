@@ -7,7 +7,8 @@ export function initPileModule(container) {
         }
     };
 
-    const frac = (num, den) => `<span style="display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 4px;"><span style="border-bottom:1px solid #2c3e50; padding:1px 4px;">${num}</span><span style="padding:1px 4px;">${den}</span></span>`;
+    // 백틱 충돌을 방지하기 위해 일반 문자열 연산으로 수정된 분수 표현 함수
+    const frac = (num, den) => '<span style="display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 4px;"><span style="border-bottom:1px solid #2c3e50; padding:1px 4px;">' + num + '</span><span style="padding:1px 4px;">' + den + '</span></span>';
 
     // 표준 제원 DB
     const PHC_DB = {
@@ -234,7 +235,7 @@ export function initPileModule(container) {
             else qpText = "q<sub>p</sub> = [&radic;s + &radic;(m &times; &radic;s + s)] &times; q<sub>u</sub> (여러방향 절리, Hoek-Brown 1988 적용)";
             qsText = "토사: AASHTO(2012) &beta; 산정식 (상한 190kPa) / 암반: Horvath & Kenney (1979) [Q<sub>s</sub> = 0.65 &times; &alpha;<sub>E</sub> &times; P<sub>a</sub> &times; (q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup> &le; 7.8 &times; P<sub>a</sub> &times; (f'<sub>c</sub>/P<sub>a</sub>)<sup>0.5</sup>]";
         } else if (type === 'CAST') {
-            if (qpVal === 'oneill') qpText = "57.4 &times; N (N&le;75) / 4,309.2 kN/m² (N>75) [O'Neill & Reese (1999)]";
+            if (qpVal === 'oneill') qpText = "57.4 &times; N (N&le;75) / 4,309.2 kN/m² (N>75)";
             else qpText = "100 &times; N_bar (사질토) / 6 &times; c<sub>u</sub> (점성토) [건축기초 구조설계지침 (2004)]";
             if (qsVal === 'oneill') qsText = "AASHTO LRFD (2012) &beta; 산정식 적용 (사질토/풍화암/자갈층 상한 190 kPa)";
             else qsText = "3.3 &times; N (사질토, N&le;50) / 1.0 &times; c<sub>u</sub> (점성토, c<sub>u</sub>&le;100 kPa) [건축기초 구조설계지침 (2004)]";
@@ -254,7 +255,7 @@ export function initPileModule(container) {
             <div style="margin-left: 6px; line-height: 1.5;">
                 • <strong>연직 선단지지력 :</strong> ${qpText}<br>
                 • <strong>연직 주면마찰력 :</strong> ${qsText}<br>
-                • <strong>수평 지반반력계수 :</strong> 도로교 표준시방서(축차계산) 및 후쿠오카 공식 최소값 적용<br>
+                • <strong>수평 지반반력계수 :</strong> 도로교 표준시방서(축차계산) 및 후쿠오카 공식(축차계산) 최소값 적용<br>
                 • <strong>수평 지지력/변위 :</strong> Broms 극한평형법 및 Chang 탄성지반반력법 적용
             </div>
         `;
@@ -850,11 +851,11 @@ export function initPileModule(container) {
         let v00 = grid[r0][c0], v01 = grid[r0][c1];
         let v10 = grid[r1][c0], v11 = grid[r1][c1];
         let v0 = v00 + tx * (v01 - v00);
-        let v1 = v10 + tx * (v11 - v10);
+        let v1 = v10 + ty * (v1 - v0);
         return v0 + ty * (v1 - v0);
     }
 
-    // 수평방향 지반반력계수(kh) 축차계산 및 수평해석 지원 함수
+    // 수평방향 지반반력계수(kh) 축차계산 함수
     function calcSoilAvgWithinDepth(targetDepth, layers) {
         let cumDepth = 0;
         let sumN = 0, sumEs = 0, sumCovered = 0;
@@ -890,10 +891,10 @@ export function initPileModule(container) {
     }
 
     function calculateHorizontalSoilReaction(alpha, Ep, D, Ip_cm4, layers) {
-        const EI = Ep * (Ip_cm4 / 1.0e8); // kN·m²
+        const EI = Ep * (Ip_cm4 / 1.0e8);
 
         // 1. 도로교 표준시방서 축차계산
-        let beta = 0.20000; // [가정값] 초기가정
+        let beta = 0.20000;
         let stepsRoad = [];
         let kh_road = 0, E0_road = 0, avgN_road = 0, invBeta_road = 0;
 
@@ -911,7 +912,7 @@ export function initPileModule(container) {
             let err = Math.abs((newBeta - beta) / beta) * 100.0;
 
             stepsRoad.push({
-                step: `Step ${step}`,
+                step: 'Step ' + step,
                 beta_in: beta,
                 inv_beta: invBeta_road,
                 N: avgN_road,
@@ -926,7 +927,7 @@ export function initPileModule(container) {
         }
 
         // 2. 후쿠오카 공식 축차계산
-        let betaF = 0.20000; // [가정값] 초기가정
+        let betaF = 0.20000;
         let stepsFukuoka = [];
         let kh_fukuoka = 0, avgN_fukuoka = 0, invBeta_fukuoka = 0;
 
@@ -935,13 +936,13 @@ export function initPileModule(container) {
             let soilInfo = calcSoilAvgWithinDepth(invBeta_fukuoka, layers);
             avgN_fukuoka = soilInfo.avgN;
 
-            kh_fukuoka = 0.691 * Math.pow(avgN_fukuoka, 0.406) * 1000.0; // kN/m³
+            kh_fukuoka = 0.691 * Math.pow(avgN_fukuoka, 0.406) * 1000.0;
 
             let newBetaF = Math.pow((kh_fukuoka * D) / (4.0 * EI), 0.25);
             let err = Math.abs((newBetaF - betaF) / betaF) * 100.0;
 
             stepsFukuoka.push({
-                step: `Step ${step}`,
+                step: 'Step ' + step,
                 beta_in: betaF,
                 inv_beta: invBeta_fukuoka,
                 N: avgN_fukuoka,
@@ -1050,9 +1051,9 @@ export function initPileModule(container) {
         if (p_type === 'CAST_ROCK') {
             if (qp_formula_key === 'rock_case1') {
                 q_p = 2.5 * qu_tip;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = 2.5 &times; q<sub>u</sub><br>` +
-                                 `• 계산: q<sub>p</sub> = 2.5 &times; ${qu_tip}<br>` +
-                                 `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                qp_calc_detail = "• 공식: q<sub>p</sub> = 2.5 &times; q<sub>u</sub><br>" +
+                                 "• 계산: 2.5 &times; " + qu_tip + "<br>" +
+                                 "• 결과: q<sub>p</sub> = <strong>" + q_p.toFixed(1) + " kN/m²</strong>";
             } else {
                 hb_mi = parseInt(container.querySelector('#pile_rock_type')?.value) || 17;
                 input_rmr = parseFloat(container.querySelector('#pile_rmr')?.value) || 30;
@@ -1060,42 +1061,42 @@ export function initPileModule(container) {
                 hb_m = hbRes.m; hb_s = hbRes.s;
                 let factor = Math.sqrt(hb_s) + Math.sqrt(hb_m * Math.sqrt(hb_s) + hb_s);
                 q_p = factor * qu_tip;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = [&radic;s + &radic;(m&radic;s + s)] &times; q<sub>u</sub><br>` +
-                                 `• 계산: [&radic;${hb_s.toExponential(3)} + &radic;(${hb_m.toFixed(4)}&times;&radic;${hb_s.toExponential(3)} + ${hb_s.toExponential(3)})] &times; ${qu_tip} = ${factor.toFixed(4)} &times; ${qu_tip}<br>` +
-                                 `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                qp_calc_detail = "• 공식: q<sub>p</sub> = [&radic;s + &radic;(m&radic;s + s)] &times; q<sub>u</sub><br>" +
+                                 "• 계산: [&radic;" + hb_s.toExponential(3) + " + &radic;(" + hb_m.toFixed(4) + "&times;&radic;" + hb_s.toExponential(3) + " + " + hb_s.toExponential(3) + ")] &times; " + qu_tip + " = " + factor.toFixed(4) + " &times; " + qu_tip + "<br>" +
+                                 "• 결과: q<sub>p</sub> = <strong>" + q_p.toFixed(1) + " kN/m²</strong>";
             }
         } else if (p_type === 'CAST') {
             q_p = raw_N_tip <= 75 ? 57.4 * raw_N_tip : 4309.2;
-            qp_calc_detail = `• 공식: q<sub>p</sub> = ${raw_N_tip <= 75 ? '57.4 &times; N' : '4309.2 (N>75 한계)'}<br>` +
-                             `• 계산: ${raw_N_tip <= 75 ? `57.4 &times; ${raw_N_tip}` : '4309.2'}<br>` +
-                             `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+            qp_calc_detail = "• 공식: q<sub>p</sub> = " + (raw_N_tip <= 75 ? "57.4 &times; N" : "4309.2 (N>75 한계)") + "<br>" +
+                             "• 계산: " + (raw_N_tip <= 75 ? ("57.4 &times; " + raw_N_tip) : "4309.2") + "<br>" +
+                             "• 결과: q<sub>p</sub> = <strong>" + q_p.toFixed(1) + " kN/m²</strong>";
         } else if (method === 'driven') {
             let N_used = Math.min(raw_N_tip, 60);
             q_p = 300.0 * N_used;
-            qp_calc_detail = `• 공식: q<sub>p</sub> = 300 &times; N (N&le;60)<br>` +
-                             `• 계산: 300 &times; ${N_used}<br>` +
-                             `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+            qp_calc_detail = "• 공식: q<sub>p</sub> = 300 &times; N (N&le;60)<br>" +
+                             "• 계산: 300 &times; " + N_used + "<br>" +
+                             "• 결과: q<sub>p</sub> = <strong>" + q_p.toFixed(1) + " kN/m²</strong>";
         } else {
             if (qp_formula_key === 'lh') {
                 let N_used = Math.min(raw_N_tip, 60);
                 q_p = 250.0 * N_used;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = 250 &times; N (N&le;60)<br>` +
-                                 `• 계산: 250 &times; ${N_used}<br>` +
-                                 `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                qp_calc_detail = "• 공식: q<sub>p</sub> = 250 &times; N (N&le;60)<br>" +
+                                 "• 계산: 250 &times; " + N_used + "<br>" +
+                                 "• 결과: q<sub>p</sub> = <strong>" + q_p.toFixed(1) + " kN/m²</strong>";
             } else {
                 let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type);
                 if (isGranular) {
                     let calc_val = 200.0 * raw_N_tip;
                     q_p = Math.min(calc_val, 12000.0);
-                    qp_calc_detail = `• 공식: q<sub>p</sub> = min(200 &times; N, 12,000)<br>` +
-                                     `• 계산: min(200 &times; ${raw_N_tip}, 12,000) = min(${calc_val.toFixed(1)}, 12,000)<br>` +
-                                     `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                    qp_calc_detail = "• 공식: q<sub>p</sub> = min(200 &times; N, 12,000)<br>" +
+                                     "• 계산: min(200 &times; " + raw_N_tip + ", 12,000) = min(" + calc_val.toFixed(1) + ", 12,000)<br>" +
+                                     "• 결과: q<sub>p</sub> = <strong>" + q_p.toFixed(1) + " kN/m²</strong>";
                 } else {
                     let calc_val = 6.0 * c_tip;
                     q_p = Math.min(calc_val, 12000.0);
-                    qp_calc_detail = `• 공식: q<sub>p</sub> = min(6 &times; c<sub>u</sub>, 12,000)<br>` +
-                                     `• 계산: min(6 &times; ${c_tip}, 12,000) = min(${calc_val.toFixed(1)}, 12,000)<br>` +
-                                     `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                    qp_calc_detail = "• 공식: q<sub>p</sub> = min(6 &times; c<sub>u</sub>, 12,000)<br>" +
+                                     "• 계산: min(6 &times; " + c_tip + ", 12,000) = min(" + calc_val.toFixed(1) + ", 12,000)<br>" +
+                                     "• 결과: q<sub>p</sub> = <strong>" + q_p.toFixed(1) + " kN/m²</strong>";
                 }
             }
         }
@@ -1142,9 +1143,9 @@ export function initPileModule(container) {
                 let fs_limit_MPa = 7.8 * P_a * Math.pow(user_fck / P_a, 0.5); 
                 let f_unit_MPa = Math.min(fs_MPa, fs_limit_MPa);
                 f_unit = f_unit_MPa * 1000.0; 
-                formula_str = `• 공식: min(0.65 &times; &alpha;<sub>E</sub> &times; P<sub>a</sub>(q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup>, 7.8 &times; P<sub>a</sub>(f'<sub>c</sub>/P<sub>a</sub>)<sup>0.5</sup>)<br>` +
-                              `• 계산: min(${(fs_MPa*1000).toFixed(1)}, ${(fs_limit_MPa*1000).toFixed(1)})<br>` +
-                              `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                formula_str = "• 공식: min(0.65 &times; &alpha;<sub>E</sub> &times; P<sub>a</sub>(q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup>, 7.8 &times; P<sub>a</sub>(f'<sub>c</sub>/P<sub>a</sub>)<sup>0.5</sup>)<br>" +
+                              "• 계산: min(" + (fs_MPa*1000).toFixed(1) + ", " + (fs_limit_MPa*1000).toFixed(1) + ")<br>" +
+                              "• 결과: <strong>" + f_unit.toFixed(1) + " kN/m²</strong>";
             } else if ((p_type === 'CAST' || p_type === 'CAST_ROCK') && qs_formula_key === 'oneill') {
                 if (l.type === 'sand' || l.type === 'weathered_rock') {
                     let z_mm = z_mid * 1000.0;
@@ -1153,39 +1154,39 @@ export function initPileModule(container) {
                     let beta_clamped = Math.max(0.25, Math.min(1.20, beta));
                     let calc_val = beta_clamped * sigma_v_prime;
                     f_unit = Math.min(190.0, calc_val);
-                    formula_str = `• 공식: min(190, &beta; &times; &sigma;'<sub>v</sub>)<br>` +
-                                  `• 계산: min(190, ${beta_clamped.toFixed(3)} &times; ${sigma_v_prime.toFixed(1)}) = min(190, ${calc_val.toFixed(1)})<br>` +
-                                  `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    formula_str = "• 공식: min(190, &beta; &times; &sigma;'<sub>v</sub>)<br>" +
+                                  "• 계산: min(190, " + beta_clamped.toFixed(3) + " &times; " + sigma_v_prime.toFixed(1) + ") = min(190, " + calc_val.toFixed(1) + ")<br>" +
+                                  "• 결과: <strong>" + f_unit.toFixed(1) + " kN/m²</strong>";
                 } else if (l.type === 'gravel') {
                     let z_mm = z_mid * 1000.0;
                     let beta = 2.0 - 0.00082 * Math.pow(z_mm, 0.75);
                     let beta_clamped = Math.max(0.25, Math.min(1.20, beta));
                     let calc_val = beta_clamped * sigma_v_prime;
                     f_unit = Math.min(190.0, calc_val);
-                    formula_str = `• 공식: min(190, &beta; &times; &sigma;'<sub>v</sub>)<br>` +
-                                  `• 계산: min(190, ${beta_clamped.toFixed(3)} &times; ${sigma_v_prime.toFixed(1)}) = min(190, ${calc_val.toFixed(1)})<br>` +
-                                  `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    formula_str = "• 공식: min(190, &beta; &times; &sigma;'<sub>v</sub>)<br>" +
+                                  "• 계산: min(190, " + beta_clamped.toFixed(3) + " &times; " + sigma_v_prime.toFixed(1) + ") = min(190, " + calc_val.toFixed(1) + ")<br>" +
+                                  "• 결과: <strong>" + f_unit.toFixed(1) + " kN/m²</strong>";
                 } else {
                     let calc_val = 0.55 * c_val_i;
                     f_unit = Math.min(190.0, calc_val);
-                    formula_str = `• 공식: min(190, 0.55 &times; c<sub>u</sub>)<br>` +
-                                  `• 계산: min(190, 0.55 &times; ${c_val_i}) = min(190, ${calc_val.toFixed(1)})<br>` +
-                                  `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    formula_str = "• 공식: min(190, 0.55 &times; c<sub>u</sub>)<br>" +
+                                  "• 계산: min(190, 0.55 &times; " + c_val_i + ") = min(190, " + calc_val.toFixed(1) + ")<br>" +
+                                  "• 결과: <strong>" + f_unit.toFixed(1) + " kN/m²</strong>";
                 }
             } else {
                 let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(l.type);
                 if (isGranular) {
                     let calc_val = c_factor * l.n_val;
                     f_unit = Math.min(100.0, calc_val);
-                    formula_str = `• 공식: min(100, ${c_factor} &times; N)<br>` +
-                                  `• 계산: min(100, ${c_factor} &times; ${l.n_val}) = min(100, ${calc_val.toFixed(1)})<br>` +
-                                  `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    formula_str = "• 공식: min(100, " + c_factor + " &times; N)<br>" +
+                                  "• 계산: min(100, " + c_factor + " &times; " + l.n_val + ") = min(100, " + calc_val.toFixed(1) + ")<br>" +
+                                  "• 결과: <strong>" + f_unit.toFixed(1) + " kN/m²</strong>";
                 } else {
                     let calc_val = c_factor_c * c_val_i;
                     f_unit = Math.min(100.0, calc_val);
-                    formula_str = `• 공식: min(100, ${c_factor_c} &times; c<sub>u</sub>)<br>` +
-                                  `• 계산: min(100, ${c_factor_c} &times; ${c_val_i}) = min(100, ${calc_val.toFixed(1)})<br>` +
-                                  `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    formula_str = "• 공식: min(100, " + c_factor_c + " &times; c<sub>u</sub>)<br>" +
+                                  "• 계산: min(100, " + c_factor_c + " &times; " + c_val_i + ") = min(100, " + calc_val.toFixed(1) + ")<br>" +
+                                  "• 결과: <strong>" + f_unit.toFixed(1) + " kN/m²</strong>";
                 }
             }
 
@@ -1212,8 +1213,8 @@ export function initPileModule(container) {
         let Q_mat_base = 0;
         let qMatBaseDetailStr = "";
         let A_net = 0;
-        let Ip_cm4 = (Math.PI * Math.pow(D, 4)) / 64.0 * 1.0e8; // cm4
-        let Z_m3 = (Math.PI * Math.pow(D, 3)) / 32.0; // m3
+        let Ip_cm4 = (Math.PI * Math.pow(D, 4)) / 64.0 * 1.0e8;
+        let Z_m3 = (Math.PI * Math.pow(D, 3)) / 32.0;
 
         if (p_type === 'CAST' || p_type === 'CAST_ROCK') {
             const Ac_gross = Ap; 
@@ -1226,21 +1227,16 @@ export function initPileModule(container) {
             const fsa_rebar_kNm2 = 0.40 * user_rebar_fy_MPa * 1000.0; 
             Q_mat_base = (fca_kNm2 * Ac_net) + (fsa_rebar_kNm2 * Ast); 
 
-            qMatBaseDetailStr = `
-                • <strong>말뚝의 장기허용압축강도 (f<sub>sa</sub> A) 산정 :</strong><br>
-                &nbsp;&nbsp;- 말뚝 단면적 (A) = ${frac("&pi; &times; D²", "4")} = ${frac(`&pi; &times; ${D.toFixed(3)}²`, "4")} = <strong>${Ac_gross.toFixed(4)} m²</strong><br>
-                &nbsp;&nbsp;- 보강철근 단면적 (A<sub>st</sub>) = n &times; ${frac("&pi; &times; d<sub>b</sub>²", "4")} = ${user_rebar_count} &times; ${frac(`&pi; &times; ${(user_rebar_d_mm/1000).toFixed(4)}²`, "4")} = <strong>${Ast.toFixed(6)} m²</strong><br>
-                &nbsp;&nbsp;- 콘크리트 순단면적 (A<sub>c</sub>) = A - A<sub>st</sub> = ${Ac_gross.toFixed(4)} - ${Ast.toFixed(6)} = <strong>${Ac_net.toFixed(4)} m²</strong><br>
-                &nbsp;&nbsp;- 콘크리트 허용압축강도 (f<sub>ca</sub>) = min(0.25 &times; f'<sub>c</sub>, 8.5 MPa) = <strong>${fca_kNm2.toLocaleString()} kN/m²</strong><br>
-                &nbsp;&nbsp;- 총 기본 허용압축하중 (Q<sub>mat_base</sub>) = (f<sub>ca</sub> &times; A<sub>c</sub>) + (f<sub>sa,rebar</sub> &times; A<sub>st</sub>) = <strong>${Q_mat_base.toFixed(1)} kN</strong>
-            `;
+            qMatBaseDetailStr = "• <strong>말뚝의 장기허용압축강도 (f<sub>sa</sub> A) 산정 :</strong><br>" +
+                "&nbsp;&nbsp;- 말뚝 단면적 (A) = " + frac("&pi; &times; D²", "4") + " = " + frac("&pi; &times; " + D.toFixed(3) + "²", "4") + " = <strong>" + Ac_gross.toFixed(4) + " m²</strong><br>" +
+                "&nbsp;&nbsp;- 보강철근 단면적 (A<sub>st</sub>) = n &times; " + frac("&pi; &times; d<sub>b</sub>²", "4") + " = " + user_rebar_count + " &times; " + frac("&pi; &times; " + (user_rebar_d_mm/1000).toFixed(4) + "²", "4") + " = <strong>" + Ast.toFixed(6) + " m²</strong><br>" +
+                "&nbsp;&nbsp;- 콘크리트 순단면적 (A<sub>c</sub>) = A - A<sub>st</sub> = " + Ac_gross.toFixed(4) + " - " + Ast.toFixed(6) + " = <strong>" + Ac_net.toFixed(4) + " m²</strong><br>" +
+                "&nbsp;&nbsp;- 콘크리트 허용압축강도 (f<sub>ca</sub>) = min(0.25 &times; f'<sub>c</sub>, 8.5 MPa) = <strong>" + fca_kNm2.toLocaleString() + " kN/m²</strong><br>" +
+                "&nbsp;&nbsp;- 총 기본 허용압축하중 (Q<sub>mat_base</sub>) = (f<sub>ca</sub> &times; A<sub>c</sub>) + (f<sub>sa,rebar</sub> &times; A<sub>st</sub>) = <strong>" + Q_mat_base.toFixed(1) + " kN</strong>";
         } else if (p_type === 'PHC') {
             A_net = Ap;
             Q_mat_base = grid5Val;
-            qMatBaseDetailStr = `
-                • <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) 산정 :</strong><br>
-                &nbsp;&nbsp;- 산정 결과: Q<sub>mat_base</sub> = P<sub>a</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong>
-            `;
+            qMatBaseDetailStr = "• <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) 산정 :</strong><br>&nbsp;&nbsp;- 산정 결과: Q<sub>mat_base</sub> = P<sub>a</sub> = <strong>" + Q_mat_base.toFixed(1) + " kN</strong>";
         } else if (p_type === 'STEEL') {
             let D_out = D - (t1_mm / 1000.0);
             let D_in = Math.max(0, D - 2.0 * (t_mm / 1000.0));
@@ -1248,11 +1244,9 @@ export function initPileModule(container) {
             Ip_cm4 = (Math.PI * (Math.pow(D_out, 4) - Math.pow(D_in, 4))) / 64.0 * 1.0e8;
             Z_m3 = (Math.PI * (Math.pow(D_out, 4) - Math.pow(D_in, 4))) / (32.0 * D_out);
             Q_mat_base = grid5Val * A_net;
-            qMatBaseDetailStr = `
-                • <strong>강관말뚝 순단면적 (A<sub>net</sub>) 산정 :</strong><br>
-                &nbsp;&nbsp;- 계산: ${frac(`&pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²)`, "4")} = <strong>${A_net.toFixed(5)} m²</strong><br>
-                • <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) 산정 :</strong> Q<sub>mat_base</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong>
-            `;
+            qMatBaseDetailStr = "• <strong>강관말뚝 순단면적 (A<sub>net</sub>) 산정 :</strong><br>" +
+                "&nbsp;&nbsp;- 계산: " + frac("&pi; &times; (" + D_out.toFixed(4) + "² - " + D_in.toFixed(4) + "²)", "4") + " = <strong>" + A_net.toFixed(5) + " m²</strong><br>" +
+                "• <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) 산정 :</strong> Q<sub>mat_base</sub> = <strong>" + Q_mat_base.toFixed(1) + " kN</strong>";
         }
 
         const L_over_D = L / D;
@@ -1263,12 +1257,12 @@ export function initPileModule(container) {
 
         const Q_app_norm = Math.min(Qa_soil_norm, Qas);
         const Q_app_seis = Math.min(Qa_soil_seis, Qas);
-        const status_norm = P_norm <= Q_app_norm ? `안정 (O.K)` : `NG`;
-        const status_seis = P_seis <= Q_app_seis ? `안정 (O.K)` : `NG`;
+        const status_norm = P_norm <= Q_app_norm ? "안정 (O.K)" : "NG";
+        const status_seis = P_seis <= Q_app_seis ? "안정 (O.K)" : "NG";
 
-        // 4. 수평 지반반력계수(kh) 및 수평지지력/수평변위 산정 (구조계산서 11~17p 절차)
-        const horizNorm = calculateHorizontalSoilReaction(1.0, user_Ep, D, Ip_cm4, pileLayersData); // 상시 (alpha=1) [가정값]
-        const horizSeis = calculateHorizontalSoilReaction(2.0, user_Ep, D, Ip_cm4, pileLayersData); // 지진시 (alpha=2) [가정값]
+        // 4. 수평 지반반력계수(kh) 및 수평지지력/수평변위 산정
+        const horizNorm = calculateHorizontalSoilReaction(1.0, user_Ep, D, Ip_cm4, pileLayersData); 
+        const horizSeis = calculateHorizontalSoilReaction(2.0, user_Ep, D, Ip_cm4, pileLayersData); 
 
         const kh_norm = horizNorm.applied_kh;
         const beta_norm = horizNorm.applied_beta;
@@ -1276,17 +1270,17 @@ export function initPileModule(container) {
         const beta_seis = horizSeis.applied_beta;
 
         // 수평지지력 산정 매개변수
-        const fy_kNm2 = 27000.0; // 27,000 kPa (27 MPa) [가정값]
-        const h_load_point = 0.0; // 하중 작용점 높이 h = 0.0 m [가정값]
-        const My_kNm = fy_kNm2 * Z_m3; // 항복모멘트 My (kN·m)
+        const fy_kNm2 = 27000.0; 
+        const h_load_point = 0.0; 
+        const My_kNm = fy_kNm2 * Z_m3; 
 
-        // 표층 대표 지반 상수 (사질토 기준)
+        // 표층 대표 지반 상수
         const topLayer = pileLayersData[0] || { c_val: 5, phi: 25, gamma: 18.5 };
         const phi_rad = ((topLayer.phi || 25) * Math.PI) / 180.0;
         const Kp = (1.0 + Math.sin(phi_rad)) / (1.0 - Math.sin(phi_rad));
-        const gamma_sub = topLayer.gamma ? Math.max(8.5, topLayer.gamma - 9.81) : 8.5; // 수중단위중량 [가정값]
+        const gamma_sub = topLayer.gamma ? Math.max(8.5, topLayer.gamma - 9.81) : 8.5; 
 
-        // Broms법 특성치 및 긴말뚝 수평극한지지력 Hu 산정식 (사질토, 두부자유, eta*L > 4.0)
+        // Broms법 특성치 및 긴말뚝 수평극한지지력 Hu 산정
         let chi_norm = 1.0 / beta_norm;
         let eta_h_norm = (kh_norm * D) / chi_norm;
         let eta_norm = Math.pow(eta_h_norm / horizNorm.EI, 0.2);
@@ -1297,7 +1291,6 @@ export function initPileModule(container) {
         let eta_seis = Math.pow(eta_h_seis / horizSeis.EI, 0.2);
         let etaL_seis = eta_seis * L;
 
-        // Broms 수평극한저항력 Hu 산정
         let Kp_gamma_D3 = Kp * gamma_sub * Math.pow(D, 3);
         let Kp_gamma_D4 = Kp * gamma_sub * Math.pow(D, 4);
         let My_ratio = My_kNm / Kp_gamma_D4;
@@ -1305,26 +1298,26 @@ export function initPileModule(container) {
         let Hu_norm = 2.38 * Math.pow(My_ratio, 2.0 / 3.0) * Kp_gamma_D3;
         let Hu_seis = 2.38 * Math.pow(My_ratio, 2.0 / 3.0) * Kp_gamma_D3;
 
-        let Ha_broms_norm = Hu_norm / 3.0; // [가정값: 안전율 F.S = 3.0]
-        let Ha_broms_seis = Hu_seis / 2.0; // [가정값: 안전율 F.S = 2.0]
+        let Ha_broms_norm = Hu_norm / 3.0; 
+        let Ha_broms_seis = Hu_seis / 2.0; 
 
-        // Chang 탄성지반반력법 (허용변위 delta_sa 기준)
-        const delta_sa_m = allow_h_disp / 1000.0; // [가정값: 허용수평변위량 30mm]
+        // Chang 탄성지반반력법
+        const delta_sa_m = allow_h_disp / 1000.0; 
         let Ha_chang_norm = (head_cond === 'fixed' ? 2.0 : 1.0) * (kh_norm * D * delta_sa_m) / beta_norm;
         let Ha_chang_seis = (head_cond === 'fixed' ? 2.0 : 1.0) * (kh_seis * D * delta_sa_m) / beta_seis;
 
         let Ha_app_norm = Math.min(Ha_broms_norm, Ha_chang_norm);
         let Ha_app_seis = Math.min(Ha_broms_seis, Ha_chang_seis);
 
-        let h_status_norm = H_norm <= Ha_app_norm ? `안정 (O.K)` : `NG`;
-        let h_status_seis = H_seis <= Ha_app_seis ? `안정 (O.K)` : `NG`;
+        let h_status_norm = H_norm <= Ha_app_norm ? "안정 (O.K)" : "NG";
+        let h_status_seis = H_seis <= Ha_app_seis ? "안정 (O.K)" : "NG";
 
-        // Chang 탄성식에 의한 지표면 발생 수평변위량 (mm)
+        // 발생 수평변위량 (mm)
         let disp_norm_mm = ((head_cond === 'fixed' ? 0.5 : 1.0) * (H_norm * beta_norm) / (kh_norm * D)) * 1000.0;
         let disp_seis_mm = ((head_cond === 'fixed' ? 0.5 : 1.0) * (H_seis * beta_seis) / (kh_seis * D)) * 1000.0;
 
-        let disp_status_norm = disp_norm_mm <= allow_h_disp ? `안정 (O.K)` : `NG`;
-        let disp_status_seis = disp_seis_mm <= allow_h_disp ? `안정 (O.K)` : `NG`;
+        let disp_status_norm = disp_norm_mm <= allow_h_disp ? "안정 (O.K)" : "NG";
+        let disp_status_seis = disp_seis_mm <= allow_h_disp ? "안정 (O.K)" : "NG";
 
         // 5. 연직 침하량 검토 (Pells & Turner, 1979)
         let settlementHtmlStr = "";
@@ -1445,8 +1438,8 @@ export function initPileModule(container) {
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px; line-height: 1.6;">
                     <strong>■ Pells & Turner 침하량 산정결과</strong><br>
                     &nbsp;&nbsp;- 공식: S<sub>t</sub> = Q &times; [ ${frac("I<sub>ps</sub>", "D<sub>r</sub> &times; E<sub>m</sub>")} + ${frac("L<sub>s</sub>", "A &times; E<sub>c</sub>")} ]<br>
-                    &nbsp;&nbsp;- <strong>평상시 침하량</strong> = ${P_norm.toFixed(1)} &times; [ ${frac(I_ps.toFixed(3), `${D_r.toFixed(2)} &times; ${E_m.toLocaleString()}`)} + ${frac(L_s.toFixed(2), `${A_net.toFixed(5)} &times; ${E_c.toExponential(3)}`)} ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_norm.toFixed(3)} mm</span></strong><br>
-                    &nbsp;&nbsp;- <strong>지진시 침하량</strong> = ${P_seis.toFixed(1)} &times; [ ${frac(I_ps.toFixed(3), `${D_r.toFixed(2)} &times; ${E_m.toLocaleString()}`)} + ${frac(L_s.toFixed(2), `${A_net.toFixed(5)} &times; ${E_c.toExponential(3)}`)} ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_seis.toFixed(3)} mm</span></strong>
+                    &nbsp;&nbsp;- <strong>평상시 침하량</strong> = ${P_norm.toFixed(1)} &times; [ ${frac(I_ps.toFixed(3), D_r.toFixed(2) + " &times; " + E_m.toLocaleString())} + ${frac(L_s.toFixed(2), A_net.toFixed(5) + " &times; " + E_c.toExponential(3))} ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_norm.toFixed(3)} mm</span></strong><br>
+                    &nbsp;&nbsp;- <strong>지진시 침하량</strong> = ${P_seis.toFixed(1)} &times; [ ${frac(I_ps.toFixed(3), D_r.toFixed(2) + " &times; " + E_m.toLocaleString())} + ${frac(L_s.toFixed(2), A_net.toFixed(5) + " &times; " + E_c.toExponential(3))} ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_seis.toFixed(3)} mm</span></strong>
                 </div>
             `;
         }
@@ -1624,11 +1617,47 @@ export function initPileModule(container) {
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>2. 수평지반반력계수 k<sub>h</sub> 산정 (후쿠오카 공식)</strong><br>
+                <strong>2. 수평지반반력계수 k<sub>h</sub> 산정 (후쿠오카 공식 축차계산법)</strong><br>
                 &nbsp;&nbsp;• 공식: k<sub>h</sub> = 0.691 &times; N<sup>0.406</sup> &times; 1000 (kN/m³)<br>
-                &nbsp;&nbsp;• 평상시 축차계산 최종: k<sub>h</sub> = <strong>${horizNorm.kh_fukuoka.toFixed(1)} kN/m³</strong> (&beta; = ${horizNorm.beta_fukuoka.toFixed(3)} m<sup>-1</sup>)<br>
-                &nbsp;&nbsp;• 지진시 축차계산 최종: k<sub>h</sub> = <strong>${horizSeis.kh_fukuoka.toFixed(1)} kN/m³</strong> (&beta; = ${horizSeis.beta_fukuoka.toFixed(3)} m<sup>-1</sup>)<br>
-                &nbsp;&nbsp;▶ <strong>최종 적용 k<sub>h</sub> (도로교 및 후쿠오카 공식 중 최소값 채택) :</strong><br>
+                &nbsp;&nbsp;• <strong><u>[가정값: 초기가정 &beta;<sub>0</sub> = 0.20000 m<sup>-1</sup>]</u></strong><br>
+
+                <div style="font-weight:bold; margin-top:8px; color:#2c3e50;">(1) 평상시 축차계산 과정 (후쿠오카 공식)</div>
+                <div class="table-container" style="margin: 5px 0;">
+                    <table class="result-table" style="font-size:0.82em; text-align:center;">
+                        <thead>
+                            <tr style="background:#fef9e7;">
+                                <th>구분</th><th>가정 &beta;</th><th>1/&beta; (m)</th><th>N<sub>1/&beta;</sub></th><th>k<sub>h</sub> (kN/m³)</th><th>계산 &beta;</th><th>오차율(%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${horizNorm.stepsFukuoka.map(s => `
+                                <tr>
+                                    <td>${s.step}</td><td>${s.beta_in.toFixed(5)}</td><td>${s.inv_beta.toFixed(3)}</td><td>${Math.round(s.N)}</td><td>${s.kh.toFixed(1)}</td><td>${s.beta_out.toFixed(5)}</td><td>${s.err.toFixed(3)}%</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="font-weight:bold; margin-top:8px; color:#2c3e50;">(2) 지진시 축차계산 과정 (후쿠오카 공식)</div>
+                <div class="table-container" style="margin: 5px 0;">
+                    <table class="result-table" style="font-size:0.82em; text-align:center;">
+                        <thead>
+                            <tr style="background:#fef9e7;">
+                                <th>구분</th><th>가정 &beta;</th><th>1/&beta; (m)</th><th>N<sub>1/&beta;</sub></th><th>k<sub>h</sub> (kN/m³)</th><th>계산 &beta;</th><th>오차율(%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${horizSeis.stepsFukuoka.map(s => `
+                                <tr>
+                                    <td>${s.step}</td><td>${s.beta_in.toFixed(5)}</td><td>${s.inv_beta.toFixed(3)}</td><td>${Math.round(s.N)}</td><td>${s.kh.toFixed(1)}</td><td>${s.beta_out.toFixed(5)}</td><td>${s.err.toFixed(3)}%</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <br>▶ <strong>최종 적용 k<sub>h</sub> (도로교 및 후쿠오카 공식 중 최소값 채택) :</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 평상시: k<sub>h</sub> = <strong><span style="color:#27ae60;">${kh_norm.toFixed(1)} kN/m³</span></strong> (&beta; = ${beta_norm.toFixed(5)} m<sup>-1</sup>)<br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 지진시: k<sub>h</sub> = <strong><span style="color:#27ae60;">${kh_seis.toFixed(1)} kN/m³</span></strong> (&beta; = ${beta_seis.toFixed(5)} m<sup>-1</sup>)
             </div>
@@ -1636,14 +1665,14 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>3. Broms 극한평형법 매개변수 및 말뚝 길이 조건 판정</strong><br>
                 &nbsp;&nbsp;• <strong><u>[가정값: 항복휨응력 f<sub>y</sub> = 27,000 kPa]</u></strong>, <strong><u>[가정값: 하중 작용점 높이 h = 0.0 m]</u></strong><br>
-                &nbsp;&nbsp;• 단면계수 (Z) = ${frac("&pi; &times; D³", "32")} = ${frac(`&pi; &times; ${D.toFixed(3)}³`, "32")} = <strong>${Z_m3.toFixed(4)} m³</strong><br>
+                &nbsp;&nbsp;• 단면계수 (Z) = ${frac("&pi; &times; D³", "32")} = ${frac("&pi; &times; " + D.toFixed(3) + "³", "32")} = <strong>${Z_m3.toFixed(4)} m³</strong><br>
                 &nbsp;&nbsp;• 항복모멘트 (M<sub>y</sub>) = f<sub>y</sub> &times; Z = 27,000 &times; ${Z_m3.toFixed(4)} = <strong>${My_kNm.toFixed(1)} kN·m</strong><br>
-                &nbsp;&nbsp;• 수동토압계수 (K<sub>p</sub>) = ${frac("1 + sin&phi;", "1 - sin&phi;")} = ${frac(`1 + sin(${topLayer.phi}°)`, `1 - sin(${topLayer.phi}°)`)} = <strong>${Kp.toFixed(3)}</strong><br>
+                &nbsp;&nbsp;• 수동토압계수 (K<sub>p</sub>) = ${frac("1 + sin&phi;", "1 - sin&phi;")} = ${frac("1 + sin(" + topLayer.phi + "°)", "1 - sin(" + topLayer.phi + "°)")} = <strong>${Kp.toFixed(3)}</strong><br>
                 &nbsp;&nbsp;• 수중단위중량 (&gamma;') = &gamma;<sub>sat</sub> - &gamma;<sub>w</sub> = ${topLayer.gamma.toFixed(1)} - 9.81 = <strong><u>[가정값: ${gamma_sub.toFixed(1)} kN/m³]</u></strong><br><br>
                 &nbsp;&nbsp;• <strong>말뚝 특성치 &eta; 및 &eta;L 계산 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 1/&beta; = ${chi_norm.toFixed(3)} m, 지반반력상수 n<sub>h</sub> = ${frac("k<sub>h</sub> &times; D", "1/&beta;")} = ${frac(`${kh_norm.toFixed(1)} &times; ${D.toFixed(3)}`, chi_norm.toFixed(3))} = <strong>${eta_h_norm.toFixed(1)} kN/m³</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 1/&beta; = ${chi_norm.toFixed(3)} m, 지반반력상수 n<sub>h</sub> = ${frac("k<sub>h</sub> &times; D", "1/&beta;")} = ${frac(kh_norm.toFixed(1) + " &times; " + D.toFixed(3), chi_norm.toFixed(3))} = <strong>${eta_h_norm.toFixed(1)} kN/m³</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&eta; = ( ${frac("n<sub>h</sub>", "EI")} )<sup>1/5</sup> = ( ${frac(eta_h_norm.toFixed(1), horizNorm.EI.toFixed(1))} )<sup>1/5</sup> = <strong>${eta_norm.toFixed(3)} m<sup>-1</sup></strong> &rArr; &eta;L = ${eta_norm.toFixed(3)} &times; ${L.toFixed(1)} = <strong>${etaL_norm.toFixed(3)}</strong> ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 1/&beta; = ${chi_seis.toFixed(3)} m, 지반반력상수 n<sub>h</sub> = ${frac("k<sub>h</sub> &times; D", "1/&beta;")} = ${frac(`${kh_seis.toFixed(1)} &times; ${D.toFixed(3)}`, chi_seis.toFixed(3))} = <strong>${eta_h_seis.toFixed(1)} kN/m³</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 1/&beta; = ${chi_seis.toFixed(3)} m, 지반반력상수 n<sub>h</sub> = ${frac("k<sub>h</sub> &times; D", "1/&beta;")} = ${frac(kh_seis.toFixed(1) + " &times; " + D.toFixed(3), chi_seis.toFixed(3))} = <strong>${eta_h_seis.toFixed(1)} kN/m³</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&eta; = ( ${frac("n<sub>h</sub>", "EI")} )<sup>1/5</sup> = ( ${frac(eta_h_seis.toFixed(1), horizSeis.EI.toFixed(1))} )<sup>1/5</sup> = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong> &rArr; &eta;L = ${eta_seis.toFixed(3)} &times; ${L.toFixed(1)} = <strong>${etaL_seis.toFixed(3)}</strong> ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )<br>
                 &nbsp;&nbsp;• <strong><u>[가정값: 두부 구속조건 = ${head_cond === 'fixed' ? '두부고정' : '두부자유'}]</u></strong>
             </div>
@@ -1668,8 +1697,8 @@ export function initPileModule(container) {
                 &nbsp;&nbsp;• <strong>허용변위 연동 허용수평지지력 공식 :</strong> H<sub>a</sub> = ${frac("k<sub>h</sub> &times; D &times; &delta;<sub>sa</sub>", "&beta;")}<br>
                 &nbsp;&nbsp;• <strong><u>[가정값: 허용수평변위량 &delta;<sub>sa</sub> = ${allow_h_disp.toFixed(1)} mm = ${(allow_h_disp/1000).toFixed(4)} m]</u></strong><br>
                 &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${frac(`${kh_norm.toFixed(1)} &times; ${D.toFixed(3)} &times; ${(allow_h_disp/1000).toFixed(4)}`, beta_norm.toFixed(5))} = <strong><span style="color:#2980b9; font-weight:bold;">${Ha_chang_norm.toFixed(1)} kN/본</span></strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${frac(`${kh_seis.toFixed(1)} &times; ${D.toFixed(3)} &times; ${(allow_h_disp/1000).toFixed(4)}`, beta_seis.toFixed(5))} = <strong><span style="color:#2980b9; font-weight:bold;">${Ha_chang_seis.toFixed(1)} kN/본</span></strong>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${frac(kh_norm.toFixed(1) + " &times; " + D.toFixed(3) + " &times; " + (allow_h_disp/1000).toFixed(4), beta_norm.toFixed(5))} = <strong><span style="color:#2980b9; font-weight:bold;">${Ha_chang_norm.toFixed(1)} kN/본</span></strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${frac(kh_seis.toFixed(1) + " &times; " + D.toFixed(3) + " &times; " + (allow_h_disp/1000).toFixed(4), beta_seis.toFixed(5))} = <strong><span style="color:#2980b9; font-weight:bold;">${Ha_chang_seis.toFixed(1)} kN/본</span></strong>
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
@@ -1697,8 +1726,8 @@ export function initPileModule(container) {
                 <strong>7. Chang 탄성식에 의한 지표면 수평발생변위량 (&delta;) 산정 및 검토</strong><br>
                 &nbsp;&nbsp;• <strong>지표면 변위 산정 공식 :</strong> &delta; = ${frac("H &times; &beta;", "k<sub>h</sub> &times; D")} &times; 1000 (mm)<br>
                 &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 발생변위 &delta;<sub>norm</sub> = ${frac(`${H_norm.toFixed(1)} &times; ${beta_norm.toFixed(5)}`, `${kh_norm.toFixed(1)} &times; ${D.toFixed(3)}`)} &times; 1000 = <strong><span style="color:#d35400; font-weight:bold;">${disp_norm_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_norm}</strong> )<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 발생변위 &delta;<sub>seis</sub> = ${frac(`${H_seis.toFixed(1)} &times; ${beta_seis.toFixed(5)}`, `${kh_seis.toFixed(1)} &times; ${D.toFixed(3)}`)} &times; 1000 = <strong><span style="color:#d35400; font-weight:bold;">${disp_seis_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_seis}</strong> )
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 발생변위 &delta;<sub>norm</sub> = ${frac(H_norm.toFixed(1) + " &times; " + beta_norm.toFixed(5), kh_norm.toFixed(1) + " &times; " + D.toFixed(3))} &times; 1000 = <strong><span style="color:#d35400; font-weight:bold;">${disp_norm_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_norm}</strong> )<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 발생변위 &delta;<sub>seis</sub> = ${frac(H_seis.toFixed(1) + " &times; " + beta_seis.toFixed(5), kh_seis.toFixed(1) + " &times; " + D.toFixed(3))} &times; 1000 = <strong><span style="color:#d35400; font-weight:bold;">${disp_seis_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_seis}</strong> )
             </div>
         `;
     }
