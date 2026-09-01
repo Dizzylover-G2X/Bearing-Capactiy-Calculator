@@ -73,7 +73,6 @@ export function initPileModule(container) {
     const initialT1 = parseFloat(getVal('t1', '1.0')).toFixed(1);
     const initialMethod = getVal('method', 'bored');
     const initialGWT = parseFloat(getVal('gwt', '3.1')).toFixed(1);
-    const cpType = getVal('Cp_type', 'avg');
     const defaultEp = initialType === 'STEEL' ? '200000000' : '26700000';
 
     container.innerHTML = `
@@ -93,7 +92,6 @@ export function initPileModule(container) {
 
         <h3>1. 설계자료 입력 (말뚝기초 지지력, 수평력 및 침하량 검토)</h3>
         
-        <!-- 1. 말뚝기초 제원 -->
         <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.95em;">■ 말뚝기초 제원 및 시공 조건</div>
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px;">
             <div class="input-group" style="margin:0;">
@@ -129,11 +127,9 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 2. 산정식 및 조건 -->
         <div id="pile_row2_container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px;"></div>
         <div id="formula_info_box" style="margin-bottom: 15px; font-size: 0.83em; color: #2c3e50; background: #f4f6f7; padding: 8px 12px; border-radius: 4px; border-left: 4px solid #16a085;"></div>
 
-        <!-- 3. 작용 하중 입력 (연직 및 수평하중) -->
         <div style="font-weight: bold; margin-bottom: 8px; color: #d35400; font-size: 0.95em;">■ 작용 하중 (상부구조 반력)</div>
         <div class="input-grid" style="margin-bottom: 15px; background-color: #fdf2e9; padding: 10px; border-radius: 5px; border: 1px solid #edbb99; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
             <div class="input-group" style="background:#fff; margin:0;">
@@ -154,7 +150,6 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 4. 수평방향 및 침하량 조건 -->
         <div style="font-weight: bold; margin-bottom: 8px; color: #8e44ad; font-size: 0.95em;">■ 수평 해석 및 허용 기준 조건</div>
         <div class="input-grid" style="margin-bottom: 15px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
             <div class="input-group" style="background:#fff; margin:0;">
@@ -178,7 +173,6 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <!-- 5. 지층 정보 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <span style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 지층 정보</span>
@@ -860,9 +854,7 @@ export function initPileModule(container) {
         return v0 + ty * (v1 - v0);
     }
 
-    // ------------------------------------------------------------------
     // 수평방향 지반반력계수(kh) 축차계산 및 수평해석 지원 함수
-    // ------------------------------------------------------------------
     function calcSoilAvgWithinDepth(targetDepth, layers) {
         let cumDepth = 0;
         let sumN = 0, sumEs = 0, sumCovered = 0;
@@ -962,7 +954,6 @@ export function initPileModule(container) {
             betaF = newBetaF;
         }
 
-        // 최종 kh는 도로교 및 후쿠오카 식 중 최소값 채택
         let applied_kh = Math.min(kh_road, kh_fukuoka);
         let applied_beta = Math.pow((applied_kh * D) / (4.0 * EI), 0.25);
 
@@ -984,12 +975,9 @@ export function initPileModule(container) {
         };
     }
 
-    // ------------------------------------------------------------------
     // 연직지지력, 수평지지력 및 침하량 통합 산정
-    // ------------------------------------------------------------------
     function calculatePileCapacity() {
         const p_type = container.querySelector('#pile_type').value;
-        const isPrecast = (p_type === 'PHC' || p_type === 'STEEL'); 
         let pileLayersData = pileLayers;
 
         if (p_type === 'CAST_ROCK') {
@@ -1048,9 +1036,7 @@ export function initPileModule(container) {
 
         let user_Ep = parseFloat(container.querySelector('#pile_Ep')?.value) || 26700000;
 
-        // ==================================================================
         // 1. 연직 선단지지력 (Qup)
-        // ==================================================================
         let lastLayer = pileLayersData.length > 0 ? pileLayersData[pileLayersData.length - 1] : { name: '지지층', type: 'sand', n_val: 50, gamma: 20.0, c_val: 0, qu_val: 0 };
         let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
         let c_tip = parseFloat(lastLayer.c_val) || 0;
@@ -1116,9 +1102,7 @@ export function initPileModule(container) {
 
         const Qup = q_p * Ap;
 
-        // ==================================================================
         // 2. 연직 주면마찰력 (Qus)
-        // ==================================================================
         const As = Math.PI * D;
         let total_Qus = 0;
         let layer_calc_rows = [];
@@ -1224,9 +1208,7 @@ export function initPileModule(container) {
         const Qa_soil_norm = Qu_total / 3.0;
         const Qa_soil_seis = Qu_total / 2.0;
 
-        // ==================================================================
         // 3. 재료 허용압축하중 (Qas)
-        // ==================================================================
         let Q_mat_base = 0;
         let qMatBaseDetailStr = "";
         let A_net = 0;
@@ -1284,9 +1266,7 @@ export function initPileModule(container) {
         const status_norm = P_norm <= Q_app_norm ? `안정 (O.K)` : `NG`;
         const status_seis = P_seis <= Q_app_seis ? `안정 (O.K)` : `NG`;
 
-        // ==================================================================
-        // 4. 수평 지반반력계수(kh) 및 수평지지력/수평변위 산정 (구조계산서 11~17p)
-        // ==================================================================
+        // 4. 수평 지반반력계수(kh) 및 수평지지력/수평변위 산정 (구조계산서 11~17p 절차)
         const horizNorm = calculateHorizontalSoilReaction(1.0, user_Ep, D, Ip_cm4, pileLayersData); // 상시 (alpha=1) [가정값]
         const horizSeis = calculateHorizontalSoilReaction(2.0, user_Ep, D, Ip_cm4, pileLayersData); // 지진시 (alpha=2) [가정값]
 
@@ -1295,31 +1275,41 @@ export function initPileModule(container) {
         const kh_seis = horizSeis.applied_kh;
         const beta_seis = horizSeis.applied_beta;
 
-        // 수평지지력 (Broms 극한평형법 & Chang 탄성지반반력법)
-        // Broms법 항복휨응력 fy [가정값]
-        const fy_kNm2 = 27000.0; // 27 MPa [가정값]
-        const My_kNm = fy_kNm2 * Z_m3; 
+        // 수평지지력 산정 매개변수
+        const fy_kNm2 = 27000.0; // 27,000 kPa (27 MPa) [가정값]
+        const h_load_point = 0.0; // 하중 작용점 높이 h = 0.0 m [가정값]
+        const My_kNm = fy_kNm2 * Z_m3; // 항복모멘트 My (kN·m)
 
-        // 지표면 대표 표층 지반 특성 (지질 조건: 사질토/풍화토 기반)
+        // 표층 대표 지반 상수 (사질토 기준)
         const topLayer = pileLayersData[0] || { c_val: 5, phi: 25, gamma: 18.5 };
         const phi_rad = ((topLayer.phi || 25) * Math.PI) / 180.0;
         const Kp = (1.0 + Math.sin(phi_rad)) / (1.0 - Math.sin(phi_rad));
-        const gamma_sub = topLayer.gamma ? Math.max(8.5, topLayer.gamma - 9.81) : 8.5; // [가정값: 수중단위중량]
+        const gamma_sub = topLayer.gamma ? Math.max(8.5, topLayer.gamma - 9.81) : 8.5; // 수중단위중량 [가정값]
 
-        // Broms 긴말뚝 수평극한지지력 Hu 산정식 (사질토, 두부자유, eta*L > 4.0)
-        let eta_norm = Math.pow(( (kh_norm * D / (1.0/beta_norm)) / horizNorm.EI ), 0.2);
-        let eta_seis = Math.pow(( (kh_seis * D / (1.0/beta_seis)) / horizSeis.EI ), 0.2);
+        // Broms법 특성치 및 긴말뚝 수평극한지지력 Hu 산정식 (사질토, 두부자유, eta*L > 4.0)
+        let chi_norm = 1.0 / beta_norm;
+        let eta_h_norm = (kh_norm * D) / chi_norm;
+        let eta_norm = Math.pow(eta_h_norm / horizNorm.EI, 0.2);
         let etaL_norm = eta_norm * L;
+
+        let chi_seis = 1.0 / beta_seis;
+        let eta_h_seis = (kh_seis * D) / chi_seis;
+        let eta_seis = Math.pow(eta_h_seis / horizSeis.EI, 0.2);
         let etaL_seis = eta_seis * L;
 
-        let Hu_norm = 2.38 * Math.pow( My_kNm / (Kp * gamma_sub * Math.pow(D, 4)), 2.0/3.0 ) * (Kp * gamma_sub * Math.pow(D, 3));
-        let Hu_seis = 2.38 * Math.pow( My_kNm / (Kp * gamma_sub * Math.pow(D, 4)), 2.0/3.0 ) * (Kp * gamma_sub * Math.pow(D, 3));
+        // Broms 수평극한저항력 Hu 산정
+        let Kp_gamma_D3 = Kp * gamma_sub * Math.pow(D, 3);
+        let Kp_gamma_D4 = Kp * gamma_sub * Math.pow(D, 4);
+        let My_ratio = My_kNm / Kp_gamma_D4;
 
-        let Ha_broms_norm = Hu_norm / 3.0; // [가정값: F.S = 3.0]
-        let Ha_broms_seis = Hu_seis / 2.0; // [가정값: F.S = 2.0]
+        let Hu_norm = 2.38 * Math.pow(My_ratio, 2.0 / 3.0) * Kp_gamma_D3;
+        let Hu_seis = 2.38 * Math.pow(My_ratio, 2.0 / 3.0) * Kp_gamma_D3;
+
+        let Ha_broms_norm = Hu_norm / 3.0; // [가정값: 안전율 F.S = 3.0]
+        let Ha_broms_seis = Hu_seis / 2.0; // [가정값: 안전율 F.S = 2.0]
 
         // Chang 탄성지반반력법 (허용변위 delta_sa 기준)
-        const delta_sa_m = allow_h_disp / 1000.0;
+        const delta_sa_m = allow_h_disp / 1000.0; // [가정값: 허용수평변위량 30mm]
         let Ha_chang_norm = (head_cond === 'fixed' ? 2.0 : 1.0) * (kh_norm * D * delta_sa_m) / beta_norm;
         let Ha_chang_seis = (head_cond === 'fixed' ? 2.0 : 1.0) * (kh_seis * D * delta_sa_m) / beta_seis;
 
@@ -1329,16 +1319,14 @@ export function initPileModule(container) {
         let h_status_norm = H_norm <= Ha_app_norm ? `안정 (O.K)` : `NG`;
         let h_status_seis = H_seis <= Ha_app_seis ? `안정 (O.K)` : `NG`;
 
-        // Chang식에 의한 발생 수평변위량 (지표면)
+        // Chang 탄성식에 의한 지표면 발생 수평변위량 (mm)
         let disp_norm_mm = ((head_cond === 'fixed' ? 0.5 : 1.0) * (H_norm * beta_norm) / (kh_norm * D)) * 1000.0;
         let disp_seis_mm = ((head_cond === 'fixed' ? 0.5 : 1.0) * (H_seis * beta_seis) / (kh_seis * D)) * 1000.0;
 
         let disp_status_norm = disp_norm_mm <= allow_h_disp ? `안정 (O.K)` : `NG`;
         let disp_status_seis = disp_seis_mm <= allow_h_disp ? `안정 (O.K)` : `NG`;
 
-        // ==================================================================
         // 5. 연직 침하량 검토 (Pells & Turner, 1979)
-        // ==================================================================
         let settlementHtmlStr = "";
         let finalS_norm = 0, finalS_seis = 0;
         let pellsTurnerSummary = "";
@@ -1373,7 +1361,6 @@ export function initPileModule(container) {
             finalS_norm = P_norm * ( (I_ps / (D_r * E_m)) + (L_s / (A_net * E_c)) ) * 1000;
             finalS_seis = P_seis * ( (I_ps / (D_r * E_m)) + (L_s / (A_net * E_c)) ) * 1000;
 
-            // SVG 그래프
             const svgWidth = 600, svgHeight = 350;
             const padX = 60, padY = 40;
             const plotW = svgWidth - padX * 2, plotH = svgHeight - padY * 2;
@@ -1464,7 +1451,6 @@ export function initPileModule(container) {
             `;
         }
 
-        // Output Result Formatting
         const resultDiv = container.querySelector('#pile-result');
         if (!resultDiv) return;
         resultDiv.style.display = 'block';
@@ -1587,11 +1573,11 @@ export function initPileModule(container) {
                 • <strong>말뚝 내하력 Q<sub>as</sub></strong> = (1 - ${frac("&mu;", "100")}) &times; Q<sub>mat_base</sub> = <span style="color:#2980b9; font-weight:bold; font-size:1.05em;">${Qas.toFixed(1)} kN</span>
             </div>
 
-            <div class="section-title">[검증 3] 말뚝기초의 수평방향 지지력 및 수평변위 산정 (구조계산서 11~17p 절차)</div>
+            <div class="section-title">[검증 3] 말뚝기초의 수평방향 지지력 및 수평변위 상세 산정 (구조계산서 11~17p 절차)</div>
             
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>1. 도로교 표준시방서식에 의한 수평지반반력계수 k<sub>h</sub> 축차계산 (시행착오법)</strong><br>
-                &nbsp;&nbsp;• 산정식: k<sub>h</sub> = k<sub>h0</sub> &times; ( ${frac("1", "0.3")} &times; B<sub>H</sub> )<sup>-3/4</sup> = { ${frac("1", "0.3")} &times; &alpha; &times; E<sub>0</sub> } &times; { ${frac("1", "0.3")} &times; (${frac("D", "&beta;")})<sup>1/2</sup> }<sup>-3/4</sup><br>
+                <strong>1. 수평지반반력계수 k<sub>h</sub> 산정 (도로교 표준시방서 축차계산법)</strong><br>
+                &nbsp;&nbsp;• 공식: k<sub>h</sub> = k<sub>h0</sub> &times; ( ${frac("1", "0.3")} &times; B<sub>H</sub> )<sup>-3/4</sup> = { ${frac("1", "0.3")} &times; &alpha; &times; E<sub>0</sub> } &times; { ${frac("1", "0.3")} &times; (${frac("D", "&beta;")})<sup>1/2</sup> }<sup>-3/4</sup><br>
                 &nbsp;&nbsp;• <strong><u>[가정값: 초기가정 &beta;<sub>0</sub> = 0.20000 m<sup>-1</sup>]</u></strong>, <strong><u>[가정값: 추정계수 &alpha; = 상시 1, 지진시 2]</u></strong><br>
 
                 <div style="font-weight:bold; margin-top:8px; color:#2c3e50;">(1) 평상시 축차계산 과정 (&alpha; = 1)</div>
@@ -1632,34 +1618,81 @@ export function initPileModule(container) {
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>2. 후쿠오카(Fukuoka) 공식에 의한 수평지반반력계수 k<sub>h</sub> 축차계산</strong><br>
-                &nbsp;&nbsp;• 산정식: k<sub>h</sub> = 0.691 &times; N<sup>0.406</sup> &times; 1000 (kN/m³)<br>
-                &nbsp;&nbsp;• 평상시 최종 k<sub>h</sub> = <strong>${horizNorm.kh_fukuoka.toFixed(1)} kN/m³</strong> (&beta; = ${horizNorm.beta_fukuoka.toFixed(3)})<br>
-                &nbsp;&nbsp;• 지진시 최종 k<sub>h</sub> = <strong>${horizSeis.kh_fukuoka.toFixed(1)} kN/m³</strong> (&beta; = ${horizSeis.beta_fukuoka.toFixed(3)})<br>
-                &nbsp;&nbsp;▶ <strong>최종 적용 k<sub>h</sub> (도로교 및 후쿠오카 최소값 적용) :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시: k<sub>h</sub> = <strong><span style="color:#27ae60;">${kh_norm.toFixed(1)} kN/m³</span></strong> (&beta; = ${beta_norm.toFixed(3)} m<sup>-1</sup>)<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시: k<sub>h</sub> = <strong><span style="color:#27ae60;">${kh_seis.toFixed(1)} kN/m³</span></strong> (&beta; = ${beta_seis.toFixed(3)} m<sup>-1</sup>)
+                <strong>2. 수평지반반력계수 k<sub>h</sub> 산정 (후쿠오카 공식)</strong><br>
+                &nbsp;&nbsp;• 공식: k<sub>h</sub> = 0.691 &times; N<sup>0.406</sup> &times; 1000 (kN/m³)<br>
+                &nbsp;&nbsp;• 평상시 축차계산 최종: k<sub>h</sub> = <strong>${horizNorm.kh_fukuoka.toFixed(1)} kN/m³</strong> (&beta; = ${horizNorm.beta_fukuoka.toFixed(3)} m<sup>-1</sup>)<br>
+                &nbsp;&nbsp;• 지진시 축차계산 최종: k<sub>h</sub> = <strong>${horizSeis.kh_fukuoka.toFixed(1)} kN/m³</strong> (&beta; = ${horizSeis.beta_fukuoka.toFixed(3)} m<sup>-1</sup>)<br>
+                &nbsp;&nbsp;▶ <strong>최종 적용 k<sub>h</sub> (도로교 및 후쿠오카 공식 중 최소값 채택) :</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시: k<sub>h</sub> = <strong><span style="color:#27ae60;">${kh_norm.toFixed(1)} kN/m³</span></strong> (&beta; = ${beta_norm.toFixed(5)} m<sup>-1</sup>)<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시: k<sub>h</sub> = <strong><span style="color:#27ae60;">${kh_seis.toFixed(1)} kN/m³</span></strong> (&beta; = ${beta_seis.toFixed(5)} m<sup>-1</sup>)
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>3. 말뚝 길이 조건 판정 (Broms 법)</strong><br>
-                &nbsp;&nbsp;• 계수 &eta; = ( ${frac("n<sub>h</sub>", "EI")} )<sup>1/5</sup> = [ ${frac("k<sub>h</sub> &times; D / (1/&beta;)", "EI")} ]<sup>1/5</sup><br>
-                &nbsp;&nbsp;• 평상시 &eta;L = ${etaL_norm.toFixed(3)} ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )<br>
-                &nbsp;&nbsp;• 지진시 &eta;L = ${etaL_seis.toFixed(3)} ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )<br>
+                <strong>3. Broms 극한평형법 매개변수 및 말뚝 길이 조건 판정</strong><br>
+                &nbsp;&nbsp;• <strong><u>[가정값: 항복휨응력 f<sub>y</sub> = 27,000 kPa]</u></strong>, <strong><u>[가정값: 하중 작용점 높이 h = 0.0 m]</u></strong><br>
+                &nbsp;&nbsp;• 단면계수 (Z) = ${frac("&pi; &times; D³", "32")} = ${frac(`&pi; &times; ${D.toFixed(3)}³`, "32")} = <strong>${Z_m3.toFixed(4)} m³</strong><br>
+                &nbsp;&nbsp;• 항복모멘트 (M<sub>y</sub>) = f<sub>y</sub> &times; Z = 27,000 &times; ${Z_m3.toFixed(4)} = <strong>${My_kNm.toFixed(1)} kN·m</strong><br>
+                &nbsp;&nbsp;• 수동토압계수 (K<sub>p</sub>) = ${frac("1 + sin&phi;", "1 - sin&phi;")} = ${frac(`1 + sin(${topLayer.phi}°)`, `1 - sin(${topLayer.phi}°)`)} = <strong>${Kp.toFixed(3)}</strong><br>
+                &nbsp;&nbsp;• 수중단위중량 (&gamma;') = &gamma;<sub>sat</sub> - &gamma;<sub>w</sub> = ${topLayer.gamma.toFixed(1)} - 9.81 = <strong><u>[가정값: ${gamma_sub.toFixed(1)} kN/m³]</u></strong><br><br>
+                &nbsp;&nbsp;• <strong>말뚝 특성치 &eta; 및 &eta;L 계산 :</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 1/&beta; = ${chi_norm.toFixed(3)} m, 지반반력상수 n<sub>h</sub> = ${frac("k<sub>h</sub> &times; D", "1/&beta;")} = ${frac(`${kh_norm.toFixed(1)} &times; ${D.toFixed(3)}`, chi_norm.toFixed(3))} = <strong>${eta_h_norm.toFixed(1)} kN/m³</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&eta; = ( ${frac("n<sub>h</sub>", "EI")} )<sup>1/5</sup> = ( ${frac(eta_h_norm.toFixed(1), horizNorm.EI.toFixed(1))} )<sup>1/5</sup> = <strong>${eta_norm.toFixed(3)} m<sup>-1</sup></strong> &rArr; &eta;L = ${eta_norm.toFixed(3)} &times; ${L.toFixed(1)} = <strong>${etaL_norm.toFixed(3)}</strong> ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 1/&beta; = ${chi_seis.toFixed(3)} m, 지반반력상수 n<sub>h</sub> = ${frac("k<sub>h</sub> &times; D", "1/&beta;")} = ${frac(`${kh_seis.toFixed(1)} &times; ${D.toFixed(3)}`, chi_seis.toFixed(3))} = <strong>${eta_h_seis.toFixed(1)} kN/m³</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&eta; = ( ${frac("n<sub>h</sub>", "EI")} )<sup>1/5</sup> = ( ${frac(eta_h_seis.toFixed(1), horizSeis.EI.toFixed(1))} )<sup>1/5</sup> = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong> &rArr; &eta;L = ${eta_seis.toFixed(3)} &times; ${L.toFixed(1)} = <strong>${etaL_seis.toFixed(3)}</strong> ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )<br>
                 &nbsp;&nbsp;• <strong><u>[가정값: 두부 구속조건 = ${head_cond === 'fixed' ? '두부고정' : '두부자유'}]</u></strong>
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>4. 수평 허용지지력 및 변위 검토 결과</strong><br>
-                &nbsp;&nbsp;• <strong>(1) Broms 극한평형법 허용수평지지력 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${Hu_norm.toFixed(1)} / 3.0 = <strong>${Ha_broms_norm.toFixed(1)} kN</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${Hu_seis.toFixed(1)} / 2.0 = <strong>${Ha_broms_seis.toFixed(1)} kN</strong><br>
-                &nbsp;&nbsp;• <strong>(2) Chang 탄성지반반력법 허용수평지지력 (허용변위량 = <u>[가정값: ${allow_h_disp.toFixed(1)} mm]</u>) :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${frac("k<sub>h</sub> &times; D &times; &delta;<sub>sa</sub>", "&beta;")} = <strong>${Ha_chang_norm.toFixed(1)} kN</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${frac("k<sub>h</sub> &times; D &times; &delta;<sub>sa</sub>", "&beta;")} = <strong>${Ha_chang_seis.toFixed(1)} kN</strong><br>
-                &nbsp;&nbsp;• <strong>(3) Chang 탄성식에 의한 지표면 수평발생변위량 (&delta;) :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 변위량 = ${frac("H<sub>norm</sub> &times; &beta;", "k<sub>h</sub> &times; D")} = <strong><span style="color:#d35400;">${disp_norm_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_norm}</strong> )<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 변위량 = ${frac("H<sub>seis</sub> &times; &beta;", "k<sub>h</sub> &times; D")} = <strong><span style="color:#d35400;">${disp_seis_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_seis}</strong> )
+                <strong>4. Broms 극한평형법 수평 지지력 산정 수식 및 계산 과정</strong><br>
+                &nbsp;&nbsp;• <strong>긴말뚝(사질토, 두부자유) 수평극한저항력 (H<sub>u</sub>) 관계식 :</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;${frac("H<sub>u</sub>", "K<sub>p</sub> &gamma;' D³")} [ ${frac("h", "D")} + 0.544 { ${frac("H<sub>u</sub>", "K<sub>p</sub> &gamma;' D²")} }<sup>1/2</sup> ] = ${frac("M<sub>y</sub>", "K<sub>p</sub> &gamma;' D⁴")}<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&rArr; H<sub>u</sub> = 2.38 &times; ( ${frac("M<sub>y</sub>", "K<sub>p</sub> &gamma;' D⁴")} )<sup>2/3</sup> &times; (K<sub>p</sub> &gamma;' D³)<br>
+                &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- K<sub>p</sub> &gamma;' D³ = ${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}³ = <strong>${Kp_gamma_D3.toFixed(1)} kN</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- K<sub>p</sub> &gamma;' D⁴ = ${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}⁴ = <strong>${Kp_gamma_D4.toFixed(1)} kN·m</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- ${frac("M<sub>y</sub>", "K<sub>p</sub> &gamma;' D⁴")} = ${frac(My_kNm.toFixed(1), Kp_gamma_D4.toFixed(1))} = <strong>${My_ratio.toFixed(2)}</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- H<sub>u</sub> = 2.38 &times; (${My_ratio.toFixed(2)})<sup>2/3</sup> &times; ${Kp_gamma_D3.toFixed(1)} = <strong>${Hu_norm.toFixed(1)} kN/본</strong><br>
+                &nbsp;&nbsp;• <strong>Broms 허용수평지지력 (H<sub>a</sub>) :</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${frac("H<sub>u</sub>", "3.0")} = ${frac(Hu_norm.toFixed(1), "3.0")} = <strong>${Ha_broms_norm.toFixed(1)} kN/본</strong> ( <strong><u>[가정값: 안전율 F.S = 3.0]</u></strong> )<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${frac("H<sub>u</sub>", "2.0")} = ${frac(Hu_seis.toFixed(1), "2.0")} = <strong>${Ha_broms_seis.toFixed(1)} kN/본</strong> ( <strong><u>[가정값: 안전율 F.S = 2.0]</u></strong> )
+            </div>
+
+            <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
+                <strong>5. Chang 탄성지반반력법 수평 지지력 산정 수식 및 계산 과정</strong><br>
+                &nbsp;&nbsp;• <strong>허용변위 연동 허용수평지지력 공식 :</strong> H<sub>a</sub> = ${frac("k<sub>h</sub> &times; D &times; &delta;<sub>sa</sub>", "&beta;")}<br>
+                &nbsp;&nbsp;• <strong><u>[가정값: 허용수평변위량 &delta;<sub>sa</sub> = ${allow_h_disp.toFixed(1)} mm = ${(allow_h_disp/1000).toFixed(4)} m]</u></strong><br>
+                &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${frac(`${kh_norm.toFixed(1)} &times; ${D.toFixed(3)} &times; ${(allow_h_disp/1000).toFixed(4)}`, beta_norm.toFixed(5))} = <strong><span style="color:#2980b9; font-weight:bold;">${Ha_chang_norm.toFixed(1)} kN/본</span></strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${frac(`${kh_seis.toFixed(1)} &times; ${D.toFixed(3)} &times; ${(allow_h_disp/1000).toFixed(4)}`, beta_seis.toFixed(5))} = <strong><span style="color:#2980b9; font-weight:bold;">${Ha_chang_seis.toFixed(1)} kN/본</span></strong>
+            </div>
+
+            <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
+                <strong>6. 수평 허용지지력 결과 비교 및 최종 적용값</strong><br>
+                <div class="table-container" style="margin: 5px 0;">
+                    <table class="result-table" style="font-size:0.88em; text-align:center;">
+                        <thead>
+                            <tr style="background:#e8f8f5;">
+                                <th>구분</th><th>Broms법 H<sub>a</sub> (kN)</th><th>Chang법 H<sub>a</sub> (kN)</th><th>최종 적용 H<sub>a</sub> (kN)</th><th>작용 수평력 H (kN)</th><th>판정</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>평상시</td><td>${Ha_broms_norm.toFixed(1)}</td><td>${Ha_chang_norm.toFixed(1)}</td><td style="font-weight:bold; color:#27ae60;">${Ha_app_norm.toFixed(1)}</td><td>${H_norm.toFixed(1)}</td><td style="font-weight:bold; color:${H_norm <= Ha_app_norm ? '#27ae60' : '#c0392b'};">${h_status_norm}</td>
+                            </tr>
+                            <tr>
+                                <td>지진시</td><td>${Ha_broms_seis.toFixed(1)}</td><td>${Ha_chang_seis.toFixed(1)}</td><td style="font-weight:bold; color:#27ae60;">${Ha_app_seis.toFixed(1)}</td><td>${H_seis.toFixed(1)}</td><td style="font-weight:bold; color:${H_seis <= Ha_app_seis ? '#27ae60' : '#c0392b'};">${h_status_seis}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
+                <strong>7. Chang 탄성식에 의한 지표면 수평발생변위량 (&delta;) 산정 및 검토</strong><br>
+                &nbsp;&nbsp;• <strong>지표면 변위 산정 공식 :</strong> &delta; = ${frac("H &times; &beta;", "k<sub>h</sub> &times; D")} &times; 1000 (mm)<br>
+                &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 발생변위 &delta;<sub>norm</sub> = ${frac(`${H_norm.toFixed(1)} &times; ${beta_norm.toFixed(5)}`, `${kh_norm.toFixed(1)} &times; ${D.toFixed(3)}`)} &times; 1000 = <strong><span style="color:#d35400; font-weight:bold;">${disp_norm_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_norm}</strong> )<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 발생변위 &delta;<sub>seis</sub> = ${frac(`${H_seis.toFixed(1)} &times; ${beta_seis.toFixed(5)}`, `${kh_seis.toFixed(1)} &times; ${D.toFixed(3)}`)} &times; 1000 = <strong><span style="color:#d35400; font-weight:bold;">${disp_seis_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_seis}</strong> )
             </div>
 
             ${settlementHtmlStr}
