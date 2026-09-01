@@ -43,7 +43,6 @@ export function initPileModule(container) {
     let pileLayers;
     try {
         pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
-        // 하위 호환성 및 새로운 속성 기본값 주입
         if (pileLayers && pileLayers.length > 0) {
             pileLayers.forEach(l => {
                 if(l.phi === undefined) l.phi = 30;
@@ -69,20 +68,19 @@ export function initPileModule(container) {
     const initialType = getVal('type', 'CAST_ROCK');
     const initialT1 = parseFloat(getVal('t1', '1.0')).toFixed(1);
     const initialMethod = getVal('method', 'bored');
-    const initialGWT = getVal('gwt', '3.1');
+    const initialGWT = parseFloat(getVal('gwt', '3.1')).toFixed(1);
     const cpType = getVal('Cp_type', 'avg');
     const defaultEp = initialType === 'STEEL' ? '200000000' : '39200000';
 
     container.innerHTML = `
         <style>
-            /* 숫자 입력창 우측 스피너(화살표) 숨김 처리 */
             .pl-input::-webkit-outer-spin-button,
             .pl-input::-webkit-inner-spin-button {
                 -webkit-appearance: none;
                 margin: 0;
             }
             .pl-input {
-                -moz-appearance: textfield; /* Firefox */
+                -moz-appearance: textfield;
                 width: 100%; box-sizing: border-box; padding: 4px; text-align: center;
                 border: 1px solid #ccc; border-radius: 3px; font-size: 0.9em;
             }
@@ -215,7 +213,7 @@ export function initPileModule(container) {
                     <tfoot>
                         <tr style="background-color: #ebf5fb; font-weight: bold; border-top: 2px solid #a3e4d7;">
                             <td colspan="2" style="padding: 6px; text-align: right; color: #2980b9;">말뚝 총 길이 L (m) :</td>
-                            <td id="pile_L_val" style="padding: 6px; color: #16a085; font-size: 1.05em;">${calcTotalL().toFixed(2)}</td>
+                            <td id="pile_L_val" style="padding: 6px; color: #16a085; font-size: 1.05em;">${calcTotalL().toFixed(1)}</td>
                             <td colspan="7" style="padding: 6px; text-align: left; color: #7f8c8d; font-size: 0.9em;">(지층 층후 자동 합산)</td>
                         </tr>
                     </tfoot>
@@ -649,6 +647,7 @@ export function initPileModule(container) {
         calcBtn.addEventListener('click', calculatePileCapacity);
     }
 
+    // 입력 필드 포맷팅 및 이벤트 연동
     container.addEventListener('change', (e) => {
         if (e.target.id === 'pile_type') {
             updateUIState();
@@ -665,7 +664,7 @@ export function initPileModule(container) {
             const gradeKey = e.target.value;
             const grid5 = container.querySelector('#grid5_val');
             if (grid5) grid5.value = STEEL_GRADE_MAP[gradeKey] || 275000;
-        } else if (['pile_qp_formula', 'pile_qs_formula', 'pile_gwt', 'pile_rmr', 'grid5_val', 'pile_fck', 'pile_joint_state', 'pile_rqd', 'pile_rebar_d', 'pile_rebar_fy', 'pile_rebar_count', 'pile_Ep', 'pile_alpha_s', 'pile_Cp_type', 'pile_Cp_custom', 'pile_allow_settle'].includes(e.target.id)) {
+        } else if (['pile_qp_formula', 'pile_qs_formula', 'pile_rmr', 'grid5_val', 'pile_fck', 'pile_joint_state', 'pile_rqd', 'pile_rebar_d', 'pile_rebar_fy', 'pile_rebar_count', 'pile_Ep', 'pile_alpha_s', 'pile_Cp_type', 'pile_Cp_custom', 'pile_allow_settle'].includes(e.target.id)) {
             try { localStorage.setItem('geo_' + e.target.id, e.target.value); } catch(err){}
             if (e.target.id.includes('formula')) updateFormulaInfoText();
             if (e.target.id === 'pile_Cp_type') {
@@ -674,18 +673,50 @@ export function initPileModule(container) {
             }
         }
 
+        // 입력 필드 이탈/변경 시 소수점/정수 포맷팅 적용
+        if (e.target.id === 'pile_gwt') {
+            const val = parseFloat(e.target.value) || 0;
+            e.target.value = val.toFixed(1);
+            try { localStorage.setItem('geo_pile_gwt', e.target.value); } catch(err){}
+        }
         if (e.target.classList.contains('pl-name')) pileLayers[e.target.dataset.idx].name = e.target.value;
         if (e.target.classList.contains('pl-type')) pileLayers[e.target.dataset.idx].type = e.target.value;
         if (e.target.classList.contains('pl-dz')) {
-            pileLayers[e.target.dataset.idx].dz = parseFloat(e.target.value) || 0;
+            const val = parseFloat(e.target.value) || 0;
+            e.target.value = val.toFixed(1);
+            pileLayers[e.target.dataset.idx].dz = val;
             updatePileLength();
         }
-        if (e.target.classList.contains('pl-n')) pileLayers[e.target.dataset.idx].n_val = parseFloat(e.target.value) || 0;
-        if (e.target.classList.contains('pl-gamma')) pileLayers[e.target.dataset.idx].gamma = parseFloat(e.target.value) || 19.0;
-        if (e.target.classList.contains('pl-c')) pileLayers[e.target.dataset.idx].c_val = parseFloat(e.target.value) || 0;
-        if (e.target.classList.contains('pl-phi')) pileLayers[e.target.dataset.idx].phi = parseFloat(e.target.value) || 0;
-        if (e.target.classList.contains('pl-es')) pileLayers[e.target.dataset.idx].es = parseFloat(e.target.value) || 0;
-        if (e.target.classList.contains('pl-qu')) pileLayers[e.target.dataset.idx].qu_val = parseFloat(e.target.value) || 0;
+        if (e.target.classList.contains('pl-n')) {
+            const val = Math.round(parseFloat(e.target.value) || 0);
+            e.target.value = val.toFixed(0);
+            pileLayers[e.target.dataset.idx].n_val = val;
+        }
+        if (e.target.classList.contains('pl-gamma')) {
+            const val = parseFloat(e.target.value) || 19.0;
+            e.target.value = val.toFixed(1);
+            pileLayers[e.target.dataset.idx].gamma = val;
+        }
+        if (e.target.classList.contains('pl-c')) {
+            const val = parseFloat(e.target.value) || 0;
+            e.target.value = val.toFixed(1);
+            pileLayers[e.target.dataset.idx].c_val = val;
+        }
+        if (e.target.classList.contains('pl-phi')) {
+            const val = parseFloat(e.target.value) || 0;
+            e.target.value = val.toFixed(1);
+            pileLayers[e.target.dataset.idx].phi = val;
+        }
+        if (e.target.classList.contains('pl-es')) {
+            const val = Math.round(parseFloat(e.target.value) || 0);
+            e.target.value = val.toFixed(0);
+            pileLayers[e.target.dataset.idx].es = val;
+        }
+        if (e.target.classList.contains('pl-qu')) {
+            const val = Math.round(parseFloat(e.target.value) || 0);
+            e.target.value = val.toFixed(0);
+            pileLayers[e.target.dataset.idx].qu_val = val;
+        }
         
         try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch(err){}
     });
@@ -696,8 +727,8 @@ export function initPileModule(container) {
         const totalL = calcTotalL();
         const pileLVal = container.querySelector('#pile_L_val');
         if (pileLVal) {
-            pileLVal.textContent = totalL.toFixed(2);
-            try { localStorage.setItem('geo_pile_L', totalL.toFixed(2)); } catch(err){}
+            pileLVal.textContent = totalL.toFixed(1);
+            try { localStorage.setItem('geo_pile_L', totalL.toFixed(1)); } catch(err){}
         }
     }
 
@@ -727,13 +758,13 @@ export function initPileModule(container) {
                             ${rockOptionHtml}
                         </select>
                     </td>
-                    <td style="padding:2px;"><input type="number" value="${l.dz.toFixed(2)}" data-idx="${idx}" class="pl-dz pl-input" step="0.1"></td>
-                    <td style="padding:2px;"><input type="number" value="${l.n_val}" data-idx="${idx}" class="pl-n pl-input" step="1"></td>
-                    <td style="padding:2px;"><input type="number" value="${parseFloat(gammaVal).toFixed(1)}" data-idx="${idx}" class="pl-gamma pl-input" step="0.5"></td>
+                    <td style="padding:2px;"><input type="number" value="${parseFloat(l.dz).toFixed(1)}" data-idx="${idx}" class="pl-dz pl-input" step="0.1"></td>
+                    <td style="padding:2px;"><input type="number" value="${Math.round(parseFloat(l.n_val)).toFixed(0)}" data-idx="${idx}" class="pl-n pl-input" step="1"></td>
+                    <td style="padding:2px;"><input type="number" value="${parseFloat(gammaVal).toFixed(1)}" data-idx="${idx}" class="pl-gamma pl-input" step="0.1"></td>
                     <td style="padding:2px;"><input type="number" value="${parseFloat(l.c_val).toFixed(1)}" data-idx="${idx}" class="pl-c pl-input" step="0.1"></td>
-                    <td style="padding:2px;"><input type="number" value="${parseFloat(l.phi).toFixed(1)}" data-idx="${idx}" class="pl-phi pl-input" step="1"></td>
-                    <td style="padding:2px;"><input type="number" value="${parseFloat(l.es)}" data-idx="${idx}" class="pl-es pl-input" step="1000"></td>
-                    <td style="padding:2px;"><input type="number" value="${parseFloat(l.qu_val).toFixed(1)}" data-idx="${idx}" class="pl-qu pl-input" step="100"></td>
+                    <td style="padding:2px;"><input type="number" value="${parseFloat(l.phi).toFixed(1)}" data-idx="${idx}" class="pl-phi pl-input" step="0.1"></td>
+                    <td style="padding:2px;"><input type="number" value="${Math.round(parseFloat(l.es)).toFixed(0)}" data-idx="${idx}" class="pl-es pl-input" step="1"></td>
+                    <td style="padding:2px;"><input type="number" value="${Math.round(parseFloat(l.qu_val)).toFixed(0)}" data-idx="${idx}" class="pl-qu pl-input" step="1"></td>
                     <td style="padding:2px;"><button type="button" class="pl-del" data-idx="${idx}" style="padding:2px 6px; background:#e74c3c; color:#fff; border:none; border-radius:3px; cursor:pointer;">-</button></td>
                 </tr>
             `;
@@ -742,9 +773,7 @@ export function initPileModule(container) {
     }
     renderLayers();
 
-    // ---------------------------------------------------------
     // Hoek & Brown 및 알파 계수 데이터
-    // ---------------------------------------------------------
     const HB_TABLE_DATA = [
         { rmr: 3,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7 },
         { rmr: 23,  m: { 7: 0.029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6 },
@@ -815,13 +844,13 @@ export function initPileModule(container) {
         const x_vals = [0, 0.5, 1, 2, 3, 5];
         const y_ratios = [0.2, 0.5, 1, 2, 10, 50, 1000];
         const grid = [
-            [0.55, 1.15, 1.30, 1.35, 1.38, 1.42], // 0.2
-            [0.55, 0.65, 0.68, 0.70, 0.71, 0.72], // 0.5
-            [0.55, 0.53, 0.53, 0.53, 0.53, 0.53], // 1.0
-            [0.55, 0.42, 0.38, 0.36, 0.35, 0.34], // 2.0
-            [0.55, 0.30, 0.25, 0.21, 0.20, 0.16], // 10.0  (adjusted for better curve fit)
-            [0.55, 0.28, 0.21, 0.15, 0.13, 0.08], // 50.0
-            [0.55, 0.25, 0.18, 0.13, 0.09, 0.03]  // Infinity
+            [0.55, 1.15, 1.30, 1.35, 1.38, 1.42],
+            [0.55, 0.65, 0.68, 0.70, 0.71, 0.72],
+            [0.55, 0.53, 0.53, 0.53, 0.53, 0.53],
+            [0.55, 0.42, 0.38, 0.36, 0.35, 0.34],
+            [0.55, 0.30, 0.25, 0.21, 0.20, 0.16],
+            [0.55, 0.28, 0.21, 0.15, 0.13, 0.08],
+            [0.55, 0.25, 0.18, 0.13, 0.09, 0.03]
         ];
 
         let dr = Math.max(0, Math.min(5, dr_br));
@@ -842,9 +871,6 @@ export function initPileModule(container) {
         return v0 + ty * (v1 - v0);
     }
 
-    // ---------------------------------------------------------
-    // 연직지지력 & 침하량 통합 산정 핵심 함수
-    // ---------------------------------------------------------
     function calculatePileCapacity() {
         const p_type = container.querySelector('#pile_type').value;
         const isPrecast = (p_type === 'PHC' || p_type === 'STEEL'); 
@@ -905,9 +931,7 @@ export function initPileModule(container) {
         const P_norm = parseFloat(container.querySelector('#pile_P_norm').value);
         const P_seis = parseFloat(container.querySelector('#pile_P_seis').value);
 
-        // ==========================================
         // 1. 선단지지력 (Qup)
-        // ==========================================
         let lastLayer = pileLayersData.length > 0 ? pileLayersData[pileLayersData.length - 1] : { name: '지지층', type: 'sand', n_val: 50, gamma: 20.0, c_val: 0, qu_val: 0 };
         let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
         let c_tip = parseFloat(lastLayer.c_val) || 0;
@@ -931,7 +955,7 @@ export function initPileModule(container) {
                 hb_m = hbRes.m; hb_s = hbRes.s;
                 let factor = Math.sqrt(hb_s) + Math.sqrt(hb_m * Math.sqrt(hb_s) + hb_s);
                 q_p = factor * qu_tip;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = [&radic;s + &radic;(m&radic;s + s)] &times; q<sub>u</sub>[cite: 16]<br>` +
+                qp_calc_detail = `• 공식: q<sub>p</sub> = [&radic;s + &radic;(m&radic;s + s)] &times; q<sub>u</sub><br>` +
                                  `• 계산: [&radic;${hb_s.toExponential(3)} + &radic;(${hb_m.toFixed(4)}&times;&radic;${hb_s.toExponential(3)} + ${hb_s.toExponential(3)})] &times; ${qu_tip} = ${factor.toFixed(4)} &times; ${qu_tip}<br>` +
                                  `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
             }
@@ -973,9 +997,7 @@ export function initPileModule(container) {
 
         const Qup = q_p * Ap;
 
-        // ==========================================
         // 2. 주면마찰력 (Qus)
-        // ==========================================
         const As = Math.PI * D;
         let total_Qus = 0;
         let layer_calc_rows = [];
@@ -1015,7 +1037,7 @@ export function initPileModule(container) {
                 let fs_limit_MPa = 7.8 * P_a * Math.pow(user_fck / P_a, 0.5); 
                 let f_unit_MPa = Math.min(fs_MPa, fs_limit_MPa);
                 f_unit = f_unit_MPa * 1000.0; 
-                formula_str = `• 공식: min(0.65 &times; &alpha;<sub>E</sub> &times; P<sub>a</sub>(q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup>, 7.8 &times; P<sub>a</sub>(f'<sub>c</sub>/P<sub>a</sub>)<sup>0.5</sup>)[cite: 16]<br>` +
+                formula_str = `• 공식: min(0.65 &times; &alpha;<sub>E</sub> &times; P<sub>a</sub>(q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup>, 7.8 &times; P<sub>a</sub>(f'<sub>c</sub>/P<sub>a</sub>)<sup>0.5</sup>)<br>` +
                               `• 계산: min(${(fs_MPa*1000).toFixed(1)}, ${(fs_limit_MPa*1000).toFixed(1)})<br>` +
                               `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
             } else if ((p_type === 'CAST' || p_type === 'CAST_ROCK') && qs_formula_key === 'oneill') {
@@ -1077,16 +1099,12 @@ export function initPileModule(container) {
             cum_sigma_v += gamma_i * dz_i;
         });
 
-        // ==========================================
         // 3. 지반에 의한 극한지지력 및 허용지지력
-        // ==========================================
         const Qu_total = Qup + total_Qus;
         const Qa_soil_norm = Qu_total / 3.0;
         const Qa_soil_seis = Qu_total / 2.0;
 
-        // ==========================================
         // 4. 재료 허용압축하중 (Qas)
-        // ==========================================
         let Q_mat_base = 0;
         let qMatBaseDetailStr = "";
         let A_net = 0;
@@ -1103,7 +1121,7 @@ export function initPileModule(container) {
             Q_mat_base = (fca_kNm2 * Ac_net) + (fsa_rebar_kNm2 * Ast); 
 
             qMatBaseDetailStr = `
-                • <strong>말뚝의 장기허용압축강도 (f<sub>sa</sub> A) 산정[cite: 16] :</strong><br>
+                • <strong>말뚝의 장기허용압축강도 (f<sub>sa</sub> A) 산정 :</strong><br>
                 &nbsp;&nbsp;- 말뚝 단면적 (A) = ${frac("&pi; &times; D²", "4")} = ${frac(`&pi; &times; ${D.toFixed(3)}²`, "4")} = <strong>${Ac_gross.toFixed(4)} m²</strong><br>
                 &nbsp;&nbsp;- 보강철근 단면적 (A<sub>st</sub>) = n &times; ${frac("&pi; &times; d<sub>b</sub>²", "4")} = ${user_rebar_count} &times; ${frac(`&pi; &times; ${(user_rebar_d_mm/1000).toFixed(4)}²`, "4")} = <strong>${Ast.toFixed(6)} m²</strong><br>
                 &nbsp;&nbsp;- 콘크리트 순단면적 (A<sub>c</sub>) = A - A<sub>st</sub> = ${Ac_gross.toFixed(4)} - ${Ast.toFixed(6)} = <strong>${Ac_net.toFixed(4)} m²</strong><br>
@@ -1140,15 +1158,12 @@ export function initPileModule(container) {
         const status_norm = P_norm <= Q_app_norm ? `안정 (O.K)` : `NG`;
         const status_seis = P_seis <= Q_app_seis ? `안정 (O.K)` : `NG`;
 
-        // ==========================================
         // 5. 침하량 검토
-        // ==========================================
         let settlementHtmlStr = "";
         let finalS_norm = 0, finalS_seis = 0;
         let pellsTurnerSummary = "";
 
         if (p_type === 'CAST_ROCK') {
-            // Pells & Turner (1979) Method
             let sumDr = 0, sumLs = 0;
             let lastRockEs = 50000;
             pileLayersData.forEach(l => {
@@ -1160,18 +1175,16 @@ export function initPileModule(container) {
                 }
             });
 
-            // 만약 사용자가 'rock' 지층을 설정 안했으면 임시 처리
             if (sumDr === 0) sumDr = parseFloat(pileLayersData[pileLayersData.length - 1].dz);
 
             const D_r = sumDr;
             const B_r = D;
-            const E_m = lastRockEs; // 기반암 변형계수
-            const L_s = sumLs; // 토사 관입 깊이
+            const E_m = lastRockEs; 
+            const L_s = sumLs; 
             
-            // 콘크리트 탄성계수 Ec 계산 (fcu = fck + 4)
             const fcu = user_fck + 4;
-            const E_c_MPa = 8500 * Math.pow(fcu, 1/3); // MPa
-            const E_c = E_c_MPa * 1000; // kPa
+            const E_c_MPa = 8500 * Math.pow(fcu, 1/3); 
+            const E_c = E_c_MPa * 1000; 
 
             const ec_em = E_c / E_m;
             const dr_br = D_r / B_r;
@@ -1180,13 +1193,13 @@ export function initPileModule(container) {
             finalS_norm = P_norm * ( (I_ps / (D_r * E_m)) + (L_s / (A_net * E_c)) ) * 1000;
             finalS_seis = P_seis * ( (I_ps / (D_r * E_m)) + (L_s / (A_net * E_c)) ) * 1000;
 
-            // Pells & Turner SVG Graph Generator
+            // SVG 그래프
             const svgWidth = 600, svgHeight = 350;
             const padX = 60, padY = 40;
             const plotW = svgWidth - padX * 2, plotH = svgHeight - padY * 2;
             
-            const logMin = -1; // log10(0.1)
-            const logMax = 0.477; // log10(3.0) - graph visually maps up to ~3.0 proportionally
+            const logMin = -1; 
+            const logMax = 0.477; 
             
             const getPx = (x) => padX + (Math.max(0, Math.min(5, x)) / 5.0) * plotW;
             const getPy = (y) => padY + plotH - ((Math.max(-1, Math.min(logMax, Math.log10(y))) - logMin) / (logMax - logMin)) * plotH;
@@ -1218,7 +1231,7 @@ export function initPileModule(container) {
             let pathStr = curves.map(c => {
                 let d = c.pts.map((p, i) => `${i===0?'M':'L'} ${getPx(p[0])} ${getPy(p[1])}`).join(' ');
                 let label = c.r === 1000 ? '∞' : c.r;
-                let lastPt = c.pts[c.pts.length-2]; // position label near end
+                let lastPt = c.pts[c.pts.length-2];
                 return `<path d="${d}" fill="none" stroke="${c.color}" stroke-width="2"/>
                         <text x="${getPx(lastPt[0])}" y="${getPy(lastPt[1])-5}" font-size="11" font-weight="bold" fill="${c.color}">${label}</text>`;
             }).join('');
@@ -1243,21 +1256,19 @@ export function initPileModule(container) {
             settlementHtmlStr = `
                 <div class="section-title">[검증 4] 현장타설말뚝(암반소켓) 연직침하량 산정 (Pells & Turner, 1979)</div>
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                    <strong>■ 암반소켓 침하량 영향계수 (I<sub>ps</sub>) 산출[cite: 16]</strong><br>
+                    <strong>■ 암반소켓 침하량 영향계수 (I<sub>ps</sub>) 산출</strong><br>
                     &nbsp;&nbsp;- 콘크리트 탄성계수 (E<sub>c</sub>) : 8500 &times; (f'<sub>ck</sub>+4)<sup>1/3</sup> = <strong>${E_c.toExponential(3)} kPa</strong><br>
                     &nbsp;&nbsp;- 암반 변형계수 (E<sub>m</sub>) : <strong>${E_m.toExponential(3)} kPa</strong><br>
-                    &nbsp;&nbsp;- 강성비 (E<sub>c</sub> / E<sub>m</sub>) : ${E_c.toExponential(3)} / ${E_m.toExponential(3)} = <strong>${ec_em.toFixed(2)}</strong><br>
-                    &nbsp;&nbsp;- 근입비 (D<sub>r</sub> / B<sub>r</sub>) : ${D_r.toFixed(2)} / ${B_r.toFixed(2)} = <strong>${dr_br.toFixed(2)}</strong><br>
+                    &nbsp;&nbsp;- 강성비 (${frac("E<sub>c</sub>", "E<sub>m</sub>")}) : ${frac(E_c.toExponential(3), E_m.toExponential(3))} = <strong>${ec_em.toFixed(2)}</strong><br>
+                    &nbsp;&nbsp;- 근입비 (${frac("D<sub>r</sub>", "B<sub>r</sub>")}) : ${frac(D_r.toFixed(2), B_r.toFixed(2))} = <strong>${dr_br.toFixed(2)}</strong><br>
                     &nbsp;&nbsp;▶ 그래프 보간 산출 영향계수 (I<sub>ps</sub>) = <span style="font-weight:bold; color:#e67e22; font-size:1.1em;">${I_ps.toFixed(3)}</span><br>
                     
                     <div style="text-align:center; margin: 15px 0;">
                         <svg width="${svgWidth}" height="${svgHeight}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
                             ${yGridStr} ${xGridStr} ${pathStr}
-                            <!-- 외곽 박스 및 라벨 -->
                             <rect x="${padX}" y="${padY}" width="${plotW}" height="${plotH}" fill="none" stroke="#2c3e50" stroke-width="2"/>
                             <text x="${padX-35}" y="${svgHeight/2}" transform="rotate(-90 ${padX-35},${svgHeight/2})" font-size="13" font-weight="bold">I_ps</text>
                             <text x="${svgWidth/2}" y="${svgHeight-10}" font-size="13" font-weight="bold">Dr / Br</text>
-                            <!-- 포인트 마킹 -->
                             <circle cx="${ptX}" cy="${ptY}" r="6" fill="#e74c3c" stroke="white" stroke-width="2"/>
                             <text x="${ptX+10}" y="${ptY+4}" font-size="12" font-weight="bold" fill="#e74c3c">${I_ps.toFixed(3)}</text>
                         </svg>
@@ -1265,18 +1276,16 @@ export function initPileModule(container) {
                 </div>
 
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                    <strong>■ Pells & Turner 침하량 산정결과[cite: 16]</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>t</sub> = Q &times; [ I<sub>ps</sub> / (D<sub>r</sub> &times; E<sub>m</sub>) + L<sub>s</sub> / (A &times; E<sub>c</sub>) ]<br>
-                    &nbsp;&nbsp;- <strong>평상시 침하량</strong> = ${P_norm.toFixed(1)} &times; [ ${I_ps.toFixed(3)} / (${D_r.toFixed(2)} &times; ${E_m}) + ${L_s.toFixed(2)} / (${A_net.toFixed(5)} &times; ${E_c.toExponential(3)}) ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_norm.toFixed(3)} mm</span></strong><br>
-                    &nbsp;&nbsp;- <strong>지진시 침하량</strong> = ${P_seis.toFixed(1)} &times; [ ${I_ps.toFixed(3)} / (${D_r.toFixed(2)} &times; ${E_m}) + ${L_s.toFixed(2)} / (${A_net.toFixed(5)} &times; ${E_c.toExponential(3)}) ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_seis.toFixed(3)} mm</span></strong>
+                    <strong>■ Pells & Turner 침하량 산정결과</strong><br>
+                    &nbsp;&nbsp;- 공식: S<sub>t</sub> = Q &times; [ ${frac("I<sub>ps</sub>", "D<sub>r</sub> &times; E<sub>m</sub>")} + ${frac("L<sub>s</sub>", "A &times; E<sub>c</sub>")} ]<br>
+                    &nbsp;&nbsp;- <strong>평상시 침하량</strong> = ${P_norm.toFixed(1)} &times; [ ${frac(I_ps.toFixed(3), `${D_r.toFixed(2)} &times; ${E_m.toLocaleString()}`)} + ${frac(L_s.toFixed(2), `${A_net.toFixed(5)} &times; ${E_c.toExponential(3)}`)} ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_norm.toFixed(3)} mm</span></strong><br>
+                    &nbsp;&nbsp;- <strong>지진시 침하량</strong> = ${P_seis.toFixed(1)} &times; [ ${frac(I_ps.toFixed(3), `${D_r.toFixed(2)} &times; ${E_m.toLocaleString()}`)} + ${frac(L_s.toFixed(2), `${A_net.toFixed(5)} &times; ${E_c.toExponential(3)}`)} ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_seis.toFixed(3)} mm</span></strong>
                 </div>
             `;
         } else if (isPrecast) {
-            // (기존 Vesic / CFEM 구현 부분은 생략 없이 동일 적용)
-            // ... (Vesic / CFEM 로직 적용) ...
             pellsTurnerSummary = `
                 <tr>
-                    <td colspan="5" style="background:#f9ebea; text-align:center; font-size:0.9em; color:#c0392b;">기성말뚝은 Vesic/CFEM 방식이 별도로 적용됩니다. (본 로직은 Pells & Turner 전용)</td>
+                    <td colspan="5" style="background:#f9ebea; text-align:center; font-size:0.9em; color:#c0392b;">기성말뚝은 Vesic/CFEM 방식이 별도로 적용됩니다.</td>
                 </tr>
             `;
         }
@@ -1345,8 +1354,8 @@ export function initPileModule(container) {
                                 <tr>
                                     <td>${r.name}</td>
                                     <td>${r.type}</td>
-                                    <td>${r.dz.toFixed(2)}</td>
-                                    <td>${r.n_val} / ${r.gamma.toFixed(1)} / ${r.qu_val}</td>
+                                    <td>${r.dz.toFixed(1)}</td>
+                                    <td>${Math.round(r.n_val)} / ${r.gamma.toFixed(1)} / ${Math.round(r.qu_val)}</td>
                                     <td style="text-align: left; padding: 6px 10px; line-height: 1.45;">${r.formula}</td>
                                     <td>${r.fxL.toFixed(1)}</td>
                                     <td style="font-weight:bold; color:#2980b9;">${r.qusi.toFixed(1)}</td>
@@ -1373,8 +1382,8 @@ export function initPileModule(container) {
             <div class="section-title">[검증 2] 본체부 말뚝 내하력 (재료 허용압축하중 Q<sub>as</sub>) 산정</div>
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px; line-height: 1.6;">
                 ${qMatBaseDetailStr}<br>
-                • 장경비 감소율 (&mu;) = max(0, ${L_over_D.toFixed(2)} - ${n_limit}) = <strong>${mu1.toFixed(2)} %</strong>[cite: 16]<br>
-                • <strong>말뚝 내하력 Q<sub>as</sub></strong> = (1 - ${frac("&mu;", "100")}) &times; Q<sub>mat_base</sub> = <span style="color:#2980b9; font-weight:bold; font-size:1.05em;">${Qas.toFixed(1)} kN</span>[cite: 16]
+                • 장경비 감소율 (&mu;) = max(0, ${L_over_D.toFixed(2)} - ${n_limit}) = <strong>${mu1.toFixed(2)} %</strong><br>
+                • <strong>말뚝 내하력 Q<sub>as</sub></strong> = (1 - ${frac("&mu;", "100")}) &times; Q<sub>mat_base</sub> = <span style="color:#2980b9; font-weight:bold; font-size:1.05em;">${Qas.toFixed(1)} kN</span>
             </div>
 
             ${settlementHtmlStr}
