@@ -1571,7 +1571,7 @@ export function initPileModule(container) {
             </div>`;
         }
 
-        // 5. 연직 침하량 검토 (기성말뚝/토사층: Vesic 탄성식, 기반암: Pells & Turner)
+        // 5. 연직 침하량 검토 (기성말뚝/토사층: Vesic 경험식, 기반암: Pells & Turner)
         let settlementHtmlStr = "";
         let finalS_norm = 0, finalS_seis = 0;
         let settlementSummary = "";
@@ -1698,71 +1698,57 @@ export function initPileModule(container) {
                 </div>
             `;
         } else {
-            // 기성말뚝 (PHC, 강관) 및 토사층 말뚝: Vesic (1977) 탄성 침하 산정식
-            let sum_Es_dz = 0, sum_L_soil = 0;
-            pileLayersData.forEach(l => {
-                let dz_i = parseFloat(l.dz) || 0;
-                let es_i = parseFloat(l.es) || (2800 * (parseFloat(l.n_val)||10));
-                sum_Es_dz += es_i * dz_i;
-                sum_L_soil += dz_i;
-            });
-            let Es_avg = sum_L_soil > 0 ? (sum_Es_dz / sum_L_soil) : 30000;
-            let Es_tip = parseFloat(lastLayer.es) || (2800 * raw_N_tip);
-
-            // 작용하중 분배 (선단 및 주면 분배)
+            // 기성말뚝 (PHC, 강관) 및 토사층 말뚝: Vesic (1977) 경험적 침하 산정식 (Cp, Cs 적용)
             let Pp_norm = Qu_total > 0 ? P_norm * (Qup / Qu_total) : P_norm * 0.5;
             let Ps_norm = Qu_total > 0 ? P_norm * (total_Qus / Qu_total) : P_norm * 0.5;
 
             let Pp_seis = Qu_total > 0 ? P_seis * (Qup / Qu_total) : P_seis * 0.5;
             let Ps_seis = Qu_total > 0 ? P_seis * (total_Qus / Qu_total) : P_seis * 0.5;
 
-            // Vesic 탄성침하 매개변수
-            let nu_soil = 0.30;
-            let I_wp = 0.85; 
-            let I_ws = 2.0 + 0.35 * Math.sqrt(L / D);
+            // Vesic 경험계수 (Cp, Cs) 산정
+            let isTipSand = ['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type);
+            let Cp = method === 'driven' ? (isTipSand ? 0.04 : 0.03) : (isTipSand ? 0.09 : 0.03);
+            let Cs = (0.93 + 0.16 * Math.sqrt(L / D)) * Cp;
+            let calc_qp = Math.max(q_p, 1.0); // 0으로 나누기 방지
 
             // 평상시 침하량 성분 (mm)
             let S1_norm = ((Pp_norm + 0.5 * Ps_norm) * L) / (A_net * user_Ep) * 1000.0;
-            let qwp_norm = Ap > 0 ? (Pp_norm / Ap) : 0;
-            let S2_norm = (qwp_norm * D / Es_tip) * (1 - Math.pow(nu_soil, 2)) * I_wp * 1000.0;
-            let qws_norm = (Math.PI * D * L) > 0 ? (Ps_norm / (Math.PI * D * L)) : 0;
-            let S3_norm = (qws_norm * D / Es_avg) * (1 - Math.pow(nu_soil, 2)) * I_ws * 1000.0;
+            let S2_norm = (Pp_norm * Cp) / (D * calc_qp) * 1000.0;
+            let S3_norm = (Ps_norm * Cs) / (L * calc_qp) * 1000.0;
             finalS_norm = S1_norm + S2_norm + S3_norm;
 
             // 지진시 침하량 성분 (mm)
             let S1_seis = ((Pp_seis + 0.5 * Ps_seis) * L) / (A_net * user_Ep) * 1000.0;
-            let qwp_seis = Ap > 0 ? (Pp_seis / Ap) : 0;
-            let S2_seis = (qwp_seis * D / Es_tip) * (1 - Math.pow(nu_soil, 2)) * I_wp * 1000.0;
-            let qws_seis = (Math.PI * D * L) > 0 ? (Ps_seis / (Math.PI * D * L)) : 0;
-            let S3_seis = (qws_seis * D / Es_avg) * (1 - Math.pow(nu_soil, 2)) * I_ws * 1000.0;
+            let S2_seis = (Pp_seis * Cp) / (D * calc_qp) * 1000.0;
+            let S3_seis = (Ps_seis * Cs) / (L * calc_qp) * 1000.0;
             finalS_seis = S1_seis + S2_seis + S3_seis;
 
             settlementSummary = `
                 <tr>
                     <td rowspan="2" style="background:#f5eef8; font-weight:bold;">연직 침하량 검토</td>
-                    <td>평상시 (Vesic 탄성공식)</td>
+                    <td>평상시 (Vesic 경험공식)</td>
                     <td style="font-weight:bold; color:#8e44ad;">${finalS_norm.toFixed(2)} mm</td>
                     <td rowspan="2" style="vertical-align: middle;">${allow_settle.toFixed(1)} mm</td>
-                    <td style="font-size:0.85em;">Vesic (1977) 탄성 침하 산정식</td>
+                    <td style="font-size:0.85em;">Vesic (1977) 경험적 침하 산정식</td>
                     <td style="font-weight:bold; color:${finalS_norm <= allow_settle ? '#27ae60' : '#c0392b'};">${finalS_norm <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
                 </tr>
                 <tr>
-                    <td>지진시 (Vesic 탄성공식)</td>
+                    <td>지진시 (Vesic 경험공식)</td>
                     <td style="font-weight:bold; color:#8e44ad;">${finalS_seis.toFixed(2)} mm</td>
-                    <td style="font-size:0.85em;">Vesic (1977) 탄성 침하 산정식</td>
+                    <td style="font-size:0.85em;">Vesic (1977) 경험적 침하 산정식</td>
                     <td style="font-weight:bold; color:${finalS_seis <= allow_settle ? '#27ae60' : '#c0392b'};">${finalS_seis <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
                 </tr>
             `;
 
             settlementHtmlStr = `
-                <div class="section-title">[검증 3] 기성말뚝 / 토사층 말뚝 연직 탄성침하량 산정 (Vesic, 1977)</div>
+                <div class="section-title">[검증 3] 기성말뚝 / 토사층 말뚝 연직 경험적 침하량 산정 (Vesic, 1977)</div>
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                    <strong>■ Vesic 탄성침하 공식 (S = S<sub>1</sub> + S<sub>2</sub> + S<sub>3</sub>)</strong><br>
+                    <strong>■ Vesic 경험적 침하 공식 (S = S<sub>1</sub> + S<sub>2</sub> + S<sub>3</sub>)</strong><br>
                     &nbsp;&nbsp;• <strong>S<sub>1</sub> (말뚝 본체 탄성변형량) :</strong> ${frac("(P<sub>p</sub> + 0.5 P<sub>s</sub>) &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")}<br>
-                    &nbsp;&nbsp;• <strong>S<sub>2</sub> (선단지반 침하량) :</strong> ${frac("q<sub>wp</sub> &times; D", "E<sub>s,tip</sub>")} &times; (1 - &nu;²) &times; I<sub>wp</sub><br>
-                    &nbsp;&nbsp;• <strong>S<sub>3</sub> (주면지반 침하량) :</strong> ${frac("q<sub>ws</sub> &times; D", "E<sub>s,avg</sub>")} &times; (1 - &nu;²) &times; I<sub>ws</sub><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- 포아송비 (&nu;) = 0.30, 선단 영향계수 (I<sub>wp</sub>) = 0.85, 주면 영향계수 (I<sub>ws</sub>) = 2.0 + 0.35 &times; &radic;(${frac("L", "D")}) = <strong>${I_ws.toFixed(3)}</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- 선단지반 변형계수 (E<sub>s,tip</sub>) = <strong>${Es_tip.toLocaleString()} kPa</strong>, 주면 평균 변형계수 (E<sub>s,avg</sub>) = <strong>${Math.round(Es_avg).toLocaleString()} kPa</strong>
+                    &nbsp;&nbsp;• <strong>S<sub>2</sub> (선단지반 침하량) :</strong> ${frac("P<sub>p</sub> &times; C<sub>p</sub>", "D &times; q<sub>p</sub>")}<br>
+                    &nbsp;&nbsp;• <strong>S<sub>3</sub> (주면지반 침하량) :</strong> ${frac("P<sub>s</sub> &times; C<sub>s</sub>", "L &times; q<sub>p</sub>")}<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;- 지반/시공조건 경험계수: C<sub>p</sub> = <strong>${Cp.toFixed(3)}</strong>, C<sub>s</sub> = [0.93 + 0.16&radic;(${frac("L","D")})] &times; C<sub>p</sub> = <strong>${Cs.toFixed(3)}</strong><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;- 극한 단위선단지지력 (q<sub>p</sub>) = <strong>${calc_qp.toLocaleString()} kPa</strong>
                 </div>
 
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px; line-height: 1.6;">
@@ -1770,11 +1756,11 @@ export function initPileModule(container) {
                     &nbsp;&nbsp;• <strong>평상시 (P<sub>norm</sub> = ${P_norm.toFixed(1)} kN) :</strong><br>
                     &nbsp;&nbsp;&nbsp;&nbsp;- P<sub>p</sub> = ${Pp_norm.toFixed(1)} kN, P<sub>s</sub> = ${Ps_norm.toFixed(1)} kN<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;- S<sub>1</sub> = <strong>${S1_norm.toFixed(2)} mm</strong>, S<sub>2</sub> = <strong>${S2_norm.toFixed(2)} mm</strong>, S<sub>3</sub> = <strong>${S3_norm.toFixed(2)} mm</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>총 탄성침하량 (S<sub>norm</sub>)</strong> = ${S1_norm.toFixed(2)} + ${S2_norm.toFixed(2)} + ${S3_norm.toFixed(2)} = <strong><span style="color:#8e44ad;">${finalS_norm.toFixed(2)} mm</span></strong> (&le; ${allow_settle.toFixed(1)} mm)<br><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>총 발생침하량 (S<sub>norm</sub>)</strong> = ${S1_norm.toFixed(2)} + ${S2_norm.toFixed(2)} + ${S3_norm.toFixed(2)} = <strong><span style="color:#8e44ad;">${finalS_norm.toFixed(2)} mm</span></strong> (&le; ${allow_settle.toFixed(1)} mm)<br><br>
                     &nbsp;&nbsp;• <strong>지진시 (P<sub>seis</sub> = ${P_seis.toFixed(1)} kN) :</strong><br>
                     &nbsp;&nbsp;&nbsp;&nbsp;- P<sub>p</sub> = ${Pp_seis.toFixed(1)} kN, P<sub>s</sub> = ${Ps_seis.toFixed(1)} kN<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;- S<sub>1</sub> = <strong>${S1_seis.toFixed(2)} mm</strong>, S<sub>2</sub> = <strong>${S2_seis.toFixed(2)} mm</strong>, S<sub>3</sub> = <strong>${S3_seis.toFixed(2)} mm</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>총 탄성침하량 (S<sub>seis</sub>)</strong> = ${S1_seis.toFixed(2)} + ${S2_seis.toFixed(2)} + ${S3_seis.toFixed(2)} = <strong><span style="color:#8e44ad;">${finalS_seis.toFixed(2)} mm</span></strong> (&le; ${allow_settle.toFixed(1)} mm)
+                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>총 발생침하량 (S<sub>seis</sub>)</strong> = ${S1_seis.toFixed(2)} + ${S2_seis.toFixed(2)} + ${S3_seis.toFixed(2)} = <strong><span style="color:#8e44ad;">${finalS_seis.toFixed(2)} mm</span></strong> (&le; ${allow_settle.toFixed(1)} mm)
                 </div>
             `;
         }
