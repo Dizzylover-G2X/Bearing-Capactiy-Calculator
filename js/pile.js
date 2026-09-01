@@ -1407,21 +1407,21 @@ export function initPileModule(container) {
 
             pellsTurnerSummary = `
                 <tr>
-                    <td rowspan="2" style="background:#f5eef8; font-weight:bold;">연직 침하량<br>(탄성평형법)</td>
-                    <td>평상시 하중 (Pells & Turner)</td>
+                    <td rowspan="2" style="background:#f5eef8; font-weight:bold;">연직 침하량 검토</td>
+                    <td>평상시 (Pells & Turner)</td>
                     <td style="font-weight:bold; color:#8e44ad;">${finalS_norm.toFixed(2)} mm</td>
                     <td rowspan="2" style="vertical-align: middle;">${allow_settle.toFixed(1)} mm</td>
                     <td style="font-weight:bold; color:${finalS_norm <= allow_settle ? '#27ae60' : '#c0392b'};">${finalS_norm <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
                 </tr>
                 <tr>
-                    <td>지진시 하중 (Pells & Turner)</td>
+                    <td>지진시 (Pells & Turner)</td>
                     <td style="font-weight:bold; color:#8e44ad;">${finalS_seis.toFixed(2)} mm</td>
                     <td style="font-weight:bold; color:${finalS_seis <= allow_settle ? '#27ae60' : '#c0392b'};">${finalS_seis <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
                 </tr>
             `;
 
             settlementHtmlStr = `
-                <div class="section-title">[검증 4] 현장타설말뚝(암반소켓) 연직침하량 산정 (Pells & Turner, 1979)</div>
+                <div class="section-title">[검증 3] 현장타설말뚝(암반소켓) 연직침하량 산정 (Pells & Turner, 1979)</div>
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                     <strong>■ 암반소켓 침하량 영향계수 (I<sub>ps</sub>) 산출</strong><br>
                     &nbsp;&nbsp;- 콘크리트 탄성계수 (E<sub>c</sub>) : 8500 &times; (f'<sub>ck</sub>+4)<sup>1/3</sup> = <strong>${E_c.toExponential(3)} kPa</strong><br>
@@ -1442,7 +1442,7 @@ export function initPileModule(container) {
                     </div>
                 </div>
 
-                <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
+                <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px; line-height: 1.6;">
                     <strong>■ Pells & Turner 침하량 산정결과</strong><br>
                     &nbsp;&nbsp;- 공식: S<sub>t</sub> = Q &times; [ ${frac("I<sub>ps</sub>", "D<sub>r</sub> &times; E<sub>m</sub>")} + ${frac("L<sub>s</sub>", "A &times; E<sub>c</sub>")} ]<br>
                     &nbsp;&nbsp;- <strong>평상시 침하량</strong> = ${P_norm.toFixed(1)} &times; [ ${frac(I_ps.toFixed(3), `${D_r.toFixed(2)} &times; ${E_m.toLocaleString()}`)} + ${frac(L_s.toFixed(2), `${A_net.toFixed(5)} &times; ${E_c.toExponential(3)}`)} ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_norm.toFixed(3)} mm</span></strong><br>
@@ -1481,6 +1481,7 @@ export function initPileModule(container) {
                             <td>${Q_app_seis.toFixed(1)} kN</td>
                             <td style="font-weight:bold; color:${P_seis <= Q_app_seis ? '#27ae60' : '#c0392b'};">${status_seis}</td>
                         </tr>
+                        ${pellsTurnerSummary}
                         <tr>
                             <td rowspan="2" style="background:#e8f8f5; font-weight:bold;">수평지지력 검토</td>
                             <td>평상시 (상시)</td>
@@ -1506,7 +1507,6 @@ export function initPileModule(container) {
                             <td style="font-weight:bold; color:#d35400;">${disp_seis_mm.toFixed(2)} mm</td>
                             <td style="font-weight:bold; color:${disp_seis_mm <= allow_h_disp ? '#27ae60' : '#c0392b'};">${disp_status_seis}</td>
                         </tr>
-                        ${pellsTurnerSummary}
                     </tbody>
                 </table>
             </div>
@@ -1573,7 +1573,9 @@ export function initPileModule(container) {
                 • <strong>말뚝 내하력 Q<sub>as</sub></strong> = (1 - ${frac("&mu;", "100")}) &times; Q<sub>mat_base</sub> = <span style="color:#2980b9; font-weight:bold; font-size:1.05em;">${Qas.toFixed(1)} kN</span>
             </div>
 
-            <div class="section-title">[검증 3] 말뚝기초의 수평방향 지지력 및 수평변위 상세 산정 (구조계산서 11~17p 절차)</div>
+            ${settlementHtmlStr}
+
+            <div class="section-title">[검증 4] 말뚝기초의 수평방향 지지력 및 수평변위 상세 산정 (구조계산서 11~17p 절차)</div>
             
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>1. 수평지반반력계수 k<sub>h</sub> 산정 (도로교 표준시방서 축차계산법)</strong><br>
@@ -1694,8 +1696,6 @@ export function initPileModule(container) {
                 &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 발생변위 &delta;<sub>norm</sub> = ${frac(`${H_norm.toFixed(1)} &times; ${beta_norm.toFixed(5)}`, `${kh_norm.toFixed(1)} &times; ${D.toFixed(3)}`)} &times; 1000 = <strong><span style="color:#d35400; font-weight:bold;">${disp_norm_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_norm}</strong> )<br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 발생변위 &delta;<sub>seis</sub> = ${frac(`${H_seis.toFixed(1)} &times; ${beta_seis.toFixed(5)}`, `${kh_seis.toFixed(1)} &times; ${D.toFixed(3)}`)} &times; 1000 = <strong><span style="color:#d35400; font-weight:bold;">${disp_seis_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp.toFixed(1)} mm ( <strong>${disp_status_seis}</strong> )
             </div>
-
-            ${settlementHtmlStr}
         `;
     }
 }
