@@ -155,20 +155,17 @@ export function initPileModule(container) {
         <div class="input-grid" style="margin-bottom: 10px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
             <div class="input-group" style="background:#fff; margin:0;">
                 <label>말뚝 두부 조건</label>
-                <select id="pile_head_cond" style="width:100%; height:32px; box-sizing:border-box; padding:4px; font-size:0.88em; text-align:center;">
+                <select id="pile_head_cond" style="width:100%; height:32px; box-sizing:border-box; padding:4px 2px; font-size:0.85em; text-align:center;">
                     <option value="free" ${getVal('head_cond', 'free') === 'free' ? 'selected' : ''}>두부 자유 (Free)</option>
                     <option value="fixed" ${getVal('head_cond', 'free') === 'fixed' ? 'selected' : ''}>두부 고정 (Fixed)</option>
                 </select>
             </div>
             <div class="input-group" style="background:#fff; margin:0;">
-                <label style="color:#2980b9;">추정계수 &alpha; (평상시)</label>
-                <select id="pile_alpha_norm" style="width:100%; height:32px; box-sizing:border-box; padding:4px; font-size:0.88em; text-align:center;">
-                    <option value="1" ${getVal('alpha_norm', '1') === '1' ? 'selected' : ''}>1 (표준관입/평판재하)</option>
-                    <option value="4" ${getVal('alpha_norm', '1') === '4' ? 'selected' : ''}>4 (보링공내/압축시험)</option>
-                </select>
+                <label style="color:#2980b9; font-size: 0.78em; letter-spacing: -0.5px; white-space: nowrap;">추정계수 &alpha; (평상시)</label>
+                <input type="number" id="pile_alpha_norm" value="${getVal('alpha_norm', '1.0')}" step="0.1" class="pl-input">
             </div>
             <div class="input-group" style="background:#fff; margin:0;">
-                <label style="color:#8e44ad;">말뚝 탄성계수 E<sub>p</sub> (kN/m²)</label>
+                <label style="color:#8e44ad; font-size:0.78em; letter-spacing:-0.6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">말뚝 탄성계수 E<sub>p</sub> (kN/m²)</label>
                 <input type="number" id="pile_Ep" value="${getVal('Ep', defaultEp)}" step="100000" class="pl-input">
             </div>
             <div class="input-group" style="background:#fff; margin:0;">
@@ -181,9 +178,11 @@ export function initPileModule(container) {
             </div>
         </div>
 
-        <div style="margin-bottom: 15px; font-size: 0.82em; color: #2c3e50; background: #fafafa; padding: 8px; border-radius: 5px; border: 1px solid #d5d8dc;">
-            <div style="font-weight: bold; margin-bottom: 4px; color: #2980b9;">[해설 표 5.3.9] E<sub>0</sub>와 &alpha; 값 (구조물기초설계기준)</div>
-            <table class="result-table" style="font-size: 0.88em; text-align: center; width: 100%; margin: 0; border-collapse: collapse;">
+        <details style="margin-bottom: 15px; font-size: 0.82em; color: #2c3e50; background: #fafafa; padding: 6px 10px; border-radius: 5px; border: 1px solid #d5d8dc;">
+            <summary style="font-weight: bold; color: #2980b9; cursor: pointer; user-select: none;">
+                [해설 표 5.3.9] E<sub>0</sub>와 &alpha; 값 (구조물기초설계기준) ▶ (클릭하여 펼치기/접기)
+            </summary>
+            <table class="result-table" style="font-size: 0.88em; text-align: center; width: 100%; margin-top: 6px; border-collapse: collapse;">
                 <thead>
                     <tr style="background-color: #ebf5fb;">
                         <th style="padding: 4px; border: 1px solid #d5d8dc;">다음의 시험방법에 의한 변형계수 E<sub>0</sub> (kN/m²)</th>
@@ -214,7 +213,7 @@ export function initPileModule(container) {
                     </tr>
                 </tbody>
             </table>
-        </div>
+        </details>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 15px;">
@@ -1051,27 +1050,23 @@ export function initPileModule(container) {
             EI: EI,
             alphaNorm: alphaNorm,
             alphaSeis: alphaSeis,
-            // 도로교 평상시
             kh_road_norm: kh_road_norm,
             beta_road_norm: betaNorm,
             invBeta_road_norm: invBeta_road_norm,
             N_road_norm: avgN_road_norm,
             E0_road_norm: E0_road_norm,
             stepsRoadNorm: stepsRoadNorm,
-            // 도로교 지진시
             kh_road_seis: kh_road_seis,
             beta_road_seis: betaSeis,
             invBeta_road_seis: invBeta_road_seis,
             N_road_seis: avgN_road_seis,
             E0_road_seis: E0_road_seis,
             stepsRoadSeis: stepsRoadSeis,
-            // 후쿠오카 (단일)
             kh_fukuoka: kh_fukuoka,
             beta_fukuoka: betaF,
             invBeta_fukuoka: invBeta_fukuoka,
             N_fukuoka: avgN_fukuoka,
             stepsFukuoka: stepsFukuoka,
-            // 최종 선택
             applied_kh_norm: applied_kh_norm,
             applied_beta_norm: applied_beta_norm,
             kh_norm_source: kh_norm_source,
@@ -1252,7 +1247,7 @@ export function initPileModule(container) {
 
             let z_mid = cum_depth + 0.5 * dz_i;
             let sigma_v_mid = cum_sigma_v + gamma_i * (0.5 * dz_i);
-            let u_mid = Math.max(0, (z_mid - gwt) * 9.81);
+            let u_mid = Math.max(0, (z_mid - gwt) * 9.807);
             let sigma_v_prime = Math.max(0, sigma_v_mid - u_mid);
 
             if (l.type === 'rock' && p_type === 'CAST_ROCK') {
@@ -1394,10 +1389,11 @@ export function initPileModule(container) {
 
         if (p_type === 'PHC') {
             const phcClass = container.querySelector('#phc_class')?.value || 'A';
-            if (phcClass === 'A') fy_kNm2 = 20000.0;
-            else if (phcClass === 'B') fy_kNm2 = 25000.0;
-            else if (phcClass === 'C') fy_kNm2 = 30000.0;
-            else fy_kNm2 = 20000.0;
+            if (phcClass === 'A') {
+                fy_kNm2 = 20000.0;
+            } else {
+                fy_kNm2 = 21300.0;
+            }
             fy_detail_str = `PHC말뚝 (${phcClass}종): f<sub>y</sub> = <strong>${fy_kNm2.toLocaleString()} kPa</strong>`;
         } else if (p_type === 'STEEL') {
             const gradeKey = container.querySelector('#steel_grade')?.value || 'STP275';
@@ -1415,7 +1411,7 @@ export function initPileModule(container) {
         const topLayer = pileLayersData[0] || { c_val: 5, phi: 25, gamma: 18.5 };
         const phi_rad = ((topLayer.phi || 25) * Math.PI) / 180.0;
         const Kp = (1.0 + Math.sin(phi_rad)) / (1.0 - Math.sin(phi_rad));
-        const gamma_sub = topLayer.gamma ? Math.max(8.5, topLayer.gamma - 9.81) : 8.5; 
+        const gamma_sub = topLayer.gamma ? Math.max(8.5, topLayer.gamma - 9.807) : 8.5; 
 
         // Broms법 특성치 및 긴말뚝 수평극한지지력 Hu 산정
         let chi_norm = 1.0 / beta_norm;
@@ -1458,6 +1454,122 @@ export function initPileModule(container) {
 
         let disp_status_norm = disp_norm_mm <= allow_h_disp ? "안정 (O.K)" : "NG";
         let disp_status_seis = disp_seis_mm <= allow_h_disp ? "안정 (O.K)" : "NG";
+
+        // Broms 산정식 적용 구분 판단 및 표 생성
+        const isSand = ['sand', 'gravel', 'weathered_rock'].includes(topLayer.type);
+        let betaL_val = beta_norm * L;
+        let etaL_val = etaL_norm;
+
+        let activeKey = "";
+        if (isSand) {
+            if (etaL_val < 2) activeKey = "sand_1";
+            else if (etaL_val <= 4) activeKey = "sand_2";
+            else activeKey = "sand_3";
+        } else {
+            if (betaL_val < 2.25) activeKey = "clay_1";
+            else activeKey = "clay_3";
+        }
+
+        let bromsTableHtml = "";
+        if (head_cond === 'fixed') {
+            bromsTableHtml = `
+            <div style="font-weight:bold; margin-top:10px; margin-bottom:4px; color:#2c3e50;">■ 표 7. 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 구속)</div>
+            <div class="table-container" style="margin: 5px 0;">
+                <table class="result-table" style="font-size:0.82em; text-align:center; width:100%;">
+                    <thead>
+                        <tr style="background:#eaeded;">
+                            <th style="width:10%;">지반</th>
+                            <th style="width:15%;">구분</th>
+                            <th>수평지지력, H<sub>u</sub> (kN)</th>
+                            <th style="width:12%;">적용공식</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="${activeKey === 'clay_1' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td rowspan="3" style="vertical-align:middle;">점성토</td>
+                            <td>&beta;L &lt; 2.25</td>
+                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 9 c<sub>u</sub> D'² { (L/D') - 1.5 }</td>
+                            <td>${activeKey === 'clay_1' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'clay_2' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td>-</td>
+                            <td style="text-align:left; padding-left:10px;">(H<sub>u</sub> / c<sub>u</sub> D'²)² + (27 + 18L/D')(H<sub>u</sub> / c<sub>u</sub> D'²) - 81(L/D' - 1.5)² = 36(M<sub>y</sub> / c<sub>u</sub> D'³)</td>
+                            <td>${activeKey === 'clay_2' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'clay_3' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td>&beta;L &gt; 2.25</td>
+                            <td style="text-align:left; padding-left:10px;">{H<sub>u</sub> / (c<sub>u</sub> D'²)}² + 27{H<sub>u</sub> / (c<sub>u</sub> D'²)} = 36(M<sub>y</sub> / c<sub>u</sub> D'³)</td>
+                            <td>${activeKey === 'clay_3' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'sand_1' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td rowspan="3" style="vertical-align:middle;">사질토</td>
+                            <td>&eta;L &lt; 2</td>
+                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 1.5 K<sub>p</sub> &gamma;' D' L²</td>
+                            <td>${activeKey === 'sand_1' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'sand_2' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td>2 &lt; &eta;L &lt; 4</td>
+                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = K<sub>p</sub> D'³ &gamma;' { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') + 0.5(L/D')³ }(D'/L)</td>
+                            <td>${activeKey === 'sand_2' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'sand_3' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td>&eta;L &gt; 4</td>
+                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 2.38 (M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;'))<sup>2/3</sup> K<sub>p</sub> D'³ &gamma;'</td>
+                            <td>${activeKey === 'sand_3' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>`;
+        } else {
+            bromsTableHtml = `
+            <div style="font-weight:bold; margin-top:10px; margin-bottom:4px; color:#2c3e50;">■ 표 8. 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 자유)</div>
+            <div class="table-container" style="margin: 5px 0;">
+                <table class="result-table" style="font-size:0.82em; text-align:center; width:100%;">
+                    <thead>
+                        <tr style="background:#eaeded;">
+                            <th style="width:10%;">지반</th>
+                            <th style="width:15%;">구분</th>
+                            <th>수평지지력, H<sub>u</sub> (kN)</th>
+                            <th style="width:12%;">적용공식</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="${activeKey === 'clay_1' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td rowspan="3" style="vertical-align:middle;">점성토</td>
+                            <td>&beta;L &lt; 2.25</td>
+                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 9 c<sub>u</sub> D² [ {4(h/D)² + 2(L/D)² + 4(h/D)(L/D) + 6(h/D) + 4.5}<sup>1/2</sup> - {2(h/D) + L/D + 1.5} ]</td>
+                            <td>${activeKey === 'clay_1' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'clay_2' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td>-</td>
+                            <td style="text-align:left; padding-left:10px;">-</td>
+                            <td>${activeKey === 'clay_2' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'clay_3' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td>&beta;L &gt; 2.25</td>
+                            <td style="text-align:left; padding-left:10px;">{H<sub>u</sub> / (c<sub>u</sub> D²)}² + {18(h/D) + 27}{H<sub>u</sub> / (c<sub>u</sub> D²)} = 18{M<sub>y</sub> / (c<sub>u</sub> D³)}</td>
+                            <td>${activeKey === 'clay_3' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'sand_1' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td rowspan="3" style="vertical-align:middle;">사질토</td>
+                            <td>&eta;L &lt; 2</td>
+                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = (K<sub>p</sub> &gamma; D L²) / {2(1 + h/L)}</td>
+                            <td>${activeKey === 'sand_1' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'sand_2' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td>2 &lt; &eta;L &lt; 4</td>
+                            <td style="text-align:left; padding-left:10px;">-</td>
+                            <td>${activeKey === 'sand_2' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                        <tr style="${activeKey === 'sand_3' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                            <td>&eta;L &gt; 4</td>
+                            <td style="text-align:left; padding-left:10px;">{H<sub>u</sub> / (K<sub>p</sub> &gamma; D³)} [ h/D + 0.544{H<sub>u</sub> / (K<sub>p</sub> &gamma; D³)}<sup>1/2</sup> ] = {M<sub>y</sub> / (K<sub>p</sub> &gamma; D⁴)}</td>
+                            <td>${activeKey === 'sand_3' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>`;
+        }
 
         // 5. 연직 침하량 검토 (Pells & Turner, 1979)
         let settlementHtmlStr = "";
@@ -1544,11 +1656,13 @@ export function initPileModule(container) {
                     <td>평상시 (Pells & Turner)</td>
                     <td style="font-weight:bold; color:#8e44ad;">${finalS_norm.toFixed(2)} mm</td>
                     <td rowspan="2" style="vertical-align: middle;">${allow_settle.toFixed(1)} mm</td>
+                    <td style="font-size:0.85em;">Pells & Turner (1979)</td>
                     <td style="font-weight:bold; color:${finalS_norm <= allow_settle ? '#27ae60' : '#c0392b'};">${finalS_norm <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
                 </tr>
                 <tr>
                     <td>지진시 (Pells & Turner)</td>
                     <td style="font-weight:bold; color:#8e44ad;">${finalS_seis.toFixed(2)} mm</td>
+                    <td style="font-size:0.85em;">Pells & Turner (1979)</td>
                     <td style="font-weight:bold; color:${finalS_seis <= allow_settle ? '#27ae60' : '#c0392b'};">${finalS_seis <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
                 </tr>
             `;
@@ -1705,8 +1819,8 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px;">
                 <strong>(3) 지반에 의한 극한지지력 및 허용지지력 (Q<sub>u</sub>, Q<sub>a,soil</sub>)</strong><br>
                 • 극한지지력 Q<sub>u</sub> = Q<sub>up</sub> + Q<sub>us</sub> = <strong>${Qu_total.toFixed(1)} kN</strong><br>
-                • 평상시 허용지지력 (F.S = 3.0) : <strong>${Qa_soil_norm.toFixed(1)} kN</strong><br>
-                • 내진시 허용지지력 (F.S = 2.0) : <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
+                • 평상시 허용지지력 (안전율 F.S = 3.0) : <strong>${Qa_soil_norm.toFixed(1)} kN</strong><br>
+                • 내진시 허용지지력 (안전율 F.S = 2.0) : <strong>${Qa_soil_seis.toFixed(1)} kN</strong>
             </div>
 
             <div class="section-title">[검증 2] 본체부 말뚝 내하력 (재료 허용압축하중 Q<sub>as</sub>) 산정</div>
@@ -1725,7 +1839,7 @@ export function initPileModule(container) {
                 &nbsp;&nbsp;• 공식: k<sub>h</sub> = k<sub>h0</sub> &times; ( ${frac("1", "0.3")} &times; B<sub>H</sub> )<sup>-3/4</sup> = { ${frac("1", "0.3")} &times; &alpha; &times; E<sub>0</sub> } &times; { ${frac("1", "0.3")} &times; (${frac("D", "&beta;")})<sup>1/2</sup> }<sup>-3/4</sup><br>
                 &nbsp;&nbsp;• <strong>환산재하폭 (B<sub>H</sub>) 산정 공식 :</strong> B<sub>H</sub> = (${frac("D", "&beta;")})<sup>1/2</sup> = &radic;(${frac("D", "&beta;")})<br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 초기가정 대입 계산: B<sub>H</sub> = &radic;(${frac(D.toFixed(3), "0.20000")}) = <strong>${initBHVal.toFixed(3)} m</strong><br>
-                &nbsp;&nbsp;• [가정값: 초기가정 &beta;<sub>0</sub> = 0.20000 m<sup>-1</sup>], <strong>[적용 추정계수 &alpha;: 평상시 = ${horizRes.alphaNorm}, 지진시 = ${horizRes.alphaSeis} (평상시의 2배)]</strong><br>
+                &nbsp;&nbsp;• [초기가정 &beta;<sub>0</sub> = 0.20000 m<sup>-1</sup>], <strong>[적용 추정계수 &alpha;: 평상시 = ${horizRes.alphaNorm}, 지진시 = ${horizRes.alphaSeis} (평상시의 2배)]</strong><br>
 
                 <div style="font-weight:bold; margin-top:8px; color:#2c3e50;">(1) 평상시 축차계산 과정 (&alpha; = ${horizRes.alphaNorm})</div>
                 <div class="table-container" style="margin: 5px 0;">
@@ -1767,7 +1881,7 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>2. 수평지반반력계수 k<sub>h</sub> 산정 (후쿠오카 공식 축차계산법 - 상시/지진시 공통)</strong><br>
                 &nbsp;&nbsp;• 공식: k<sub>h</sub> = 0.691 &times; N<sup>0.406</sup> &times; 9,806.65 (kN/m³)<br>
-                &nbsp;&nbsp;• [가정값: 초기가정 &beta;<sub>0</sub> = 0.20000 m<sup>-1</sup>] (※ 후쿠오카 공식은 계수 &alpha;의 영향이 없어 상시/지진시 결과가 동일함)<br>
+                &nbsp;&nbsp;• [초기가정 &beta;<sub>0</sub> = 0.20000 m<sup>-1</sup>] (※ 후쿠오카 공식은 계수 &alpha;의 영향이 없어 상시/지진시 결과가 동일함)<br>
 
                 <div style="font-weight:bold; margin-top:8px; color:#2c3e50;">축차계산 과정 (후쿠오카 공식)</div>
                 <div class="table-container" style="margin: 5px 0;">
@@ -1795,38 +1909,36 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>3. Broms 극한평형법 매개변수 및 말뚝 길이 조건 판정</strong><br>
                 &nbsp;&nbsp;• <strong>항복휨응력 (f<sub>y</sub>) 산정 :</strong> ${fy_detail_str}<br>
-                &nbsp;&nbsp;• [가정값: 하중 작용점 높이 h = 0.0 m]<br>
+                &nbsp;&nbsp;• <strong>두부 구속조건 :</strong> ${head_cond === 'fixed' ? '두부고정 (Fixed)' : '두부자유 (Free)'}<br>
+                &nbsp;&nbsp;• 하중 작용점 높이 h = 0.0 m<br>
                 &nbsp;&nbsp;• 단면계수 (Z) = ${frac("&pi; &times; D³", "32")} = ${frac("&pi; &times; " + D.toFixed(3) + "³", "32")} = <strong>${Z_m3.toFixed(4)} m³</strong><br>
                 &nbsp;&nbsp;• 항복모멘트 (M<sub>y</sub>) = f<sub>y</sub> &times; Z = ${fy_kNm2.toLocaleString()} &times; ${Z_m3.toFixed(4)} = <strong>${My_kNm.toFixed(1)} kN·m</strong><br>
                 &nbsp;&nbsp;• 수동토압계수 (K<sub>p</sub>) = ${frac("1 + sin&phi;", "1 - sin&phi;")} = ${frac("1 + sin(" + topLayer.phi + "°)", "1 - sin(" + topLayer.phi + "°)")} = <strong>${Kp.toFixed(3)}</strong><br>
-                &nbsp;&nbsp;• 수중단위중량 (&gamma;') = &gamma;<sub>sat</sub> - &gamma;<sub>w</sub> = ${topLayer.gamma.toFixed(1)} - 9.81 = <strong>[가정값: ${gamma_sub.toFixed(1)} kN/m³]</strong><br><br>
+                &nbsp;&nbsp;• 수중단위중량 (&gamma;') = &gamma;<sub>sat</sub> - &gamma;<sub>w</sub> = ${topLayer.gamma.toFixed(1)} - 9.807 = <strong>${gamma_sub.toFixed(1)} kN/m³</strong><br><br>
                 &nbsp;&nbsp;• <strong>말뚝 특성치 &eta; 및 &eta;L 계산 :</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 1/&beta; = ${chi_norm.toFixed(3)} m, 지반반력상수 n<sub>h</sub> = ${frac("k<sub>h</sub> &times; D", "1/&beta;")} = ${frac(kh_norm.toFixed(1) + " &times; " + D.toFixed(3), chi_norm.toFixed(3))} = <strong>${eta_h_norm.toFixed(1)} kN/m³</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&eta; = ( ${frac("n<sub>h</sub>", "EI")} )<sup>1/5</sup> = ( ${frac(eta_h_norm.toFixed(1), horizRes.EI.toFixed(1))} )<sup>1/5</sup> = <strong>${eta_norm.toFixed(3)} m<sup>-1</sup></strong> &rArr; &eta;L = ${eta_norm.toFixed(3)} &times; ${L.toFixed(1)} = <strong>${etaL_norm.toFixed(3)}</strong> ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )<br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 1/&beta; = ${chi_seis.toFixed(3)} m, 지반반력상수 n<sub>h</sub> = ${frac("k<sub>h</sub> &times; D", "1/&beta;")} = ${frac(kh_seis.toFixed(1) + " &times; " + D.toFixed(3), chi_seis.toFixed(3))} = <strong>${eta_h_seis.toFixed(1)} kN/m³</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&eta; = ( ${frac("n<sub>h</sub>", "EI")} )<sup>1/5</sup> = ( ${frac(eta_h_seis.toFixed(1), horizRes.EI.toFixed(1))} )<sup>1/5</sup> = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong> &rArr; &eta;L = ${eta_seis.toFixed(3)} &times; ${L.toFixed(1)} = <strong>${etaL_seis.toFixed(3)}</strong> ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )<br>
-                &nbsp;&nbsp;• [가정값: 두부 구속조건 = ${head_cond === 'fixed' ? '두부고정' : '두부자유'}]
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&eta; = ( ${frac("n<sub>h</sub>", "EI")} )<sup>1/5</sup> = ( ${frac(eta_h_seis.toFixed(1), horizRes.EI.toFixed(1))} )<sup>1/5</sup> = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong> &rArr; &eta;L = ${eta_seis.toFixed(3)} &times; ${L.toFixed(1)} = <strong>${etaL_seis.toFixed(3)}</strong> ( <strong>&eta;L > 4.0 이므로 <u>긴말뚝</u> 판정</strong> )
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>4. Broms 극한평형법 수평 지지력 산정 수식 및 계산 과정</strong><br>
-                &nbsp;&nbsp;• <strong>긴말뚝(사질토, 두부자유) 수평극한저항력 (H<sub>u</sub>) 관계식 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;${frac("H<sub>u</sub>", "K<sub>p</sub> &gamma;' D³")} [ ${frac("h", "D")} + 0.544 { ${frac("H<sub>u</sub>", "K<sub>p</sub> &gamma;' D²")} }<sup>1/2</sup> ] = ${frac("M<sub>y</sub>", "K<sub>p</sub> &gamma;' D⁴")}<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&rArr; H<sub>u</sub> = 2.38 &times; ( ${frac("M<sub>y</sub>", "K<sub>p</sub> &gamma;' D⁴")} )<sup>2/3</sup> &times; (K<sub>p</sub> &gamma;' D³)<br>
-                &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
+                ${bromsTableHtml}<br>
+                &nbsp;&nbsp;• <strong>선택된 적용 공식 대입 계산 :</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- K<sub>p</sub> &gamma;' D³ = ${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}³ = <strong>${Kp_gamma_D3.toFixed(1)} kN</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- K<sub>p</sub> &gamma;' D⁴ = ${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}⁴ = <strong>${Kp_gamma_D4.toFixed(1)} kN·m</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- ${frac("M<sub>y</sub>", "K<sub>p</sub> &gamma;' D⁴")} = ${frac(My_kNm.toFixed(1), Kp_gamma_D4.toFixed(1))} = <strong>${My_ratio.toFixed(2)}</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- H<sub>u</sub> = 2.38 &times; (${My_ratio.toFixed(2)})<sup>2/3</sup> &times; ${Kp_gamma_D3.toFixed(1)} = <strong>${Hu_norm.toFixed(1)} kN/본</strong><br>
                 &nbsp;&nbsp;• <strong>Broms 허용수평지지력 (H<sub>a</sub>) :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${frac("H<sub>u</sub>", "3.0")} = ${frac(Hu_norm.toFixed(1), "3.0")} = <strong>${Ha_broms_norm.toFixed(1)} kN/본</strong> ( [가정값: 안전율 F.S = 3.0] )<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${frac("H<sub>u</sub>", "2.0")} = ${frac(Hu_seis.toFixed(1), "2.0")} = <strong>${Ha_broms_seis.toFixed(1)} kN/본</strong> ( [가정값: 안전율 F.S = 2.0] )
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${frac("H<sub>u</sub>", "3.0")} = ${frac(Hu_norm.toFixed(1), "3.0")} = <strong>${Ha_broms_norm.toFixed(1)} kN/본</strong> ( 안전율 F.S = 3.0 )<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${frac("H<sub>u</sub>", "2.0")} = ${frac(Hu_seis.toFixed(1), "2.0")} = <strong>${Ha_broms_seis.toFixed(1)} kN/본</strong> ( 안전율 F.S = 2.0 )
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>5. Chang 탄성지반반력법 수평 지지력 산정 수식 및 계산 과정</strong><br>
                 &nbsp;&nbsp;• <strong>허용변위 연동 허용수평지지력 공식 :</strong> H<sub>a</sub> = ${frac("k<sub>h</sub> &times; D &times; &delta;<sub>sa</sub>", "&beta;")}<br>
-                &nbsp;&nbsp;• [가정값: 허용수평변위량 &delta;<sub>sa</sub> = ${allow_h_disp.toFixed(1)} mm = ${(allow_h_disp/1000).toFixed(4)} m]<br>
+                &nbsp;&nbsp;• 허용수평변위량 &delta;<sub>sa</sub> = ${allow_h_disp.toFixed(1)} mm = ${(allow_h_disp/1000).toFixed(4)} m<br>
                 &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> = ${frac(kh_norm.toFixed(1) + " &times; " + D.toFixed(3) + " &times; " + (allow_h_disp/1000).toFixed(4), beta_norm.toFixed(5))} = <strong><span style="color:#2980b9; font-weight:bold;">${Ha_chang_norm.toFixed(1)} kN/본</span></strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> = ${frac(kh_seis.toFixed(1) + " &times; " + D.toFixed(3) + " &times; " + (allow_h_disp/1000).toFixed(4), beta_seis.toFixed(5))} = <strong><span style="color:#2980b9; font-weight:bold;">${Ha_chang_seis.toFixed(1)} kN/본</span></strong>
