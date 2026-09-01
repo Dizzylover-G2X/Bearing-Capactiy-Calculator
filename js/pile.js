@@ -7,7 +7,7 @@ export function initPileModule(container) {
         }
     };
 
-    // 백틱 충돌을 방지하기 위해 일반 문자열 연산으로 수정된 분수 표현 함수
+    // 분수 표현 지원 함수
     const frac = (num, den) => '<span style="display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 4px;"><span style="border-bottom:1px solid #2c3e50; padding:1px 4px;">' + num + '</span><span style="padding:1px 4px;">' + den + '</span></span>';
 
     // 표준 제원 DB
@@ -221,7 +221,7 @@ export function initPileModule(container) {
     function updateFormulaInfoText() {
         const type = container.querySelector('#pile_type').value;
         const method = container.querySelector('#pile_method')?.value || 'bored';
-        const qpVal = container.querySelector('#pile_qp_formula').value;
+        const qpVal = container.querySelector('#pile_qp_formula')?.value || 'rock_case2';
         const qsVal = container.querySelector('#pile_qs_formula')?.value || 'oneill';
         const infoBox = container.querySelector('#formula_info_box');
 
@@ -824,6 +824,7 @@ export function initPileModule(container) {
         return 0.370;
     }
 
+    // [오류 수정] 2차원 선형 보간 수식 정상화
     function getIps(dr_br, ec_em) {
         const x_vals = [0, 0.5, 1, 2, 3, 5];
         const y_ratios = [0.2, 0.5, 1, 2, 10, 50, 1000];
@@ -851,7 +852,7 @@ export function initPileModule(container) {
         let v00 = grid[r0][c0], v01 = grid[r0][c1];
         let v10 = grid[r1][c0], v11 = grid[r1][c1];
         let v0 = v00 + tx * (v01 - v00);
-        let v1 = v10 + ty * (v1 - v0);
+        let v1 = v10 + tx * (v11 - v10); // 수정 완료
         return v0 + ty * (v1 - v0);
     }
 
@@ -990,7 +991,7 @@ export function initPileModule(container) {
         }
 
         const method = container.querySelector('#pile_method')?.value || 'bored';
-        const qp_formula_key = container.querySelector('#pile_qp_formula').value;
+        const qp_formula_key = container.querySelector('#pile_qp_formula')?.value || 'rock_case2';
         const qs_formula_key = container.querySelector('#pile_qs_formula')?.value || 'oneill';
 
         const D_mm = parseFloat(container.querySelector('#pile_D').value) || 3000;
