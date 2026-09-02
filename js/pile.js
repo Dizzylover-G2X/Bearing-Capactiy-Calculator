@@ -9,7 +9,8 @@ export function initPileModule(container) {
         }
     };
 
-    const frac = (num, den) => '<span style="display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 4px;"><span style="border-bottom:1px solid #2c3e50; padding:1px 4px;">' + num + '</span><span style="padding:1px 4px;">' + den + '</span></span>';
+    // 분수 시각화 유틸리티
+    const frac = (num, den) => `<span style="display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 4px;"><span style="border-bottom:1px solid #2c3e50; padding:1px 4px;">${num}</span><span style="padding:1px 4px;">${den}</span></span>`;
 
     // 표준 제원 DB
     const PHC_DB = {
@@ -40,6 +41,8 @@ export function initPileModule(container) {
     };
 
     let savedD = parseFloat(getVal('D', '500'));
+    if (savedD < 10) savedD = savedD * 1000;
+
     let pileLayers;
     try {
         pileLayers = JSON.parse(localStorage.getItem('geo_pile_layers'));
@@ -47,23 +50,27 @@ export function initPileModule(container) {
         pileLayers = null;
     }
 
+    // 캡쳐 화면(image_35a1a2.png)과 동일한 총 연장 L = 31.10m 지층 데이터 초기화
     if (!pileLayers || !Array.isArray(pileLayers) || pileLayers.length === 0) {
         pileLayers = [
-            { name: '매립사질', type: 'clay', dz: 2.10, n_val: 20, gamma: 18.5, c_val: 5.0, phi: 0, es: 10000 },
-            { name: '점토', type: 'clay', dz: 1.60, n_val: 20, gamma: 18.0, c_val: 35.0, phi: 0, es: 12000 },
-            { name: '풍화토1', type: 'sand', dz: 1.30, n_val: 20, gamma: 19.0, c_val: 15.0, phi: 28, es: 20000 },
-            { name: '지층4', type: 'sand', dz: 1.00, n_val: 37, gamma: 19.5, c_val: 20.0, phi: 29, es: 55000 },
-            { name: '지층5', type: 'sand', dz: 5.60, n_val: 50, gamma: 20.0, c_val: 25.0, phi: 30, es: 70000 },
-            { name: '지층7', type: 'sand', dz: 6.10, n_val: 50, gamma: 23.0, c_val: 350.0, phi: 33, es: 150000 }
+            { name: '매립사질', type: 'clay', dz: 2.10, n_val: 20, gamma: 18.5, c_val: 5.0 },
+            { name: '점토', type: 'clay', dz: 1.60, n_val: 20, gamma: 18.0, c_val: 35.0 },
+            { name: '풍화토1', type: 'sand', dz: 1.30, n_val: 20, gamma: 19.0, c_val: 15.0 },
+            { name: '지층4', type: 'sand', dz: 1.00, n_val: 37, gamma: 19.5, c_val: 20.0 },
+            { name: '지층5', type: 'sand', dz: 5.60, n_val: 50, gamma: 20.0, c_val: 25.0 },
+            { name: '지층7', type: 'sand', dz: 19.50, n_val: 50, gamma: 23.0, c_val: 350.0 }
         ];
         try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch (e) {}
     }
 
     const calcTotalL = () => pileLayers.reduce((sum, l) => sum + (parseFloat(l.dz) || 0), 0);
+
     const initialType = getVal('type', 'PHC');
     const initialT1 = parseFloat(getVal('t1', '1.0')).toFixed(1);
     const initialMethod = getVal('method', 'bored');
-    const initialGWT = parseFloat(getVal('gwt', '2.0')).toFixed(1);
+    const initialGWT = getVal('gwt', '2.0');
+    const cpType = getVal('Cp_type', 'avg');
+    const defaultEp = initialType === 'STEEL' ? '200000000' : '39200000';
 
     container.innerHTML = `
         <style>
@@ -74,11 +81,11 @@ export function initPileModule(container) {
 
         <h3>기성말뚝 기초 검토 (PHC / 강관말뚝)</h3>
         
-        <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50;">■ 말뚝기초 제원 및 시공 조건</div>
+        <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.95em;">■ 말뚝기초 제원 및 시공 조건</div>
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px;">
             <div class="input-group" style="margin:0;">
                 <label>말뚝 종류</label>
-                <select id="pile_type" style="width:100%; height:32px; box-sizing:border-box; padding:4px;">
+                <select id="pile_type" style="width:100%; height:32px; box-sizing:border-box; padding:4px; font-size:0.88em;">
                     <option value="PHC" ${initialType === 'PHC' ? 'selected' : ''}>PHC 말뚝</option>
                     <option value="STEEL" ${initialType === 'STEEL' ? 'selected' : ''}>강관 말뚝</option>
                 </select>
@@ -91,7 +98,7 @@ export function initPileModule(container) {
                 <label>규격/직경 D(mm)</label>
                 <div style="display:flex; gap:4px; height:32px;">
                     <select id="pile_spec_select" style="width:55%; height:100%; box-sizing:border-box; padding:2px; font-size:0.85em;"></select>
-                    <input type="number" id="pile_D" value="${savedD}" step="0.1" class="pl-input" style="width:45%; height:100%;">
+                    <input type="number" id="pile_D" value="${savedD}" step="0.1" placeholder="D(mm)" class="pl-input" style="width:45%; height:100%;">
                 </div>
             </div>
             <div class="input-group" style="margin:0;">
@@ -110,61 +117,71 @@ export function initPileModule(container) {
         <div id="pile_row2_container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px;"></div>
         <div id="formula_info_box" style="margin-bottom: 15px; font-size: 0.83em; color: #2c3e50; background: #f4f6f7; padding: 8px 12px; border-radius: 4px; border-left: 4px solid #16a085;"></div>
 
-        <div style="font-weight: bold; margin-bottom: 8px; color: #d35400;">■ 작용 하중 (상부구조 반력)</div>
-        <div class="input-grid" style="margin-bottom: 15px; background-color: #fdf2e9; padding: 10px; border-radius: 5px; border: 1px solid #edbb99; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#d35400;">평상시 연직 P<sub>norm</sub> (kN)</label><input type="number" id="pile_P_norm" value="${getVal('P_norm', '2062.8')}" step="0.1" class="pl-input"></div>
-            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#c0392b;">지진시 연직 P<sub>seis</sub> (kN)</label><input type="number" id="pile_P_seis" value="${getVal('P_seis', '1728.6')}" step="0.1" class="pl-input"></div>
-            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#2980b9;">평상시 수평 H<sub>norm</sub> (kN)</label><input type="number" id="pile_H_norm" value="${getVal('H_norm', '150')}" step="0.1" class="pl-input"></div>
-            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#8e44ad;">지진시 수평 H<sub>seis</sub> (kN)</label><input type="number" id="pile_H_seis" value="${getVal('H_seis', '300')}" step="0.1" class="pl-input"></div>
+        <div style="font-weight: bold; margin-bottom: 8px; color: #d35400; font-size: 0.95em;">■ 작용 하중 (상부구조 반력)</div>
+        <div class="input-grid" style="margin-bottom: 15px; background-color: #fdf2e9; padding: 10px; border-radius: 5px; border: 1px solid #edbb99; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#d35400;">평상시 P<sub>norm</sub> (kN/본)</label><input type="number" id="pile_P_norm" value="${getVal('P_norm', '2062.8')}" step="0.1" class="pl-input"></div>
+            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#c0392b;">지진시 P<sub>seis</sub> (kN/본)</label><input type="number" id="pile_P_seis" value="${getVal('P_seis', '1728.6')}" step="0.1" class="pl-input"></div>
         </div>
 
-        <div style="font-weight: bold; margin-bottom: 8px; color: #8e44ad;">■ 수평 해석 및 허용 기준 조건</div>
-        <div class="input-grid" style="margin-bottom: 10px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
-            <div class="input-group" style="background:#fff; margin:0;">
-                <label>말뚝 두부 조건</label>
-                <select id="pile_head_cond" style="width:100%; height:32px; padding:4px;">
-                    <option value="free" ${getVal('head_cond', 'free') === 'free' ? 'selected' : ''}>두부 자유 (Free)</option>
-                    <option value="fixed" ${getVal('head_cond', 'free') === 'fixed' ? 'selected' : ''}>두부 고정 (Fixed)</option>
-                </select>
+        <div id="pile_settlement_input_sec">
+            <div style="font-weight: bold; margin-bottom: 8px; color: #8e44ad; font-size: 0.95em;">■ 침하량 산정 조건 (Vesic 및 CFEM - 기성말뚝)</div>
+            <div class="input-grid" style="margin-bottom: 15px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                <div class="input-group" style="background:#fff; margin:0;"><label style="color:#8e44ad;">말뚝 탄성계수 E<sub>p</sub> (kPa)</label><input type="number" id="pile_Ep" value="${getVal('Ep', defaultEp)}" step="100000" class="pl-input"></div>
+                <div class="input-group" style="background:#fff; margin:0;">
+                    <label>주면마찰 분포계수 &alpha;<sub>s</sub></label>
+                    <select id="pile_alpha_s" style="width:100%; height:32px; box-sizing:border-box; padding:4px; font-size:0.9em; text-align:center;">
+                        <option value="0.50" ${getVal('alpha_s', '0.67') === '0.50' ? 'selected' : ''}>0.50 (포물선)</option>
+                        <option value="0.67" ${getVal('alpha_s', '0.67') === '0.67' ? 'selected' : ''}>0.67 (삼각형)</option>
+                    </select>
+                </div>
+                <div class="input-group" style="background:#fff; margin:0;">
+                    <label>경험계수 C<sub>p</sub> 산정방식</label>
+                    <div style="display:flex; gap:4px; height:32px;">
+                        <select id="pile_Cp_type" style="flex:1; height:100%; box-sizing:border-box; padding:2px; font-size:0.85em;">
+                            <option value="avg" ${cpType === 'avg' ? 'selected' : ''}>평균 적용</option>
+                            <option value="min" ${cpType === 'min' ? 'selected' : ''}>최소 적용</option>
+                            <option value="max" ${cpType === 'max' ? 'selected' : ''}>최대 적용</option>
+                            <option value="custom" ${cpType === 'custom' ? 'selected' : ''}>직접입력</option>
+                        </select>
+                        <input type="number" id="pile_Cp_custom" value="${getVal('Cp_custom', '0.135')}" step="0.001" class="pl-input" style="width:45%; height:100%; ${cpType === 'custom' ? 'display:block;' : 'display:none;'}">
+                    </div>
+                </div>
+                <div class="input-group" style="background:#fff; margin:0;"><label style="color:#d35400;">허용 침하량 (mm)</label><input type="number" id="pile_allow_settle" value="${getVal('allow_settle', '25.0')}" step="0.1" class="pl-input"></div>
             </div>
-            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#2980b9; font-size: 0.78em;">추정계수 &alpha; (평상시)</label><input type="number" id="pile_alpha_norm" value="${getVal('alpha_norm', '1.0')}" step="0.1" class="pl-input"></div>
-            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#8e44ad; font-size: 0.78em;">말뚝 탄성계수 E<sub>p</sub> (kPa)</label><input type="number" id="pile_Ep" value="${getVal('Ep', '39200000')}" step="100000" class="pl-input"></div>
-            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#d4ac0d;">허용 연직 침하량 (mm)</label><input type="number" id="pile_allow_settle" value="${getVal('allow_settle', '25.0')}" step="0.1" class="pl-input"></div>
-            <div class="input-group" style="background:#fff; margin:0;"><label style="color:#16a085;">허용 수평 변위량 (mm)</label><input type="number" id="pile_allow_h_disp" value="${getVal('allow_h_disp', '15.0')}" step="0.1" class="pl-input"></div>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <span style="font-weight: bold; color: #27ae60;">■ 지층 정보</span>
-                <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; background: #eaf2f8; padding: 2px 8px; border-radius: 4px;">
+                <span style="font-weight: bold; color: #27ae60; font-size: 0.95em;">■ 지층 정보</span>
+                <div style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; background: #eaf2f8; padding: 2px 8px; border-radius: 4px; border: 1px solid #aeb6bf;">
                     <label for="pile_gwt" style="font-weight: bold;">지하수위 GWT (GL. -m):</label>
-                    <input type="number" id="pile_gwt" value="${initialGWT}" step="0.1" style="width: 55px; height: 22px; text-align: center;">
+                    <input type="number" id="pile_gwt" value="${initialGWT}" step="0.1" style="width: 55px; height: 22px; text-align: center; border: 1px solid #ccc; font-weight: bold;">
                 </div>
             </div>
-            <button type="button" id="pile_layer_add" style="padding: 4px 10px; background: #27ae60; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">+ 지층 추가</button>
+            <button type="button" id="pile_layer_add" style="padding: 4px 10px; background: #27ae60; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 0.85em; font-weight: bold;">+ 지층 추가</button>
         </div>
         
         <div style="background-color: #e8f8f5; padding: 8px; border-radius: 6px; border: 1px solid #a3e4d7; margin-bottom: 15px;">
             <div class="table-container" style="margin: 0; overflow-x: auto;">
-                <table class="result-table" style="font-size: 0.8em; text-align: center; margin: 0; width: 100%;">
+                <table class="result-table" style="font-size: 0.82em; text-align: center; margin: 0; width: 100%;">
                     <thead>
                         <tr style="background-color: #d1f2eb;">
-                            <th>지층명</th><th>토성구분</th><th>층후(m)</th><th>N치</th><th>&gamma; (kN/m³)</th><th>점착력 c (kPa)</th><th>마찰각 &phi; (°)</th><th>변형계수 E<sub>s</sub> (kPa)</th><th>삭제</th>
+                            <th>지층명</th><th>토성구분</th><th>층후 L (m)</th><th>N치</th><th>&gamma; (kN/m³)</th><th>점착력 c / q<sub>u</sub> (kPa)</th><th>삭제</th>
                         </tr>
                     </thead>
                     <tbody id="pile_layers_body"></tbody>
                     <tfoot>
-                        <tr style="background-color: #ebf5fb; font-weight: bold;">
+                        <tr style="background-color: #ebf5fb; font-weight: bold; border-top: 2px solid #a3e4d7;">
                             <td colspan="2" style="text-align: right; color: #2980b9;">말뚝 총 길이 L (m) :</td>
-                            <td id="pile_L_val" style="color: #16a085; font-size: 1.05em;">${calcTotalL().toFixed(1)}</td>
-                            <td colspan="6" style="text-align: left; color: #7f8c8d;">(지층 층후 자동 합산)</td>
+                            <td id="pile_L_val" style="color: #16a085; font-size: 1.05em;">${calcTotalL().toFixed(2)}</td>
+                            <td colspan="4" style="text-align: left; color: #7f8c8d;">(지층 층후 자동 합산)</td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
         </div>
 
-        <button type="button" class="action-btn" id="calc-pile-btn" style="margin-top: 10px; cursor: pointer;">기성말뚝 지지력, 수평력 및 침하량 종합산정</button>
+        <button type="button" class="action-btn" id="calc-pile-btn" style="margin-top: 10px; cursor: pointer;">기성말뚝 연직지지력 및 침하량 종합산정</button>
         <div id="pile-result" class="result-box" style="display: none;"></div>
     `;
 
@@ -180,12 +197,11 @@ export function initPileModule(container) {
         let qsText = qsVal === 'lh' ? "2.0 &times; N (사질토), 5.0 &times; q<sub>u</sub> (점성토)" : "2.5 &times; N (사질토, 상한 100 kPa), 0.8 &times; c<sub>u</sub> (점성토)";
 
         infoBox.innerHTML = `
-            <div style="font-weight: bold; color: #16a085;">▶ 적용 산정식 개요 (기성말뚝 전용)</div>
+            <div style="font-weight: bold; color: #16a085;">▶ 적용 산정식 개요 (기성말뚝)</div>
             <div style="margin-left: 6px; line-height: 1.5;">
-                • <strong>연직 선단지지력 :</strong> ${qpText}<br>
-                • <strong>연직 주면마찰력 :</strong> ${qsText}<br>
-                • <strong>연직 침하량 :</strong> Vesic (1977) 반경험적 방법 및 CFEM (1992) 경험적 방법 동시 비교 산정<br>
-                • <strong>수평 지지력/변위 :</strong> Broms 극한평형법 및 Chang 탄성지반반력법 적용
+                • <strong>선단지지력 :</strong> ${qpText}<br>
+                • <strong>주면마찰력 :</strong> ${qsText}<br>
+                • <strong>연직 침하량 :</strong> Vesic (1977) 반경험적 방법 및 CFEM (1992) 경험적 방법 동시 산정
             </div>
         `;
     }
@@ -202,8 +218,8 @@ export function initPileModule(container) {
             qsSelect.innerHTML = `<option value="road">도로교설계기준해설 (2.0N / 1.0cu)</option><option value="lh">주택공사 지침 (2.0N / 5.0qu)</option>`;
         } else {
             qpSelect.disabled = false;
-            qpSelect.innerHTML = `<option value="road" selected>도로교설계기준해설 (200N / 6cu)</option><option value="lh">주택공사 지침 (250N)</option>`;
-            qsSelect.innerHTML = `<option value="road" selected>도로교설계기준해설 (2.5N / 0.8cu)</option><option value="lh">주택공사 지침 (2.0N / 5.0qu)</option>`;
+            qpSelect.innerHTML = `<option value="road" selected>도로교설계기준해설 (2008)</option><option value="lh">주택공사 지침 (250N)</option>`;
+            qsSelect.innerHTML = `<option value="road" selected>도로교설계기준해설 (2008)</option><option value="lh">주택공사 지침 (2.0N / 5.0qu)</option>`;
         }
         updateFormulaInfoText();
     }
@@ -213,7 +229,6 @@ export function initPileModule(container) {
         const grid2Label = container.querySelector('#grid2_label');
         const grid2Content = container.querySelector('#grid2_content');
         const grid5Label = container.querySelector('#grid5_label');
-        const grid5Val = container.querySelector('#grid5_val');
         const specSelect = container.querySelector('#pile_spec_select');
         const row2Container = container.querySelector('#pile_row2_container');
 
@@ -233,7 +248,7 @@ export function initPileModule(container) {
                 <div class="input-group" style="margin:0;"><label>시공 공법</label><select id="pile_method" style="width: 100%; height: 32px; padding: 4px;"><option value="bored" selected>굴착말뚝(매입)</option><option value="driven">타입말뚝(항타)</option></select></div>
                 <div class="input-group" style="margin:0;"><label>이음 방법 및 개소</label>
                     <div style="display:flex; gap:4px; height: 32px; align-items:center;">
-                        <select id="pile_joint_type" style="flex:1; height:100%; padding:2px;"><option value="weld">용접 이음</option><option value="bolt">볼트 이음</option><option value="none">이음 없음</option></select>
+                        <select id="pile_joint_type" style="flex:1; height:100%; padding:2px;"><option value="weld">용접 이음</option><option value="bolt">볼트 이음</option><option value="none" selected>이음 없음</option></select>
                         <input type="number" id="pile_joint_count" value="0" min="0" class="pl-input" style="width:40px; height:100%;">
                     </div>
                 </div>
@@ -257,7 +272,7 @@ export function initPileModule(container) {
                 <div class="input-group" style="margin:0;"><label>시공 공법</label><select id="pile_method" style="width: 100%; height: 32px; padding: 4px;"><option value="bored" ${initialMethod === 'bored' ? 'selected' : ''}>굴착말뚝(매입)</option><option value="driven" ${initialMethod === 'driven' ? 'selected' : ''}>타입말뚝(항타)</option></select></div>
                 <div class="input-group" style="margin:0;"><label>이음 방법 및 개소</label>
                     <div style="display:flex; gap:4px; height: 32px; align-items:center;">
-                        <select id="pile_joint_type" style="flex:1; height:100%; padding:2px;"><option value="weld">용접 이음</option><option value="bolt">볼트 이음</option><option value="none">이음 없음</option></select>
+                        <select id="pile_joint_type" style="flex:1; height:100%; padding:2px;"><option value="weld">용접 이음</option><option value="bolt">볼트 이음</option><option value="none" selected>이음 없음</option></select>
                         <input type="number" id="pile_joint_count" value="0" min="0" class="pl-input" style="width:40px; height:100%;">
                     </div>
                 </div>
@@ -288,7 +303,7 @@ export function initPileModule(container) {
         if (type === 'PHC') {
             const data = PHC_DB[specVal];
             if (data) {
-                if (dInput) { dInput.value = (parseFloat(specVal) / 1000).toFixed(3); dInput.readOnly = true; }
+                if (dInput) { dInput.value = Math.round(parseFloat(specVal)); dInput.readOnly = true; }
                 tSelect.innerHTML = `<option value="direct">직접 입력</option><option value="${data.t}">${data.t}mm</option>`;
                 tSelect.value = data.t.toString();
                 if (tInput) { tInput.value = data.t; tInput.readOnly = true; }
@@ -298,7 +313,7 @@ export function initPileModule(container) {
         } else if (type === 'STEEL') {
             const data = STEEL_DB[specVal];
             if (data) {
-                if (dInput) { dInput.value = (parseFloat(specVal) / 1000).toFixed(3); dInput.readOnly = true; }
+                if (dInput) { dInput.value = parseFloat(specVal).toFixed(1); dInput.readOnly = true; }
                 tSelect.innerHTML = `<option value="direct">직접 입력</option>`;
                 data.tList.forEach(t => { tSelect.innerHTML += `<option value="${t}">${t}mm</option>`; });
                 let defaultT = data.tList.includes(12) ? 12 : data.tList[0];
@@ -312,7 +327,7 @@ export function initPileModule(container) {
 
     container.addEventListener('click', (e) => {
         if (e.target.id === 'pile_layer_add') {
-            pileLayers.push({ name: `지층${pileLayers.length + 1}`, type: 'sand', dz: 3.0, n_val: 30, gamma: 19.0, c_val: 0, phi: 30, es: 50000 });
+            pileLayers.push({ name: `지층${pileLayers.length + 1}`, type: 'sand', dz: 3.0, n_val: 30, gamma: 19.0, c_val: 0 });
             try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch(err){}
             renderLayers();
         } else if (e.target.classList.contains('pl-del')) {
@@ -334,6 +349,9 @@ export function initPileModule(container) {
             try { localStorage.setItem('geo_pile_method', e.target.value); } catch(err){}
         } else if (e.target.id === 'phc_class' || e.target.id === 'pile_spec_select') {
             applySpecSelection();
+        } else if (e.target.id === 'pile_Cp_type') {
+            const customInput = container.querySelector('#pile_Cp_custom');
+            if (customInput) customInput.style.display = e.target.value === 'custom' ? 'block' : 'none';
         }
         if (e.target.classList.contains('pl-dz')) updatePileLength();
         try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch(err){}
@@ -344,7 +362,7 @@ export function initPileModule(container) {
     function updatePileLength() {
         const totalL = calcTotalL();
         const pileLVal = container.querySelector('#pile_L_val');
-        if (pileLVal) pileLVal.textContent = totalL.toFixed(1);
+        if (pileLVal) pileLVal.textContent = totalL.toFixed(2);
     }
 
     function renderLayers() {
@@ -363,12 +381,10 @@ export function initPileModule(container) {
                             <option value="weathered_rock" ${l.type === 'weathered_rock' ? 'selected' : ''}>풍화암</option>
                         </select>
                     </td>
-                    <td style="padding:2px;"><input type="number" value="${parseFloat(l.dz).toFixed(1)}" data-idx="${idx}" class="pl-dz pl-input" step="0.1"></td>
+                    <td style="padding:2px;"><input type="number" value="${parseFloat(l.dz).toFixed(2)}" data-idx="${idx}" class="pl-dz pl-input" step="0.1"></td>
                     <td style="padding:2px;"><input type="number" value="${Math.round(parseFloat(l.n_val))}" data-idx="${idx}" class="pl-n pl-input" step="1"></td>
                     <td style="padding:2px;"><input type="number" value="${parseFloat(l.gamma).toFixed(1)}" data-idx="${idx}" class="pl-gamma pl-input" step="0.1"></td>
                     <td style="padding:2px;"><input type="number" value="${parseFloat(l.c_val).toFixed(1)}" data-idx="${idx}" class="pl-c pl-input" step="0.1"></td>
-                    <td style="padding:2px;"><input type="number" value="${parseFloat(l.phi).toFixed(1)}" data-idx="${idx}" class="pl-phi pl-input" step="0.1"></td>
-                    <td style="padding:2px;"><input type="number" value="${Math.round(parseFloat(l.es))}" data-idx="${idx}" class="pl-es pl-input" step="1"></td>
                     <td style="padding:2px;"><button type="button" class="pl-del" data-idx="${idx}" style="padding:2px 6px; background:#e74c3c; color:#fff; border:none; border-radius:3px;">-</button></td>
                 </tr>
             `;
@@ -380,16 +396,14 @@ export function initPileModule(container) {
     function calculatePileCapacity() {
         const p_type = container.querySelector('#pile_type').value;
         const method = container.querySelector('#pile_method')?.value || 'bored';
-        const qp_formula_key = container.querySelector('#pile_qp_formula')?.value || 'road';
-        const qs_formula_key = container.querySelector('#pile_qs_formula')?.value || 'road';
 
-        let D_val = parseFloat(container.querySelector('#pile_D').value) || 0.500;
-        const D = D_val < 5 ? D_val : D_val / 1000.0; // mm 또는 m 구별
+        let D_mm = parseFloat(container.querySelector('#pile_D').value) || 500;
+        const D = D_mm / 1000.0;
         const t_mm = parseFloat(container.querySelector('#pile_t').value) || 80;
         const grid5Val = parseFloat(container.querySelector('#grid5_val').value) || 1730;
         const allow_settle = parseFloat(container.querySelector('#pile_allow_settle')?.value) || 25.0;
-        const allow_h_disp = parseFloat(container.querySelector('#pile_allow_h_disp')?.value) || 15.0;
         const user_Ep = parseFloat(container.querySelector('#pile_Ep')?.value) || 39200000;
+        const alpha_s = parseFloat(container.querySelector('#pile_alpha_s')?.value) || 0.67;
 
         const P_norm = parseFloat(container.querySelector('#pile_P_norm').value) || 2062.8;
         const P_seis = parseFloat(container.querySelector('#pile_P_seis').value) || 1728.6;
@@ -407,26 +421,23 @@ export function initPileModule(container) {
         if (method === 'driven') {
             q_p = 300.0 * Math.min(raw_N_tip, 60);
         } else {
-            if (qp_formula_key === 'lh') {
-                q_p = 250.0 * Math.min(raw_N_tip, 60);
+            let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type);
+            if (isGranular) {
+                q_p = Math.min(200.0 * raw_N_tip, 12000.0);
             } else {
-                if (['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type)) {
-                    q_p = Math.min(200.0 * raw_N_tip, 12000.0);
-                } else {
-                    q_p = Math.min(6.0 * c_tip, 12000.0);
-                }
+                q_p = Math.min(6.0 * c_tip, 12000.0);
             }
         }
         const Qup = q_p * Ap;
 
-        // 2. 주면마찰력 (Qus) 상세 레이어
+        // 2. 주면마찰력 (Qus) 상세 산정
         let total_Qus = 0;
         let layer_calc_rows = [];
-        let c_factor = (method === 'driven') ? 2.0 : (qs_formula_key === 'lh' ? 2.0 : 2.5);
-        let c_factor_c = (method === 'driven') ? 1.0 : (qs_formula_key === 'lh' ? 5.0 : 0.8);
+        let c_factor = (method === 'driven') ? 2.0 : 2.5;
+        let c_factor_c = (method === 'driven') ? 1.0 : 0.8;
         const typeMap = { 'sand': '사질토', 'clay': '점성토', 'gravel': '자갈층', 'weathered_rock': '풍화암' };
 
-        pileLayers.forEach((l, idx) => {
+        pileLayers.forEach((l) => {
             let dz_i = parseFloat(l.dz) || 0;
             let n_i = parseFloat(l.n_val) || 0;
             let c_i = parseFloat(l.c_val) || 0;
@@ -489,15 +500,22 @@ export function initPileModule(container) {
         let isTipSand = ['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type);
         let cp_min = method === 'driven' ? (isTipSand ? 0.02 : 0.02) : (isTipSand ? 0.09 : 0.03);
         let cp_max = method === 'driven' ? (isTipSand ? 0.04 : 0.03) : (isTipSand ? 0.18 : 0.06);
-        let Cp = (cp_min + cp_max) / 2.0;
+        let Cp_avg = (cp_min + cp_max) / 2.0;
+
+        let cpSelectType = container.querySelector('#pile_Cp_type')?.value || 'avg';
+        let Cp = Cp_avg;
+        if (cpSelectType === 'min') Cp = cp_min;
+        else if (cpSelectType === 'max') Cp = cp_max;
+        else if (cpSelectType === 'custom') Cp = parseFloat(container.querySelector('#pile_Cp_custom')?.value) || 0.135;
+
         let Cs = (0.93 + 0.16 * Math.sqrt(L / D)) * Cp;
         let calc_qp = Math.max(q_p, 1.0);
 
-        // (1) 평상시 하중 기준 침하량
+        // (1) 평상시 작용하중 침하량
         let Qpa_norm = P_norm * (Qup / Qu_total);
         let Qfa_norm = P_norm * (total_Qus / Qu_total);
 
-        let Ss_norm = ((Qpa_norm + 0.67 * Qfa_norm) * L) / (A_net * user_Ep) * 1000.0;
+        let Ss_norm = ((Qpa_norm + alpha_s * Qfa_norm) * L) / (A_net * user_Ep) * 1000.0;
         let Sp_norm = (Cp * Qpa_norm) / (D * calc_qp) * 1000.0;
         let Sps_norm = (Cs * Qfa_norm) / (L * calc_qp) * 1000.0;
         let S_vesic_norm = Ss_norm + Sp_norm + Sps_norm;
@@ -506,11 +524,11 @@ export function initPileModule(container) {
         let S_cfem_elastic_norm = (P_norm * L) / (A_net * user_Ep) * 1000.0;
         let S_cfem_norm = S_cfem_direct_norm + S_cfem_elastic_norm;
 
-        // (2) 지진시 하중 기준 침하량
+        // (2) 지진시 작용하중 침하량
         let Qpa_seis = P_seis * (Qup / Qu_total);
         let Qfa_seis = P_seis * (total_Qus / Qu_total);
 
-        let Ss_seis = ((Qpa_seis + 0.67 * Qfa_seis) * L) / (A_net * user_Ep) * 1000.0;
+        let Ss_seis = ((Qpa_seis + alpha_s * Qfa_seis) * L) / (A_net * user_Ep) * 1000.0;
         let Sp_seis = (Cp * Qpa_seis) / (D * calc_qp) * 1000.0;
         let Sps_seis = (Cs * Qfa_seis) / (L * calc_qp) * 1000.0;
         let S_vesic_seis = Ss_seis + Sp_seis + Sps_seis;
@@ -550,7 +568,7 @@ export function initPileModule(container) {
                             <td style="font-weight:bold; color:${P_seis <= Q_app_seis ? '#27ae60' : '#c0392b'};">${P_seis <= Q_app_seis ? '안정 (O.K)' : 'NG'}</td>
                         </tr>
                         <tr>
-                            <td rowspan="2" style="background:#f5eef8; font-weight:bold;">침하량 검토<br><span style="font-size:0.8em; font-weight:normal;">(평상시 하중)</span></td>
+                            <td rowspan="2" style="background:#f5eef8; font-weight:bold;">침하량 검토<br><span style="font-size:0.8em; color:#2980b9; font-weight:normal;">(평상시 하중)</span></td>
                             <td>반경험적 (Vesic)</td>
                             <td style="font-weight:bold; color:#8e44ad;">${S_vesic_norm.toFixed(2)} mm</td>
                             <td rowspan="2" style="vertical-align: middle;">${allow_settle.toFixed(1)} mm</td>
@@ -562,7 +580,7 @@ export function initPileModule(container) {
                             <td style="font-weight:bold; color:${S_cfem_norm <= allow_settle ? '#27ae60' : '#c0392b'};">${S_cfem_norm <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
                         </tr>
                         <tr>
-                            <td rowspan="2" style="background:#f5eef8; font-weight:bold;">침하량 검토<br><span style="font-size:0.8em; font-weight:normal;">(지진시 하중)</span></td>
+                            <td rowspan="2" style="background:#f5eef8; font-weight:bold;">침하량 검토<br><span style="font-size:0.8em; color:#c0392b; font-weight:normal;">(지진시 하중)</span></td>
                             <td>반경험적 (Vesic)</td>
                             <td style="font-weight:bold; color:#8e44ad;">${S_vesic_seis.toFixed(2)} mm</td>
                             <td rowspan="2" style="vertical-align: middle;">${allow_settle.toFixed(1)} mm</td>
@@ -584,7 +602,7 @@ export function initPileModule(container) {
                 • 최하단 지층(지지층) : ${lastLayer.name} (N = ${raw_N_tip}, c(q<sub>u</sub>) = ${c_tip} kPa)<br>
                 • 단위면적당 극한선단지지력 q<sub>p</sub> :<br>
                 &nbsp;&nbsp;- 공식: q<sub>p</sub> = min(200 &times; N, 12,000)<br>
-                &nbsp;&nbsp;- 계산: min(200 &times; ${raw_N_tip}, 12,000) = min(${(200*raw_N_tip).toLocaleString()}, 12,000)<br>
+                &nbsp;&nbsp;- 계산: min(200 &times; ${raw_N_tip}, 12,000) = min(${(200*raw_N_tip).toFixed(1)}, 12,000)<br>
                 &nbsp;&nbsp;- 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong><br>
                 • 선단면적 A<sub>p</sub> 산정식: A<sub>p</sub> = ${frac("&pi; &times; D²", "4")} = ${frac("&pi; &times; " + D.toFixed(3) + "²", "4")} = <strong>${Ap.toFixed(5)} m²</strong><br>
                 • <strong>극한선단지지력 Q<sub>up</sub> 산정식 :</strong> Q<sub>up</sub> = q<sub>p</sub> &times; A<sub>p</sub> = ${q_p.toFixed(1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#2980b9;">${Qup.toFixed(1)} kN</span>
@@ -690,37 +708,37 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>(1) 평상시 작용하중 (P<sub>norm</sub> = ${P_norm.toFixed(1)} kN) 기준 침하량</strong><br>
                 • 침하량 산정용 전달하중 분배:<br>
-                &nbsp;&nbsp;- 선단 전달하중 (Q<sub>pa</sub>) 공식: Q<sub>v</sub> &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(Qup.toFixed(1), Qu_total.toFixed(1))} = <strong>${Qpa_norm.toFixed(1)} kN</strong><br>
-                &nbsp;&nbsp;- 주면 전달하중 (Q<sub>fa</sub>) 공식: Q<sub>v</sub> &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(total_Qus.toFixed(1), Qu_total.toFixed(1))} = <strong>${Qfa_norm.toFixed(1)} kN</strong><br><br>
+                &nbsp;&nbsp;- 선단 전달하중 (Q<sub>pa</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(Qup.toFixed(1), Qu_total.toFixed(1))} = <strong>${Qpa_norm.toFixed(1)} kN</strong><br>
+                &nbsp;&nbsp;- 주면 전달하중 (Q<sub>fs</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(total_Qus.toFixed(1), Qu_total.toFixed(1))} = <strong>${Qfa_norm.toFixed(1)} kN</strong><br><br>
 
                 • <strong>반경험적 방법에 의한 침하량 (Vesic, 1977) :</strong><br>
-                &nbsp;&nbsp;- 말뚝 자체 압축 (S<sub>s</sub>) = ${frac("(" + Qpa_norm.toFixed(1) + " + 0.67 &times; " + Qfa_norm.toFixed(1) + ") &times; " + L.toFixed(2), A_net.toFixed(5) + " &times; " + user_Ep.toLocaleString())} &times; 1000 = <strong>${Ss_norm.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;- 말뚝 자체 압축 (S<sub>s</sub>) = ${frac("(" + Qpa_norm.toFixed(1) + " + " + alpha_s + " &times; " + Qfa_norm.toFixed(1) + ") &times; " + L.toFixed(2), A_net.toFixed(5) + " &times; " + user_Ep.toLocaleString())} &times; 1000 = <strong>${Ss_norm.toFixed(3)} mm</strong><br>
                 &nbsp;&nbsp;- 선단 전달 침하 (S<sub>p</sub>) = ${frac(Cp.toFixed(3) + " &times; " + Qpa_norm.toFixed(1), D.toFixed(3) + " &times; " + q_p.toFixed(1))} &times; 1000 = <strong>${Sp_norm.toFixed(3)} mm</strong><br>
                 &nbsp;&nbsp;- 주면 전달 침하 (S<sub>ps</sub>) = ${frac(Cs.toFixed(4) + " &times; " + Qfa_norm.toFixed(1), L.toFixed(2) + " &times; " + q_p.toFixed(1))} &times; 1000 = <strong>${Sps_norm.toFixed(3)} mm</strong><br>
-                &nbsp;&nbsp;▶ <strong>S<sub>vesic,norm</sub></strong> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = <span style="color:#8e44ad; font-weight:bold;">${S_vesic_norm.toFixed(2)} mm</span><br><br>
+                &nbsp;&nbsp;▶ <strong>S<sub>vesic,norm</sub></strong> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = <span style="color:#8e44ad; font-weight:bold;">${S_vesic_norm.toFixed(3)} mm</span><br><br>
 
                 • <strong>경험적 방법에 의한 침하량 (CFEM, 1992) :</strong><br>
                 &nbsp;&nbsp;- 직경 항 = ${frac(D.toFixed(3), "100")} = <strong>${S_cfem_direct_norm.toFixed(3)} mm</strong><br>
                 &nbsp;&nbsp;- 탄성 압축 항 = ${frac(P_norm.toFixed(1) + " &times; " + L.toFixed(2), A_net.toFixed(5) + " &times; " + user_Ep.toLocaleString())} &times; 1000 = <strong>${S_cfem_elastic_norm.toFixed(3)} mm</strong><br>
-                &nbsp;&nbsp;▶ <strong>S<sub>cfem,norm</sub></strong> = 직경 항 + 탄성 압축 항 = <span style="color:#27ae60; font-weight:bold;">${S_cfem_norm.toFixed(2)} mm</span>
+                &nbsp;&nbsp;▶ <strong>S<sub>cfem,norm</sub></strong> = 직경 항 + 탄성 압축 항 = <span style="color:#27ae60; font-weight:bold;">${S_cfem_norm.toFixed(3)} mm</span>
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>(2) 지진시 작용하중 (P<sub>seis</sub> = ${P_seis.toFixed(1)} kN) 기준 침하량</strong><br>
                 • 침하량 산정용 전달하중 분배:<br>
-                &nbsp;&nbsp;- 선단 전달하중 (Q<sub>pa</sub>) 공식: Q<sub>v</sub> &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_seis.toFixed(1)} &times; ${frac(Qup.toFixed(1), Qu_total.toFixed(1))} = <strong>${Qpa_seis.toFixed(1)} kN</strong><br>
-                &nbsp;&nbsp;- 주면 전달하중 (Q<sub>fa</sub>) 공식: Q<sub>v</sub> &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_seis.toFixed(1)} &times; ${frac(total_Qus.toFixed(1), Qu_total.toFixed(1))} = <strong>${Qfa_seis.toFixed(1)} kN</strong><br><br>
+                &nbsp;&nbsp;- 선단 전달하중 (Q<sub>pa</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_seis.toFixed(1)} &times; ${frac(Qup.toFixed(1), Qu_total.toFixed(1))} = <strong>${Qpa_seis.toFixed(1)} kN</strong><br>
+                &nbsp;&nbsp;- 주면 전달하중 (Q<sub>fs</sub>) 공식: Q<sub>va</sub> &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_seis.toFixed(1)} &times; ${frac(total_Qus.toFixed(1), Qu_total.toFixed(1))} = <strong>${Qfa_seis.toFixed(1)} kN</strong><br><br>
 
                 • <strong>반경험적 방법에 의한 침하량 (Vesic, 1977) :</strong><br>
-                &nbsp;&nbsp;- 말뚝 자체 압축 (S<sub>s</sub>) = ${frac("(" + Qpa_seis.toFixed(1) + " + 0.67 &times; " + Qfa_seis.toFixed(1) + ") &times; " + L.toFixed(2), A_net.toFixed(5) + " &times; " + user_Ep.toLocaleString())} &times; 1000 = <strong>${Ss_seis.toFixed(3)} mm</strong><br>
+                &nbsp;&nbsp;- 말뚝 자체 압축 (S<sub>s</sub>) = ${frac("(" + Qpa_seis.toFixed(1) + " + " + alpha_s + " &times; " + Qfa_seis.toFixed(1) + ") &times; " + L.toFixed(2), A_net.toFixed(5) + " &times; " + user_Ep.toLocaleString())} &times; 1000 = <strong>${Ss_seis.toFixed(3)} mm</strong><br>
                 &nbsp;&nbsp;- 선단 전달 침하 (S<sub>p</sub>) = ${frac(Cp.toFixed(3) + " &times; " + Qpa_seis.toFixed(1), D.toFixed(3) + " &times; " + q_p.toFixed(1))} &times; 1000 = <strong>${Sp_seis.toFixed(3)} mm</strong><br>
                 &nbsp;&nbsp;- 주면 전달 침하 (S<sub>ps</sub>) = ${frac(Cs.toFixed(4) + " &times; " + Qfa_seis.toFixed(1), L.toFixed(2) + " &times; " + q_p.toFixed(1))} &times; 1000 = <strong>${Sps_seis.toFixed(3)} mm</strong><br>
-                &nbsp;&nbsp;▶ <strong>S<sub>vesic,seis</sub></strong> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = <span style="color:#8e44ad; font-weight:bold;">${S_vesic_seis.toFixed(2)} mm</span><br><br>
+                &nbsp;&nbsp;▶ <strong>S<sub>vesic,seis</sub></strong> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = <span style="color:#8e44ad; font-weight:bold;">${S_vesic_seis.toFixed(3)} mm</span><br><br>
 
                 • <strong>경험적 방법에 의한 침하량 (CFEM, 1992) :</strong><br>
                 &nbsp;&nbsp;- 직경 항 = ${frac(D.toFixed(3), "100")} = <strong>${S_cfem_direct_seis.toFixed(3)} mm</strong><br>
                 &nbsp;&nbsp;- 탄성 압축 항 = ${frac(P_seis.toFixed(1) + " &times; " + L.toFixed(2), A_net.toFixed(5) + " &times; " + user_Ep.toLocaleString())} &times; 1000 = <strong>${S_cfem_elastic_seis.toFixed(3)} mm</strong><br>
-                &nbsp;&nbsp;▶ <strong>S<sub>cfem,seis</sub></strong> = 직경 항 + 탄성 압축 항 = <span style="color:#27ae60; font-weight:bold;">${S_cfem_seis.toFixed(2)} mm</span>
+                &nbsp;&nbsp;▶ <strong>S<sub>cfem,seis</sub></strong> = 직경 항 + 탄성 압축 항 = <span style="color:#27ae60; font-weight:bold;">${S_cfem_seis.toFixed(3)} mm</span>
             </div>
         `;
     }
