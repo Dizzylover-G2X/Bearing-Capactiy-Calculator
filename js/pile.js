@@ -696,10 +696,11 @@ export function initPileModule(container) {
         };
     }
 
-    // Broms 극한수평지지력(Hu) 및 공식 동적 산정
+    // Broms 극한수평지지력(Hu) 및 공식/계산과정 동적 산정
     function calcBromsHu(headCond, soilType, betaL, etaL, D, L, cu, My, Kp, gamma_sub, h = 0) {
         let Hu = 0;
         let formulaText = "";
+        let calcProcessText = "";
         let caseKey = "";
 
         if (cu <= 0) cu = 10; // Fallback
@@ -709,28 +710,33 @@ export function initPileModule(container) {
                 if (betaL < 2.25) {
                     caseKey = "fixed_clay_short";
                     Hu = 9.0 * cu * Math.pow(D, 2) * ((L / D) - 1.5);
-                    formulaText = `9 c<sub>u</sub> D² { (L/D) - 1.5 }`;
+                    formulaText = `9 c<sub>u</sub> D'² { (L/D') - 1.5 }`;
+                    calcProcessText = `9 &times; ${cu.toFixed(1)} &times; ${D.toFixed(3)}² &times; { (${L.toFixed(1)} / ${D.toFixed(3)}) - 1.5 }`;
                 } else {
                     caseKey = "fixed_clay_long";
                     let C = (36.0 * My) / (cu * Math.pow(D, 3));
                     let x = (-27.0 + Math.sqrt(27.0 * 27.0 + 4.0 * C)) / 2.0;
                     Hu = x * cu * Math.pow(D, 2);
-                    formulaText = `{ H<sub>u</sub>/(c<sub>u</sub>D²) }² + 27{ H<sub>u</sub>/(c<sub>u</sub>D²) } = 36{ M<sub>y</sub>/(c<sub>u</sub>D³) }`;
+                    formulaText = `{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + 27 { H<sub>u</sub> / (c<sub>u</sub> D'²) } = 36 { M<sub>y</sub> / (c<sub>u</sub> D'³) }`;
+                    calcProcessText = `{ H<sub>u</sub> / (${cu.toFixed(1)} &times; ${D.toFixed(3)}²) }² + 27 { H<sub>u</sub> / (${cu.toFixed(1)} &times; ${D.toFixed(3)}²) } = 36 &times; { ${formatComma(My, 1)} / (${cu.toFixed(1)} &times; ${D.toFixed(3)}³) }`;
                 }
             } else { // sand
                 if (etaL < 2.0) {
                     caseKey = "fixed_sand_short";
                     Hu = 1.5 * Kp * gamma_sub * D * Math.pow(L, 2);
-                    formulaText = `1.5 K<sub>p</sub> &gamma;' D L²`;
+                    formulaText = `1.5 K<sub>p</sub> &gamma;' D' L²`;
+                    calcProcessText = `1.5 &times; ${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)} &times; ${L.toFixed(1)}²`;
                 } else if (etaL <= 4.0) {
                     caseKey = "fixed_sand_mid";
                     Hu = Kp * Math.pow(D, 3) * gamma_sub * ((My / (Kp * Math.pow(D, 4) * gamma_sub)) + 0.5 * Math.pow(L / D, 3)) * (D / L);
-                    formulaText = `K<sub>p</sub> D³ &gamma;' { M<sub>y</sub>/(K<sub>p</sub>D⁴&gamma;') + 0.5(L/D)³ } (D/L)`;
+                    formulaText = `K<sub>p</sub> D'³ &gamma;' { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') + 0.5(L/D')³ } (D'/L)`;
+                    calcProcessText = `${Kp.toFixed(3)} &times; ${D.toFixed(3)}³ &times; ${gamma_sub.toFixed(1)} &times; { ${formatComma(My, 1)} / (${Kp.toFixed(3)} &times; ${D.toFixed(3)}⁴ &times; ${gamma_sub.toFixed(1)}) + 0.5(${L.toFixed(1)}/${D.toFixed(3)})³ } &times; (${D.toFixed(3)}/${L.toFixed(1)})`;
                 } else {
                     caseKey = "fixed_sand_long";
                     let My_ratio = My / (Kp * gamma_sub * Math.pow(D, 4));
                     Hu = 2.38 * Math.pow(My_ratio, 2.0 / 3.0) * (Kp * gamma_sub * Math.pow(D, 3));
-                    formulaText = `2.38 { M<sub>y</sub>/(K<sub>p</sub>D⁴&gamma;') }<sup>2/3</sup> K<sub>p</sub> D³ &gamma;'`;
+                    formulaText = `2.38 { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') }<sup>2/3</sup> K<sub>p</sub> D'³ &gamma;'`;
+                    calcProcessText = `2.38 &times; { ${formatComma(My, 1)} / (${Kp.toFixed(3)} &times; ${D.toFixed(3)}⁴ &times; ${gamma_sub.toFixed(1)}) }<sup>2/3</sup> &times; ${Kp.toFixed(3)} &times; ${D.toFixed(3)}³ &times; ${gamma_sub.toFixed(1)}`;
                 }
             }
         } else { // free
@@ -740,20 +746,23 @@ export function initPileModule(container) {
                     let term1 = 4.0 * Math.pow(h / D, 2) + 2.0 * Math.pow(L / D, 2) + 4.0 * (h / D) * (L / D) + 6.0 * (h / D) + 4.5;
                     let term2 = 2.0 * (h / D) + (L / D);
                     Hu = 9.0 * cu * Math.pow(D, 2) * (Math.sqrt(term1) - term2);
-                    formulaText = `9 c<sub>u</sub> D² [ { 4(h/D)² + 2(L/D)² + 4(h/D)(L/D) + 6(h/D) + 4.5 }<sup>1/2</sup> - { 2(h/D) + L/D } ]`;
+                    formulaText = `9 c<sub>u</sub> D'² [ { 4(h/D')² + 2(L/D')² + 4(h/D')(L/D') + 6(h/D') + 4.5 }<sup>1/2</sup> - { 2(h/D') + (L/D') } ]`;
+                    calcProcessText = `9 &times; ${cu.toFixed(1)} &times; ${D.toFixed(3)}² &times; [ { 4(${h}/${D.toFixed(3)})² + 2(${L.toFixed(1)}/${D.toFixed(3)})² + 4(${h}/${D.toFixed(3)})(${L.toFixed(1)}/${D.toFixed(3)}) + 6(${h}/${D.toFixed(3)}) + 4.5 }<sup>1/2</sup> - { 2(${h}/${D.toFixed(3)}) + (${L.toFixed(1)}/${D.toFixed(3)}) } ]`;
                 } else {
                     caseKey = "free_clay_long";
                     let A = 18.0 * (h / D) + 27.0;
                     let B = 18.0 * My / (cu * Math.pow(D, 3));
                     let x = (-A + Math.sqrt(A * A + 4.0 * B)) / 2.0;
                     Hu = x * cu * Math.pow(D, 2);
-                    formulaText = `{ H<sub>u</sub>/(c<sub>u</sub>D²) }² + { 18(h/D) + 27 }{ H<sub>u</sub>/(c<sub>u</sub>D²) } = 18{ M<sub>y</sub>/(c<sub>u</sub>D³) }`;
+                    formulaText = `{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + { 18(h/D') + 27 } { H<sub>u</sub> / (c<sub>u</sub> D'²) } = 18 { M<sub>y</sub> / (c<sub>u</sub> D'³) }`;
+                    calcProcessText = `{ H<sub>u</sub> / (${cu.toFixed(1)} &times; ${D.toFixed(3)}²) }² + { 18(${h}/${D.toFixed(3)}) + 27 } { H<sub>u</sub> / (${cu.toFixed(1)} &times; ${D.toFixed(3)}²) } = 18 &times; { ${formatComma(My, 1)} / (${cu.toFixed(1)} &times; ${D.toFixed(3)}³) }`;
                 }
             } else { // sand
                 if (etaL < 2.0) {
                     caseKey = "free_sand_short";
                     Hu = (Kp * gamma_sub * D * Math.pow(L, 2)) / (2.0 * (1.0 + h / L));
-                    formulaText = `( K<sub>p</sub> &gamma;' D L² ) / { 2 (1 + h/L) }`;
+                    formulaText = `( K<sub>p</sub> &gamma;' D' L² ) / { 2 (1 + h/L) }`;
+                    calcProcessText = `( ${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)} &times; ${L.toFixed(1)}² ) / { 2 &times; (1 + ${h}/${L.toFixed(1)}) }`;
                 } else {
                     caseKey = "free_sand_long";
                     let My_ratio = My / (Kp * gamma_sub * Math.pow(D, 4));
@@ -772,14 +781,15 @@ export function initPileModule(container) {
                         }
                     }
                     Hu = Math.pow(y, 2) * (Kp * gamma_sub * Math.pow(D, 3));
-                    formulaText = `{ H<sub>u</sub>/(K<sub>p</sub>&gamma;'D³) } [ h/D + 0.544{ H<sub>u</sub>/(K<sub>p</sub>&gamma;'D³) }<sup>1/2</sup> ] = { M<sub>y</sub>/(K<sub>p</sub>&gamma;'D⁴) }`;
+                    formulaText = `{ H<sub>u</sub> / (K<sub>p</sub> &gamma;' D'³) } [ h/D' + 0.544 { H<sub>u</sub> / (K<sub>p</sub> &gamma;' D'³) }<sup>1/2</sup> ] = { M<sub>y</sub> / (K<sub>p</sub> &gamma;' D'⁴) }`;
+                    calcProcessText = `{ H<sub>u</sub> / (${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}³) } [ ${h}/${D.toFixed(3)} + 0.544 { H<sub>u</sub> / (${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}³) }<sup>1/2</sup> ] = { ${formatComma(My, 1)} / (${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}⁴) }`;
                 }
             }
         }
 
         if (isNaN(Hu) || Hu < 0) Hu = 0;
 
-        return { Hu, formulaText, caseKey };
+        return { Hu, formulaText, calcProcessText, caseKey };
     }
 
     // 수평지반반력계수(kh) 축차계산
@@ -1640,7 +1650,7 @@ export function initPileModule(container) {
                 <strong>(4) Broms 극한평형법 수평 지지력 산정</strong><br>
                 
                 <div style="font-weight:bold; color:#2c3e50; margin-top:6px; margin-bottom:4px;">
-                    ■ 표 7. 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 구속)
+                    ■ 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 구속)
                 </div>
                 <div class="table-container" style="margin-bottom:12px;">
                     <table class="result-table" style="font-size:0.83em; text-align:center;">
@@ -1690,7 +1700,7 @@ export function initPileModule(container) {
                 </div>
 
                 <div style="font-weight:bold; color:#2c3e50; margin-top:10px; margin-bottom:4px;">
-                    ■ 표 8. 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 자유)
+                    ■ 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 자유)
                 </div>
                 <div class="table-container" style="margin-bottom:12px;">
                     <table class="result-table" style="font-size:0.83em; text-align:center;">
@@ -1741,9 +1751,11 @@ export function initPileModule(container) {
 
                 &nbsp;&nbsp;• <strong>Broms 허용수평지지력 (H<sub>a,broms</sub>) 조건별 수치 대입 및 계산 결과 :</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>u,norm</sub> 적용 산정식: ${broms_norm.formulaText}<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&bull; 대입 과정: ${broms_norm.calcProcessText}<br>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>u,norm</sub> = <strong>${formatComma(Hu_norm, 1)} kN/본</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>a,broms</sub> = ${frac("H<sub>u</sub>", "3.0")} = ${frac(formatComma(Hu_norm, 1), "3.0")} = <strong>${formatComma(Ha_broms_norm, 1)} kN/본</strong> (안전율 F.S = 3.0)<br><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>u,seis</sub> 적용 산정식: ${broms_seis.formulaText}<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&bull; 대입 과정: ${broms_seis.calcProcessText}<br>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>u,seis</sub> = <strong>${formatComma(Hu_seis, 1)} kN/본</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>a,broms</sub> = ${frac("H<sub>u</sub>", "2.0")} = ${frac(formatComma(Hu_seis, 1), "2.0")} = <strong>${formatComma(Ha_broms_seis, 1)} kN/본</strong> (안전율 F.S = 2.0)
             </div>
