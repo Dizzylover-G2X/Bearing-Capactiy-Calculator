@@ -170,7 +170,7 @@ export function initPileModule(container) {
                 <div class="input-group" style="background:#fff; margin:0;"><label style="color:#d35400;">허용 연직 침하량 (mm)</label><input type="text" id="pile_allow_settle" value="${formatComma(parseNum(getVal('allow_settle', '25.0')), 1)}" class="pl-input dec-input"></div>
             </div>
 
-            <div class="input-grid" style="margin-bottom: 10px; background-color: #e8f8f5; padding: 10px; border-radius: 5px; border: 1px solid #a3e4d7; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+            <div class="input-grid" style="margin-bottom: 10px; background-color: #e8f8f5; padding: 10px; border-radius: 5px; border: 1px solid #a3e4d7; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
                 <div class="input-group" style="background:#fff; margin:0;">
                     <label>말뚝 두부 조건</label>
                     <select id="pile_head_cond" style="width:100%; height:32px; box-sizing:border-box; padding:4px 2px; font-size:0.85em; text-align:left; text-align-last:left;">
@@ -190,8 +190,12 @@ export function initPileModule(container) {
                     <input type="text" id="pile_alpha_norm" value="${formatComma(parseNum(getVal('alpha_norm', '1.0')), 1)}" class="pl-input dec-input">
                 </div>
                 <div class="input-group" style="background:#fff; margin:0;">
-                    <label style="color:#16a085;">허용 수평 변위량 (mm)</label>
-                    <input type="text" id="pile_allow_h_disp" value="${formatComma(parseNum(getVal('allow_h_disp', '15.0')), 1)}" class="pl-input dec-input">
+                    <label style="color:#16a085;">평상시 허용 수평변위 (mm)</label>
+                    <input type="text" id="pile_allow_h_disp_norm" value="${formatComma(parseNum(getVal('allow_h_disp_norm', getVal('allow_h_disp', '15.0'))), 1)}" class="pl-input dec-input">
+                </div>
+                <div class="input-group" style="background:#fff; margin:0;">
+                    <label style="color:#c0392b;">지진시 허용 수평변위 (mm)</label>
+                    <input type="text" id="pile_allow_h_disp_seis" value="${formatComma(parseNum(getVal('allow_h_disp_seis', '25.0')), 1)}" class="pl-input dec-input">
                 </div>
             </div>
         </div>
@@ -589,7 +593,7 @@ export function initPileModule(container) {
         } else if (e.target.id === 'pile_Cp_type') {
             const customInput = container.querySelector('#pile_Cp_custom');
             if (customInput) customInput.style.display = e.target.value === 'custom' ? 'block' : 'none';
-        } else if (['pile_H_norm', 'pile_H_seis', 'pile_head_cond', 'pile_top_soil_type', 'pile_alpha_norm', 'pile_allow_h_disp'].includes(e.target.id)) {
+        } else if (['pile_H_norm', 'pile_H_seis', 'pile_head_cond', 'pile_top_soil_type', 'pile_alpha_norm', 'pile_allow_h_disp_norm', 'pile_allow_h_disp_seis'].includes(e.target.id)) {
             try { localStorage.setItem('geo_' + e.target.id, e.target.value); } catch(err){}
         } else if (e.target.classList.contains('pl-type')) {
             pileLayers[e.target.dataset.idx].type = e.target.value;
@@ -941,7 +945,8 @@ export function initPileModule(container) {
         const t_mm = parseNum(container.querySelector('#pile_t').value) || 80;
         const grid5Val = parseNum(container.querySelector('#grid5_val').value) || 1730;
         const allow_settle = parseNum(container.querySelector('#pile_allow_settle')?.value) || 25.0;
-        const allow_h_disp = parseNum(container.querySelector('#pile_allow_h_disp')?.value) || 15.0;
+        const allow_h_disp_norm = parseNum(container.querySelector('#pile_allow_h_disp_norm')?.value) || 15.0;
+        const allow_h_disp_seis = parseNum(container.querySelector('#pile_allow_h_disp_seis')?.value) || 25.0;
         const user_Ep = parseNum(container.querySelector('#pile_Ep')?.value) || 39200000;
         const alpha_s = parseFloat(container.querySelector('#pile_alpha_s')?.value) || 0.67;
         const head_cond = container.querySelector('#pile_head_cond')?.value || 'free';
@@ -1176,10 +1181,11 @@ export function initPileModule(container) {
         let Ha_broms_norm = Hu_norm / 3.0;
         let Ha_broms_seis = Hu_seis / 2.0;
 
-        // Chang 탄성지반반력법 수평지지력
-        const delta_sa_m = allow_h_disp / 1000.0;
-        let Ha_chang_norm = (head_cond === 'fixed' ? 2.0 : 1.0) * (kh_norm * D * delta_sa_m) / beta_norm;
-        let Ha_chang_seis = (head_cond === 'fixed' ? 2.0 : 1.0) * (kh_seis * D * delta_sa_m) / beta_seis;
+        // Chang 탄성지반반력법 수평지지력 (평상시/지진시 허용변위 각각 대입)
+        const delta_sa_norm_m = allow_h_disp_norm / 1000.0;
+        const delta_sa_seis_m = allow_h_disp_seis / 1000.0;
+        let Ha_chang_norm = (head_cond === 'fixed' ? 2.0 : 1.0) * (kh_norm * D * delta_sa_norm_m) / beta_norm;
+        let Ha_chang_seis = (head_cond === 'fixed' ? 2.0 : 1.0) * (kh_seis * D * delta_sa_seis_m) / beta_seis;
 
         let Ha_app_norm = Math.min(Ha_broms_norm, Ha_chang_norm);
         let Ha_norm_source = Ha_broms_norm <= Ha_chang_norm ? 'Broms법' : 'Chang법';
@@ -1194,8 +1200,8 @@ export function initPileModule(container) {
         let disp_norm_mm = ((head_cond === 'fixed' ? 0.5 : 1.0) * (H_norm * beta_norm) / (kh_norm * D)) * 1000.0;
         let disp_seis_mm = ((head_cond === 'fixed' ? 0.5 : 1.0) * (H_seis * beta_seis) / (kh_seis * D)) * 1000.0;
 
-        const ratio_disp_norm = (disp_norm_mm / allow_h_disp) * 100.0;
-        const ratio_disp_seis = (disp_seis_mm / allow_h_disp) * 100.0;
+        const ratio_disp_norm = (disp_norm_mm / allow_h_disp_norm) * 100.0;
+        const ratio_disp_seis = (disp_seis_mm / allow_h_disp_seis) * 100.0;
 
         const resultDiv = container.querySelector('#pile-result');
         if (!resultDiv) return;
@@ -1267,13 +1273,14 @@ export function initPileModule(container) {
                             <td rowspan="2" style="background:#fef9e7; font-weight:bold;">수평 변위 검토</td>
                             <td>평상시 (상시)</td>
                             <td style="font-weight:bold; color:#d35400;">${disp_norm_mm.toFixed(2)} mm</td>
-                            <td rowspan="2" style="vertical-align: middle;">${allow_h_disp.toFixed(1)} mm</td>
-                            <td style="font-weight:bold; color:${disp_norm_mm <= allow_h_disp ? '#27ae60' : '#c0392b'};">${disp_norm_mm <= allow_h_disp ? 'O.K' : 'N.G'} (${ratio_disp_norm.toFixed(1)}%)</td>
+                            <td>${allow_h_disp_norm.toFixed(1)} mm</td>
+                            <td style="font-weight:bold; color:${disp_norm_mm <= allow_h_disp_norm ? '#27ae60' : '#c0392b'};">${disp_norm_mm <= allow_h_disp_norm ? 'O.K' : 'N.G'} (${ratio_disp_norm.toFixed(1)}%)</td>
                         </tr>
                         <tr>
                             <td>내진시 (지진시)</td>
                             <td style="font-weight:bold; color:#d35400;">${disp_seis_mm.toFixed(2)} mm</td>
-                            <td style="font-weight:bold; color:${disp_seis_mm <= allow_h_disp ? '#27ae60' : '#c0392b'};">${disp_seis_mm <= allow_h_disp ? 'O.K' : 'N.G'} (${ratio_disp_seis.toFixed(1)}%)</td>
+                            <td>${allow_h_disp_seis.toFixed(1)} mm</td>
+                            <td style="font-weight:bold; color:${disp_seis_mm <= allow_h_disp_seis ? '#27ae60' : '#c0392b'};">${disp_seis_mm <= allow_h_disp_seis ? 'O.K' : 'N.G'} (${ratio_disp_seis.toFixed(1)}%)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1763,10 +1770,10 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>(5) Chang 탄성지반반력법 수평 지지력 산정</strong><br>
                 &nbsp;&nbsp;H<sub>a,chang</sub> = ${head_cond === 'fixed' ? '2.0 &times; ' : ''}${frac("k<sub>h</sub> &times; D &times; &delta;<sub>sa</sub>", "&beta;")}<br>
-                &nbsp;&nbsp;• 허용수평변위량 &delta;<sub>sa</sub> = ${allow_h_disp.toFixed(1)} mm = ${(allow_h_disp/1000.0).toFixed(4)} m<br><br>
+                &nbsp;&nbsp;• 허용수평변위량 &delta;<sub>sa</sub>: 평상시 = ${allow_h_disp_norm.toFixed(1)} mm (${delta_sa_norm_m.toFixed(4)} m), 지진시 = ${allow_h_disp_seis.toFixed(1)} mm (${delta_sa_seis_m.toFixed(4)} m)<br><br>
                 &nbsp;&nbsp;• <strong>수치 대입 계산 결과 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a,chang</sub> = ${head_cond === 'fixed' ? '2.0 &times; ' : ''}${frac(formatComma(kh_norm, 1) + " &times; " + D.toFixed(3) + " &times; " + (allow_h_disp/1000.0).toFixed(4), beta_norm.toFixed(5))} = <strong><span style="color:#2980b9;">${formatComma(Ha_chang_norm, 1)} kN/본</span></strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a,chang</sub> = ${head_cond === 'fixed' ? '2.0 &times; ' : ''}${frac(formatComma(kh_seis, 1) + " &times; " + D.toFixed(3) + " &times; " + (allow_h_disp/1000.0).toFixed(4), beta_seis.toFixed(5))} = <strong><span style="color:#2980b9;">${formatComma(Ha_chang_seis, 1)} kN/본</span></strong>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a,chang</sub> = ${head_cond === 'fixed' ? '2.0 &times; ' : ''}${frac(formatComma(kh_norm, 1) + " &times; " + D.toFixed(3) + " &times; " + delta_sa_norm_m.toFixed(4), beta_norm.toFixed(5))} = <strong><span style="color:#2980b9;">${formatComma(Ha_chang_norm, 1)} kN/본</span></strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a,chang</sub> = ${head_cond === 'fixed' ? '2.0 &times; ' : ''}${frac(formatComma(kh_seis, 1) + " &times; " + D.toFixed(3) + " &times; " + delta_sa_seis_m.toFixed(4), beta_seis.toFixed(5))} = <strong><span style="color:#2980b9;">${formatComma(Ha_chang_seis, 1)} kN/본</span></strong>
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
@@ -1794,8 +1801,8 @@ export function initPileModule(container) {
                 <strong>(7) Chang 탄성식에 의한 지표면 수평발생변위량 (&delta;) 산정</strong><br>
                 &nbsp;&nbsp;&delta; = ${head_cond === 'fixed' ? '0.5 &times; ' : ''}${frac("H &times; &beta;", "k<sub>h</sub> &times; D")} &times; 1000 (mm)<br><br>
                 &nbsp;&nbsp;• <strong>수치 대입 계산 결과 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 발생변위 &delta;<sub>norm</sub> = ${head_cond === 'fixed' ? '0.5 &times; ' : ''}${frac(formatComma(H_norm, 1) + " &times; " + beta_norm.toFixed(5), formatComma(kh_norm, 1) + " &times; " + D.toFixed(3))} &times; 1000 = <strong><span style="color:#d35400;">${disp_norm_mm.toFixed(2)} mm</span></strong> (&le; ${allow_h_disp.toFixed(1)} mm, <strong>${disp_norm_mm <= allow_h_disp ? 'O.K' : 'N.G'}</strong>)<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 발생변위 &delta;<sub>seis</sub> = ${head_cond === 'fixed' ? '0.5 &times; ' : ''}${frac(formatComma(H_seis, 1) + " &times; " + beta_seis.toFixed(5), formatComma(kh_seis, 1) + " &times; " + D.toFixed(3))} &times; 1000 = <strong><span style="color:#d35400;">${disp_seis_mm.toFixed(2)} mm</span></strong> (&le; ${allow_h_disp.toFixed(1)} mm, <strong>${disp_seis_mm <= allow_h_disp ? 'O.K' : 'N.G'}</strong>)
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 발생변위 &delta;<sub>norm</sub> = ${head_cond === 'fixed' ? '0.5 &times; ' : ''}${frac(formatComma(H_norm, 1) + " &times; " + beta_norm.toFixed(5), formatComma(kh_norm, 1) + " &times; " + D.toFixed(3))} &times; 1000 = <strong><span style="color:#d35400;">${disp_norm_mm.toFixed(2)} mm</span></strong> (&le; ${allow_h_disp_norm.toFixed(1)} mm, <strong>${disp_norm_mm <= allow_h_disp_norm ? 'O.K' : 'N.G'}</strong>)<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 발생변위 &delta;<sub>seis</sub> = ${head_cond === 'fixed' ? '0.5 &times; ' : ''}${frac(formatComma(H_seis, 1) + " &times; " + beta_seis.toFixed(5), formatComma(kh_seis, 1) + " &times; " + D.toFixed(3))} &times; 1000 = <strong><span style="color:#d35400;">${disp_seis_mm.toFixed(2)} mm</span></strong> (&le; ${allow_h_disp_seis.toFixed(1)} mm, <strong>${disp_seis_mm <= allow_h_disp_seis ? 'O.K' : 'N.G'}</strong>)
             </div>
         `;
     }
