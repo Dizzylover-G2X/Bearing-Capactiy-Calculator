@@ -1,3 +1,9 @@
+// cast_pile.js (또는 js/cast_pile.js)
+
+export function initCastPileModule(container) {
+    return initPileModule(container);
+}
+
 export function initPileModule(container) {
     const getVal = (id, defaultVal) => {
         try {
