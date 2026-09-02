@@ -607,30 +607,22 @@ export function initPileModule(container) {
         if (method === 'driven') {
             let N_used = Math.min(raw_N_tip, 60);
             q_p = 300.0 * N_used;
-            qp_calc_detail = `• 공식: q<sub>p</sub> = 300 &times; N (N&le;60)<br>` +
-                             `• 계산: 300 &times; ${N_used}<br>` +
-                             `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+            qp_calc_detail = `q<sub>p</sub> = 300 &times; N = 300 &times; ${N_used} = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
         } else {
             if (qp_formula_key === 'lh') {
                 let N_used = Math.min(raw_N_tip, 60);
                 q_p = 250.0 * N_used;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = 250 &times; N (N&le;60)<br>` +
-                                 `• 계산: 250 &times; ${N_used}<br>` +
-                                 `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                qp_calc_detail = `q<sub>p</sub> = 250 &times; N = 250 &times; ${N_used} = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
             } else {
                 let isGranular = ['sand', 'gravel', 'weathered_rock', 'rock'].includes(lastLayer.type);
                 if (isGranular) {
                     let calc_val = 200.0 * raw_N_tip;
                     q_p = Math.min(calc_val, 12000.0);
-                    qp_calc_detail = `• 공식: q<sub>p</sub> = min(200 &times; N, 12,000)<br>` +
-                                     `• 계산: min(200 &times; ${raw_N_tip}, 12,000) = min(${calc_val.toFixed(1)}, 12,000)<br>` +
-                                     `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                    qp_calc_detail = `q<sub>p</sub> = min(200 &times; N, 12,000) = min(200 &times; ${raw_N_tip}, 12,000) = min(${calc_val.toFixed(1)}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
                 } else {
                     let calc_val = 6.0 * c_tip;
                     q_p = Math.min(calc_val, 12000.0);
-                    qp_calc_detail = `• 공식: q<sub>p</sub> = min(6 &times; c<sub>u</sub>, 12,000)<br>` +
-                                     `• 계산: min(6 &times; ${c_tip}, 12,000) = min(${calc_val.toFixed(1)}, 12,000)<br>` +
-                                     `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                    qp_calc_detail = `q<sub>p</sub> = min(6 &times; c<sub>u</sub>, 12,000) = min(6 &times; ${c_tip}, 12,000) = min(${calc_val.toFixed(1)}, 12,000) = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
                 }
             }
         }
@@ -659,15 +651,11 @@ export function initPileModule(container) {
             if (isGranular) {
                 let calc_val = c_factor * l.n_val;
                 f_unit = Math.min(100.0, calc_val);
-                formula_str = `• 공식: min(100, ${c_factor} &times; N)<br>` +
-                              `• 계산: min(100, ${c_factor} &times; ${l.n_val}) = min(100, ${calc_val.toFixed(1)})<br>` +
-                              `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                formula_str = `f<sub>s</sub> = min(100, ${c_factor} &times; N) = min(100, ${c_factor} &times; ${l.n_val}) = min(100, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
             } else {
                 let calc_val = c_factor_c * c_val_i;
                 f_unit = Math.min(100.0, calc_val);
-                formula_str = `• 공식: min(100, ${c_factor_c} &times; c<sub>u</sub>)<br>` +
-                              `• 계산: min(100, ${c_factor_c} &times; ${c_val_i}) = min(100, ${calc_val.toFixed(1)})<br>` +
-                              `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                formula_str = `f<sub>s</sub> = min(100, ${c_factor_c} &times; c<sub>u</sub>) = min(100, ${c_factor_c} &times; ${c_val_i}) = min(100, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
             }
 
             let fxL = f_unit * dz_i;
@@ -699,9 +687,7 @@ export function initPileModule(container) {
             A_net = Ap;
             Q_mat_base = grid5Val;
             qMatBaseDetailStr = `
-                • <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) 산정 :</strong><br>
-                &nbsp;&nbsp;- 적용 공식: 표준 PHC 말뚝 규격 제원 DB 및 직접 입력값 (P<sub>a</sub>)<br>
-                &nbsp;&nbsp;- 산정 결과: Q<sub>mat_base</sub> = P<sub>a</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong>
+                • <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) :</strong> Q<sub>mat_base</sub> = P<sub>a</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong>
             `;
         } else if (p_type === 'STEEL') {
             let D_out = D - (t1_mm / 1000.0);
@@ -710,12 +696,8 @@ export function initPileModule(container) {
             Q_mat_base = grid5Val * A_net;
 
             qMatBaseDetailStr = `
-                • <strong>강관말뚝 순단면적 (A<sub>net</sub>) 산정 :</strong><br>
-                &nbsp;&nbsp;- 공식: A<sub>net</sub> = ${frac("&pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²)", "4")} (부식두께 t<sub>1</sub> = ${t1_mm}mm 차감)<br>
-                &nbsp;&nbsp;- 계산: ${frac(`&pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²)`, "4")} = <strong>${A_net.toFixed(5)} m²</strong><br>
-                • <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) 산정 :</strong><br>
-                &nbsp;&nbsp;- 공식: Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub><br>
-                &nbsp;&nbsp;- 계산: ${grid5Val.toLocaleString()} kN/m² &times; ${A_net.toFixed(5)} m² = <strong>${Q_mat_base.toFixed(1)} kN</strong>
+                • <strong>강관말뚝 순단면적 (A<sub>net</sub>) :</strong> A<sub>net</sub> = ${frac("&pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²)", "4")} = ${frac(`&pi; &times; (${D_out.toFixed(4)}² - ${D_in.toFixed(4)}²)`, "4")} = <strong>${A_net.toFixed(5)} m²</strong><br>
+                • <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) :</strong> Q<sub>mat_base</sub> = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = ${grid5Val.toLocaleString()} &times; ${A_net.toFixed(5)} = <strong>${Q_mat_base.toFixed(1)} kN</strong>
             `;
         }
 
@@ -757,10 +739,8 @@ export function initPileModule(container) {
         else if (cpSelectType === 'custom') Cp = parseFloat(container.querySelector('#pile_Cp_custom')?.value) || 0.09;
 
         let cpFormulaText = "";
-        if (cpSelectType === 'avg') cpFormulaText = `평균 산정식: ${frac(`${Cp_min} + ${Cp_max}`, "2")} = <strong>${Cp.toFixed(3)}</strong>`;
-        else if (cpSelectType === 'min') cpFormulaText = `최소값 적용 = <strong>${Cp.toFixed(3)}</strong>`;
-        else if (cpSelectType === 'max') cpFormulaText = `최대값 적용 = <strong>${Cp.toFixed(3)}</strong>`;
-        else cpFormulaText = `사용자 임의 입력값 적용 = <strong>${Cp.toFixed(3)}</strong>`;
+        if (cpSelectType === 'avg') cpFormulaText = `${frac(`${Cp_min} + ${Cp_max}`, "2")} = <strong>${Cp.toFixed(3)}</strong>`;
+        else cpFormulaText = `<strong>${Cp.toFixed(3)}</strong>`;
 
         let Qpa_norm = Qu_total > 0 ? P_norm * (Qup / Qu_total) : 0; 
         let Qfs_norm = Qu_total > 0 ? P_norm * (total_Qus / Qu_total) : 0;
@@ -866,11 +846,8 @@ export function initPileModule(container) {
                 </table>
                 <div style="margin-top: 8px; font-size: 0.88em; background:#f4f6f7; padding:10px; border-radius:4px; border-left:4px solid #f1c40f; line-height:1.6;">
                     • 선단 지지층 흙 종류: <strong>${soilLabel}</strong> / 적용 시공법: <strong>${methodLabel}</strong><br>
-                    • <strong>경험계수 (C<sub>p</sub>) :</strong> C<sub>p</sub> = ${frac("C<sub>p,min</sub> + C<sub>p,max</sub>", "2")} (${cpFormulaText})<br>
-                    • <strong>주면마찰 상수 (C<sub>s</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: C<sub>s</sub> = (0.93 + 0.16 &times; &radic;${frac("L", "D")}) &times; C<sub>p</sub><br>
-                    &nbsp;&nbsp;- 대입: (0.93 + 0.16 &times; &radic;${frac(`${L.toFixed(2)}`, `${D.toFixed(3)}`)}) &times; ${Cp.toFixed(3)}<br>
-                    &nbsp;&nbsp;- 결과: <strong>C<sub>s</sub> = ${Cs.toFixed(4)}</strong>
+                    • <strong>경험계수 (C<sub>p</sub>) :</strong> C<sub>p</sub> = ${cpFormulaText}<br>
+                    • <strong>주면마찰 상수 (C<sub>s</sub>) :</strong> C<sub>s</sub> = (0.93 + 0.16 &times; &radic;${frac("L", "D")}) &times; C<sub>p</sub> = (0.93 + 0.16 &times; &radic;${frac(`${L.toFixed(2)}`, `${D.toFixed(3)}`)}) &times; ${Cp.toFixed(3)} = <strong>${Cs.toFixed(4)}</strong>
                 </div>
             </div>
 
@@ -880,55 +857,23 @@ export function initPileModule(container) {
 
                 <div style="background:#eaf2f8; padding:8px 12px; border-radius:4px; margin-bottom:10px;">
                     <strong>① 전달하중 분배 (Q<sub>pa</sub>, Q<sub>fs</sub>)</strong><br>
-                    • <strong>선단 전달하중 (Q<sub>pa</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: Q<sub>pa</sub> = P &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")}<br>
-                    &nbsp;&nbsp;- 대입: ${P_norm.toFixed(1)} &times; ${frac(`${Qup.toFixed(1)}`, `${Qu_total.toFixed(1)}`)}<br>
-                    &nbsp;&nbsp;- 결과: <strong>Q<sub>pa</sub> = ${Qpa_norm.toFixed(1)} kN</strong><br>
-                    • <strong>주면 전달하중 (Q<sub>fs</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: Q<sub>fs</sub> = P &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")}<br>
-                    &nbsp;&nbsp;- 대입: ${P_norm.toFixed(1)} &times; ${frac(`${total_Qus.toFixed(1)}`, `${Qu_total.toFixed(1)}`)}<br>
-                    &nbsp;&nbsp;- 결과: <strong>Q<sub>fs</sub> = ${Qfs_norm.toFixed(1)} kN</strong>
+                    • <strong>선단 전달하중 (Q<sub>pa</sub>) :</strong> Q<sub>pa</sub> = P &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(`${Qup.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qpa_norm.toFixed(1)} kN</strong><br>
+                    • <strong>주면 전달하중 (Q<sub>fs</sub>) :</strong> Q<sub>fs</sub> = P &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_norm.toFixed(1)} &times; ${frac(`${total_Qus.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qfs_norm.toFixed(1)} kN</strong>
                 </div>
 
                 <div style="background:#f4f6f7; padding:8px 12px; border-radius:4px; margin-bottom:10px;">
                     <strong>② 반경험적 방법에 의한 침하량 (Vesic, 1977)</strong><br>
-                    • <strong>말뚝 자체 탄성 변형량 (S<sub>s</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>s</sub> = ${frac("(Q<sub>pa</sub> + &alpha;<sub>s</sub> &times; Q<sub>fs</sub>) &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`(${Qpa_norm.toFixed(1)} + ${alpha_s} &times; ${Qfs_norm.toFixed(1)}) &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>s</sub> = ${Ss_norm_mm.toFixed(3)} mm</strong><br><br>
-
-                    • <strong>선단지반 전달 침하량 (S<sub>p</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>p</sub> = ${frac("C<sub>p</sub> &times; Q<sub>pa</sub>", "D &times; q<sub>p</sub>")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`${Cp.toFixed(3)} &times; ${Qpa_norm.toFixed(1)}`, `${D.toFixed(3)} &times; ${q_p.toFixed(1)}`)} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>p</sub> = ${Sp_norm_mm.toFixed(3)} mm</strong><br><br>
-
-                    • <strong>주면지반 전달 침하량 (S<sub>ps</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>ps</sub> = ${frac("C<sub>s</sub> &times; Q<sub>fs</sub>", "L &times; q<sub>p</sub>")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`${Cs.toFixed(4)} &times; ${Qfs_norm.toFixed(1)}`, `${L.toFixed(2)} &times; ${q_p.toFixed(1)}`)} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>ps</sub> = ${Sps_norm_mm.toFixed(3)} mm</strong><br><br>
-
-                    ▶ <strong>총 Vesic 침하량 (S<sub>vesic,norm</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>vesic</sub> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub><br>
-                    &nbsp;&nbsp;- 대입: ${Ss_norm_mm.toFixed(3)} + ${Sp_norm_mm.toFixed(3)} + ${Sps_norm_mm.toFixed(3)}<br>
-                    &nbsp;&nbsp;- 결과: <strong><span style="color:#8e44ad; font-size:1.05em;">S<sub>vesic,norm</sub> = ${S_vesic_norm.toFixed(3)} mm</span></strong>
+                    • <strong>말뚝 자체 탄성 변형량 (S<sub>s</sub>) :</strong> S<sub>s</sub> = ${frac("(Q<sub>pa</sub> + &alpha;<sub>s</sub> &times; Q<sub>fs</sub>) &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 = ${frac(`(${Qpa_norm.toFixed(1)} + ${alpha_s} &times; ${Qfs_norm.toFixed(1)}) &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${Ss_norm_mm.toFixed(3)} mm</strong><br>
+                    • <strong>선단지반 전달 침하량 (S<sub>p</sub>) :</strong> S<sub>p</sub> = ${frac("C<sub>p</sub> &times; Q<sub>pa</sub>", "D &times; q<sub>p</sub>")} &times; 1000 = ${frac(`${Cp.toFixed(3)} &times; ${Qpa_norm.toFixed(1)}`, `${D.toFixed(3)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sp_norm_mm.toFixed(3)} mm</strong><br>
+                    • <strong>주면지반 전달 침하량 (S<sub>ps</sub>) :</strong> S<sub>ps</sub> = ${frac("C<sub>s</sub> &times; Q<sub>fs</sub>", "L &times; q<sub>p</sub>")} &times; 1000 = ${frac(`${Cs.toFixed(4)} &times; ${Qfs_norm.toFixed(1)}`, `${L.toFixed(2)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sps_norm_mm.toFixed(3)} mm</strong><br>
+                    ▶ <strong>총 Vesic 침하량 (S<sub>vesic,norm</sub>) :</strong> S<sub>vesic</sub> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = ${Ss_norm_mm.toFixed(3)} + ${Sp_norm_mm.toFixed(3)} + ${Sps_norm_mm.toFixed(3)} = <strong><span style="color:#8e44ad; font-size:1.05em;">${S_vesic_norm.toFixed(3)} mm</span></strong>
                 </div>
 
                 <div style="background:#f4f6f7; padding:8px 12px; border-radius:4px;">
                     <strong>③ 경험적 방법에 의한 침하량 (CFEM, 1992)</strong><br>
-                    • <strong>말뚝 직경에 의한 변위 (S<sub>d</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>d</sub> = ${frac("D", "100")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`${D.toFixed(3)}`, "100")} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>d</sub> = ${term1_cfem_mm.toFixed(3)} mm</strong><br><br>
-
-                    • <strong>말뚝 탄성 변형량 (S<sub>e</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>e</sub> = ${frac("P &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`${P_norm.toFixed(1)} &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>e</sub> = ${term2_cfem_norm_mm.toFixed(3)} mm</strong><br><br>
-
-                    ▶ <strong>총 CFEM 침하량 (S<sub>cfem,norm</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>cfem</sub> = S<sub>d</sub> + S<sub>e</sub><br>
-                    &nbsp;&nbsp;- 대입: ${term1_cfem_mm.toFixed(3)} + ${term2_cfem_norm_mm.toFixed(3)}<br>
-                    &nbsp;&nbsp;- 결과: <strong><span style="color:#8e44ad; font-size:1.05em;">S<sub>cfem,norm</sub> = ${S_cfem_norm.toFixed(3)} mm</span></strong>
+                    • <strong>말뚝 직경에 의한 변위 (S<sub>d</sub>) :</strong> S<sub>d</sub> = ${frac("D", "100")} &times; 1000 = ${frac(`${D.toFixed(3)}`, "100")} &times; 1000 = <strong>${term1_cfem_mm.toFixed(3)} mm</strong><br>
+                    • <strong>말뚝 탄성 변형량 (S<sub>e</sub>) :</strong> S<sub>e</sub> = ${frac("P &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 = ${frac(`${P_norm.toFixed(1)} &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${term2_cfem_norm_mm.toFixed(3)} mm</strong><br>
+                    ▶ <strong>총 CFEM 침하량 (S<sub>cfem,norm</sub>) :</strong> S<sub>cfem</sub> = S<sub>d</sub> + S<sub>e</sub> = ${term1_cfem_mm.toFixed(3)} + ${term2_cfem_norm_mm.toFixed(3)} = <strong><span style="color:#8e44ad; font-size:1.05em;">${S_cfem_norm.toFixed(3)} mm</span></strong>
                 </div>
             </div>
 
@@ -938,55 +883,23 @@ export function initPileModule(container) {
 
                 <div style="background:#fbeee6; padding:8px 12px; border-radius:4px; margin-bottom:10px;">
                     <strong>① 전달하중 분배 (Q<sub>pa</sub>, Q<sub>fs</sub>)</strong><br>
-                    • <strong>선단 전달하중 (Q<sub>pa</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: Q<sub>pa</sub> = P &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")}<br>
-                    &nbsp;&nbsp;- 대입: ${P_seis.toFixed(1)} &times; ${frac(`${Qup.toFixed(1)}`, `${Qu_total.toFixed(1)}`)}<br>
-                    &nbsp;&nbsp;- 결과: <strong>Q<sub>pa</sub> = ${Qpa_seis.toFixed(1)} kN</strong><br>
-                    • <strong>주면 전달하중 (Q<sub>fs</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: Q<sub>fs</sub> = P &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")}<br>
-                    &nbsp;&nbsp;- 대입: ${P_seis.toFixed(1)} &times; ${frac(`${total_Qus.toFixed(1)}`, `${Qu_total.toFixed(1)}`)}<br>
-                    &nbsp;&nbsp;- 결과: <strong>Q<sub>fs</sub> = ${Qfs_seis.toFixed(1)} kN</strong>
+                    • <strong>선단 전달하중 (Q<sub>pa</sub>) :</strong> Q<sub>pa</sub> = P &times; ${frac("Q<sub>up</sub>", "Q<sub>u</sub>")} = ${P_seis.toFixed(1)} &times; ${frac(`${Qup.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qpa_seis.toFixed(1)} kN</strong><br>
+                    • <strong>주면 전달하중 (Q<sub>fs</sub>) :</strong> Q<sub>fs</sub> = P &times; ${frac("Q<sub>us</sub>", "Q<sub>u</sub>")} = ${P_seis.toFixed(1)} &times; ${frac(`${total_Qus.toFixed(1)}`, `${Qu_total.toFixed(1)}`)} = <strong>${Qfs_seis.toFixed(1)} kN</strong>
                 </div>
 
                 <div style="background:#f4f6f7; padding:8px 12px; border-radius:4px; margin-bottom:10px;">
                     <strong>② 반경험적 방법에 의한 침하량 (Vesic, 1977)</strong><br>
-                    • <strong>말뚝 자체 탄성 변형량 (S<sub>s</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>s</sub> = ${frac("(Q<sub>pa</sub> + &alpha;<sub>s</sub> &times; Q<sub>fs</sub>) &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`(${Qpa_seis.toFixed(1)} + ${alpha_s} &times; ${Qfs_seis.toFixed(1)}) &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>s</sub> = ${Ss_seis_mm.toFixed(3)} mm</strong><br><br>
-
-                    • <strong>선단지반 전달 침하량 (S<sub>p</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>p</sub> = ${frac("C<sub>p</sub> &times; Q<sub>pa</sub>", "D &times; q<sub>p</sub>")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`${Cp.toFixed(3)} &times; ${Qpa_seis.toFixed(1)}`, `${D.toFixed(3)} &times; ${q_p.toFixed(1)}`)} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>p</sub> = ${Sp_seis_mm.toFixed(3)} mm</strong><br><br>
-
-                    • <strong>주면지반 전달 침하량 (S<sub>ps</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>ps</sub> = ${frac("C<sub>s</sub> &times; Q<sub>fs</sub>", "L &times; q<sub>p</sub>")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`${Cs.toFixed(4)} &times; ${Qfs_seis.toFixed(1)}`, `${L.toFixed(2)} &times; ${q_p.toFixed(1)}`)} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>ps</sub> = ${Sps_seis_mm.toFixed(3)} mm</strong><br><br>
-
-                    ▶ <strong>총 Vesic 침하량 (S<sub>vesic,seis</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>vesic</sub> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub><br>
-                    &nbsp;&nbsp;- 대입: ${Ss_seis_mm.toFixed(3)} + ${Sp_seis_mm.toFixed(3)} + ${Sps_seis_mm.toFixed(3)}<br>
-                    &nbsp;&nbsp;- 결과: <strong><span style="color:#8e44ad; font-size:1.05em;">S<sub>vesic,seis</sub> = ${S_vesic_seis.toFixed(3)} mm</span></strong>
+                    • <strong>말뚝 자체 탄성 변형량 (S<sub>s</sub>) :</strong> S<sub>s</sub> = ${frac("(Q<sub>pa</sub> + &alpha;<sub>s</sub> &times; Q<sub>fs</sub>) &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 = ${frac(`(${Qpa_seis.toFixed(1)} + ${alpha_s} &times; ${Qfs_seis.toFixed(1)}) &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${Ss_seis_mm.toFixed(3)} mm</strong><br>
+                    • <strong>선단지반 전달 침하량 (S<sub>p</sub>) :</strong> S<sub>p</sub> = ${frac("C<sub>p</sub> &times; Q<sub>pa</sub>", "D &times; q<sub>p</sub>")} &times; 1000 = ${frac(`${Cp.toFixed(3)} &times; ${Qpa_seis.toFixed(1)}`, `${D.toFixed(3)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sp_seis_mm.toFixed(3)} mm</strong><br>
+                    • <strong>주면지반 전달 침하량 (S<sub>ps</sub>) :</strong> S<sub>ps</sub> = ${frac("C<sub>s</sub> &times; Q<sub>fs</sub>", "L &times; q<sub>p</sub>")} &times; 1000 = ${frac(`${Cs.toFixed(4)} &times; ${Qfs_seis.toFixed(1)}`, `${L.toFixed(2)} &times; ${q_p.toFixed(1)}`)} &times; 1000 = <strong>${Sps_seis_mm.toFixed(3)} mm</strong><br>
+                    ▶ <strong>총 Vesic 침하량 (S<sub>vesic,seis</sub>) :</strong> S<sub>vesic</sub> = S<sub>s</sub> + S<sub>p</sub> + S<sub>ps</sub> = ${Ss_seis_mm.toFixed(3)} + ${Sp_seis_mm.toFixed(3)} + ${Sps_seis_mm.toFixed(3)} = <strong><span style="color:#8e44ad; font-size:1.05em;">${S_vesic_seis.toFixed(3)} mm</span></strong>
                 </div>
 
                 <div style="background:#f4f6f7; padding:8px 12px; border-radius:4px;">
                     <strong>③ 경험적 방법에 의한 침하량 (CFEM, 1992)</strong><br>
-                    • <strong>말뚝 직경에 의한 변위 (S<sub>d</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>d</sub> = ${frac("D", "100")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`${D.toFixed(3)}`, "100")} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>d</sub> = ${term1_cfem_mm.toFixed(3)} mm</strong><br><br>
-
-                    • <strong>말뚝 탄성 변형량 (S<sub>e</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>e</sub> = ${frac("P &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 (mm)<br>
-                    &nbsp;&nbsp;- 대입: ${frac(`${P_seis.toFixed(1)} &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000<br>
-                    &nbsp;&nbsp;- 결과: <strong>S<sub>e</sub> = ${term2_cfem_seis_mm.toFixed(3)} mm</strong><br><br>
-
-                    ▶ <strong>총 CFEM 침하량 (S<sub>cfem,seis</sub>) :</strong><br>
-                    &nbsp;&nbsp;- 공식: S<sub>cfem</sub> = S<sub>d</sub> + S<sub>e</sub><br>
-                    &nbsp;&nbsp;- 대입: ${term1_cfem_mm.toFixed(3)} + ${term2_cfem_seis_mm.toFixed(3)}<br>
-                    &nbsp;&nbsp;- 결과: <strong><span style="color:#8e44ad; font-size:1.05em;">S<sub>cfem,seis</sub> = ${S_cfem_seis.toFixed(3)} mm</span></strong>
+                    • <strong>말뚝 직경에 의한 변위 (S<sub>d</sub>) :</strong> S<sub>d</sub> = ${frac("D", "100")} &times; 1000 = ${frac(`${D.toFixed(3)}`, "100")} &times; 1000 = <strong>${term1_cfem_mm.toFixed(3)} mm</strong><br>
+                    • <strong>말뚝 탄성 변형량 (S<sub>e</sub>) :</strong> S<sub>e</sub> = ${frac("P &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")} &times; 1000 = ${frac(`${P_seis.toFixed(1)} &times; ${L.toFixed(2)}`, `${A_net.toFixed(5)} &times; ${Ep.toLocaleString()}`)} &times; 1000 = <strong>${term2_cfem_seis_mm.toFixed(3)} mm</strong><br>
+                    ▶ <strong>총 CFEM 침하량 (S<sub>cfem,seis</sub>) :</strong> S<sub>cfem</sub> = S<sub>d</sub> + S<sub>e</sub> = ${term1_cfem_mm.toFixed(3)} + ${term2_cfem_seis_mm.toFixed(3)} = <strong><span style="color:#8e44ad; font-size:1.05em;">${S_cfem_seis.toFixed(3)} mm</span></strong>
                 </div>
             </div>
         `;
@@ -1078,9 +991,7 @@ export function initPileModule(container) {
                 • <strong>장경비 감소율 (&mu;) 산정 :</strong><br>
                 &nbsp;&nbsp;- 장경비 L/D = ${frac(`${L.toFixed(2)}`, `${D.toFixed(3)}`)} = ${L_over_D.toFixed(2)} (한계치 n = ${n_limit})<br>
                 &nbsp;&nbsp;- 장경비에 의한 감소율 &mu; = L/D - n = max(0, ${L_over_D.toFixed(2)} - ${n_limit}) = <strong>${mu1.toFixed(2)} %</strong><br><br>
-                • <strong>본체부 말뚝 내하력 계산 :</strong><br>
-                &nbsp;&nbsp;- 공식: Q<sub>as</sub> = (1 - ${frac("&mu;", "100")}) &times; Q<sub>mat_base</sub><br>
-                &nbsp;&nbsp;- 계산: (1 - ${frac(`${mu1.toFixed(2)}`, "100")}) &times; ${Q_mat_base.toFixed(1)} = <span style="color:#2980b9; font-weight:bold; font-size:1.05em;">${Qas.toFixed(1)} kN</span>
+                • <strong>본체부 말뚝 내하력 계산 :</strong> Q<sub>as</sub> = (1 - ${frac("&mu;", "100")}) &times; Q<sub>mat_base</sub> = (1 - ${frac(`${mu1.toFixed(2)}`, "100")}) &times; ${Q_mat_base.toFixed(1)} = <span style="color:#2980b9; font-weight:bold; font-size:1.05em;">${Qas.toFixed(1)} kN</span>
             </div>
 
             ${settlementDetailHtml}
