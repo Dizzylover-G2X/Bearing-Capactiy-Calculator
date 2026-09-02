@@ -25,16 +25,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const contentContainer = document.getElementById('app-content');
     const tabButtons = document.querySelectorAll('.tab-btn, .nav-tab');
 
-    // 초기 실행 (기본 탭: 얕은기초 지지력 검토)
-    initBearingModule(contentContainer);
+    // 초기 실행: 직접기초 지지력 검토 모듈 로드
+    if (contentContainer) {
+        initBearingModule(contentContainer);
+    }
 
-    // 탭 클릭 이벤트 바인딩
+    // 탭 클릭 이벤트 바인딩 (e.currentTarget으로 클릭 영역 버그 방지)
     tabButtons.forEach(button => {
         button.addEventListener('click', (e) => {
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            e.target.classList.add('active');
+            const targetBtn = e.currentTarget;
 
-            const tabName = e.target.getAttribute('data-tab');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            targetBtn.classList.add('active');
+
+            const tabName = targetBtn.getAttribute('data-tab');
 
             switch (tabName) {
                 case 'bearing':
