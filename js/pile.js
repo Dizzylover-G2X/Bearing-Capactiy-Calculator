@@ -588,118 +588,68 @@ export function initPileModule(container) {
         const P_norm = parseFloat(container.querySelector('#pile_P_norm').value) || 0;
         const P_seis = parseFloat(container.querySelector('#pile_P_seis').value) || 0;
 
-        // 1. 선단지지력 (Qup)
         let lastLayer = pileLayersData.length > 0 ? pileLayersData[pileLayersData.length - 1] : { name: '지지층', type: 'sand', n_val: 50, gamma: 20.0, c_val: 0 };
         let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
         let c_tip = parseFloat(lastLayer.c_val) || 0;
         const Ap = (Math.PI * Math.pow(D, 2)) / 4.0;
         
         let q_p = 0; 
-        let qp_calc_detail = "";
 
         if (method === 'driven') {
             let N_used = Math.min(raw_N_tip, 60);
             q_p = 300.0 * N_used;
-            qp_calc_detail = `• 공식: q<sub>p</sub> = 300 &times; N (N&le;60)<br>` +
-                             `• 계산: 300 &times; ${N_used}<br>` +
-                             `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
         } else {
             if (qp_formula_key === 'lh') {
                 let N_used = Math.min(raw_N_tip, 60);
                 q_p = 250.0 * N_used;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = 250 &times; N (N&le;60)<br>` +
-                                 `• 계산: 250 &times; ${N_used}<br>` +
-                                 `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
             } else {
                 let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type);
                 if (isGranular) {
-                    let calc_val = 200.0 * raw_N_tip;
-                    q_p = Math.min(calc_val, 12000.0);
-                    qp_calc_detail = `• 공식: q<sub>p</sub> = min(200 &times; N, 12,000)<br>` +
-                                     `• 계산: min(200 &times; ${raw_N_tip}, 12,000) = min(${calc_val.toFixed(1)}, 12,000)<br>` +
-                                     `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                    q_p = Math.min(200.0 * raw_N_tip, 12000.0);
                 } else {
-                    let calc_val = 6.0 * c_tip;
-                    q_p = Math.min(calc_val, 12000.0);
-                    qp_calc_detail = `• 공식: q<sub>p</sub> = min(6 &times; c<sub>u</sub>, 12,000)<br>` +
-                                     `• 계산: min(6 &times; ${c_tip}, 12,000) = min(${calc_val.toFixed(1)}, 12,000)<br>` +
-                                     `• 결과: q<sub>p</sub> = <strong>${q_p.toFixed(1)} kN/m²</strong>`;
+                    q_p = Math.min(6.0 * c_tip, 12000.0);
                 }
             }
         }
 
         const Qup = q_p * Ap;
 
-        // 2. 주면마찰력 (Qus)
         const As = Math.PI * D;
         let total_Qus = 0;
-        let layer_calc_rows = [];
 
         let c_factor = (method === 'driven') ? 2.0 : (qs_formula_key === 'lh' ? 2.0 : 2.5);
         let c_factor_c = (method === 'driven') ? 1.0 : (qs_formula_key === 'lh' ? 5.0 : 0.8);
-        const typeMap = { 'sand': '사질토', 'clay': '점성토', 'gravel': '자갈층', 'weathered_rock': '풍화암' };
 
         pileLayersData.forEach(l => {
             let f_unit = 0;
-            let formula_str = "";
             let dz_i = parseFloat(l.dz) || 0;
-            let gamma_i = parseFloat(l.gamma) || 19.0;
             let c_val_i = parseFloat(l.c_val) || 0; 
 
             let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(l.type);
             if (isGranular) {
-                let calc_val = c_factor * l.n_val;
-                f_unit = Math.min(100.0, calc_val);
-                formula_str = `• 공식: min(100, ${c_factor} &times; N)<br>` +
-                              `• 계산: min(100, ${c_factor} &times; ${l.n_val}) = min(100, ${calc_val.toFixed(1)})<br>` +
-                              `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                f_unit = Math.min(100.0, c_factor * l.n_val);
             } else {
-                let calc_val = c_factor_c * c_val_i;
-                f_unit = Math.min(100.0, calc_val);
-                formula_str = `• 공식: min(100, ${c_factor_c} &times; c<sub>u</sub>)<br>` +
-                              `• 계산: min(100, ${c_factor_c} &times; ${c_val_i}) = min(100, ${calc_val.toFixed(1)})<br>` +
-                              `• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                f_unit = Math.min(100.0, c_factor_c * c_val_i);
             }
 
-            let fxL = f_unit * dz_i;
-            let Qus_i = fxL * As;
-            total_Qus += Qus_i;
-
-            layer_calc_rows.push({
-                name: l.name, type: typeMap[l.type] || l.type,
-                dz: dz_i, n_val: l.n_val, gamma: gamma_i, c_val: c_val_i,
-                formula: formula_str, fxL: fxL, qusi: Qus_i
-            });
+            total_Qus += f_unit * dz_i * As;
         });
 
-        // 3. 지반 연직 허용지지력
         const Qu_total = Qup + total_Qus;
         const Qa_soil_norm = Qu_total / 3.0;
         const Qa_soil_seis = Qu_total / 2.0;
 
-        // 4. 재료 내하력 (Qas)
         let Q_mat_base = 0;
-        let qMatBaseDetailStr = "";
         let A_net = 0;
 
         if (p_type === 'PHC') {
             A_net = Ap;
             Q_mat_base = grid5Val;
-            qMatBaseDetailStr = `
-                • <strong>기본 허용압축하중 (Q<sub>mat_base</sub>) 산정 :</strong><br>
-                &nbsp;&nbsp;- 적용 공식: 표준 PHC 말뚝 규격 DB 및 입력값 (P<sub>a</sub>) = <strong>${Q_mat_base.toFixed(1)} kN</strong>
-            `;
         } else if (p_type === 'STEEL') {
             let D_out = D - (t1_mm / 1000.0);
             let D_in = Math.max(0, D_out - 2.0 * (t_mm / 1000.0));
             A_net = (Math.PI * (Math.pow(D_out, 2) - Math.pow(D_in, 2))) / 4.0;
             Q_mat_base = grid5Val * A_net;
-
-            qMatBaseDetailStr = `
-                • <strong>강관말뚝 순단면적 (A<sub>net</sub>) 및 내하력 산정 :</strong><br>
-                &nbsp;&nbsp;- 순단면적 A<sub>net</sub> = ${A_net.toFixed(5)} m²<br>
-                &nbsp;&nbsp;- 기본 허용압축하중 (Q<sub>mat_base</sub>) = &sigma;<sub>ca</sub> &times; A<sub>net</sub> = <strong>${Q_mat_base.toFixed(1)} kN</strong>
-            `;
         }
 
         const L_over_D = L / D;
@@ -711,17 +661,16 @@ export function initPileModule(container) {
         const Q_app_norm = Math.min(Qa_soil_norm, Qas);
         const Q_app_seis = Math.min(Qa_soil_seis, Qas);
 
-        // 5. 연직 침하량 (Vesic, CFEM)
         let Cp_min = 0, Cp_max = 0, Cp_avg = 0;
         let soilLabel = "", methodLabel = (method === 'driven') ? "타입말뚝" : "굴착말뚝";
         let isClay = lastLayer.type === 'clay';
 
         if (isClay) {
-            soilLabel = "점토 (굳은~연약)";
+            soilLabel = "점토";
             if (method === 'driven') { Cp_min = 0.02; Cp_max = 0.03; }
             else { Cp_min = 0.03; Cp_max = 0.06; }
         } else {
-            soilLabel = "모래 (조밀~느슨)";
+            soilLabel = "모래";
             if (method === 'driven') { Cp_min = 0.02; Cp_max = 0.04; }
             else { Cp_min = 0.09; Cp_max = 0.18; }
         }
