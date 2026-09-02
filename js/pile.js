@@ -696,6 +696,92 @@ export function initPileModule(container) {
         };
     }
 
+    // Broms 극한수평지지력(Hu) 및 공식 동적 산정
+    function calcBromsHu(headCond, soilType, betaL, etaL, D, L, cu, My, Kp, gamma_sub, h = 0) {
+        let Hu = 0;
+        let formulaText = "";
+        let caseKey = "";
+
+        if (cu <= 0) cu = 10; // Fallback
+
+        if (headCond === 'fixed') {
+            if (soilType === 'clay') {
+                if (betaL < 2.25) {
+                    caseKey = "fixed_clay_short";
+                    Hu = 9.0 * cu * Math.pow(D, 2) * ((L / D) - 1.5);
+                    formulaText = `9 c<sub>u</sub> D² { (L/D) - 1.5 }`;
+                } else {
+                    caseKey = "fixed_clay_long";
+                    let C = (36.0 * My) / (cu * Math.pow(D, 3));
+                    let x = (-27.0 + Math.sqrt(27.0 * 27.0 + 4.0 * C)) / 2.0;
+                    Hu = x * cu * Math.pow(D, 2);
+                    formulaText = `{ H<sub>u</sub>/(c<sub>u</sub>D²) }² + 27{ H<sub>u</sub>/(c<sub>u</sub>D²) } = 36{ M<sub>y</sub>/(c<sub>u</sub>D³) }`;
+                }
+            } else { // sand
+                if (etaL < 2.0) {
+                    caseKey = "fixed_sand_short";
+                    Hu = 1.5 * Kp * gamma_sub * D * Math.pow(L, 2);
+                    formulaText = `1.5 K<sub>p</sub> &gamma;' D L²`;
+                } else if (etaL <= 4.0) {
+                    caseKey = "fixed_sand_mid";
+                    Hu = Kp * Math.pow(D, 3) * gamma_sub * ((My / (Kp * Math.pow(D, 4) * gamma_sub)) + 0.5 * Math.pow(L / D, 3)) * (D / L);
+                    formulaText = `K<sub>p</sub> D³ &gamma;' { M<sub>y</sub>/(K<sub>p</sub>D⁴&gamma;') + 0.5(L/D)³ } (D/L)`;
+                } else {
+                    caseKey = "fixed_sand_long";
+                    let My_ratio = My / (Kp * gamma_sub * Math.pow(D, 4));
+                    Hu = 2.38 * Math.pow(My_ratio, 2.0 / 3.0) * (Kp * gamma_sub * Math.pow(D, 3));
+                    formulaText = `2.38 { M<sub>y</sub>/(K<sub>p</sub>D⁴&gamma;') }<sup>2/3</sup> K<sub>p</sub> D³ &gamma;'`;
+                }
+            }
+        } else { // free
+            if (soilType === 'clay') {
+                if (betaL < 2.25) {
+                    caseKey = "free_clay_short";
+                    let term1 = 4.0 * Math.pow(h / D, 2) + 2.0 * Math.pow(L / D, 2) + 4.0 * (h / D) * (L / D) + 6.0 * (h / D) + 4.5;
+                    let term2 = 2.0 * (h / D) + (L / D);
+                    Hu = 9.0 * cu * Math.pow(D, 2) * (Math.sqrt(term1) - term2);
+                    formulaText = `9 c<sub>u</sub> D² [ { 4(h/D)² + 2(L/D)² + 4(h/D)(L/D) + 6(h/D) + 4.5 }<sup>1/2</sup> - { 2(h/D) + L/D } ]`;
+                } else {
+                    caseKey = "free_clay_long";
+                    let A = 18.0 * (h / D) + 27.0;
+                    let B = 18.0 * My / (cu * Math.pow(D, 3));
+                    let x = (-A + Math.sqrt(A * A + 4.0 * B)) / 2.0;
+                    Hu = x * cu * Math.pow(D, 2);
+                    formulaText = `{ H<sub>u</sub>/(c<sub>u</sub>D²) }² + { 18(h/D) + 27 }{ H<sub>u</sub>/(c<sub>u</sub>D²) } = 18{ M<sub>y</sub>/(c<sub>u</sub>D³) }`;
+                }
+            } else { // sand
+                if (etaL < 2.0) {
+                    caseKey = "free_sand_short";
+                    Hu = (Kp * gamma_sub * D * Math.pow(L, 2)) / (2.0 * (1.0 + h / L));
+                    formulaText = `( K<sub>p</sub> &gamma;' D L² ) / { 2 (1 + h/L) }`;
+                } else {
+                    caseKey = "free_sand_long";
+                    let My_ratio = My / (Kp * gamma_sub * Math.pow(D, 4));
+                    let y = 0;
+                    if (h === 0) {
+                        y = Math.pow(My_ratio / 0.544, 1.0 / 3.0);
+                    } else {
+                        y = Math.pow(My_ratio / 0.544, 1.0 / 3.0);
+                        for (let iter = 0; iter < 10; iter++) {
+                            let f = Math.pow(y, 2) * (h / D) + 0.544 * Math.pow(y, 3) - My_ratio;
+                            let df = 2.0 * y * (h / D) + 1.632 * Math.pow(y, 2);
+                            if (Math.abs(df) < 1e-7) break;
+                            let dy = f / df;
+                            y -= dy;
+                            if (Math.abs(dy) < 1e-6) break;
+                        }
+                    }
+                    Hu = Math.pow(y, 2) * (Kp * gamma_sub * Math.pow(D, 3));
+                    formulaText = `{ H<sub>u</sub>/(K<sub>p</sub>&gamma;'D³) } [ h/D + 0.544{ H<sub>u</sub>/(K<sub>p</sub>&gamma;'D³) }<sup>1/2</sup> ] = { M<sub>y</sub>/(K<sub>p</sub>&gamma;'D⁴) }`;
+                }
+            }
+        }
+
+        if (isNaN(Hu) || Hu < 0) Hu = 0;
+
+        return { Hu, formulaText, caseKey };
+    }
+
     // 수평지반반력계수(kh) 축차계산
     function calculateHorizontalSoilReaction(alphaNorm, Ep, D, Ip_cm4, layers) {
         const EI = Ep * (Ip_cm4 / 1.0e8);
@@ -1055,7 +1141,7 @@ export function initPileModule(container) {
 
         const My_kNm = fy_kNm2 * Z_m3;
 
-        // Broms 특성치 및 수평극한지지력 Hu 산정
+        // Broms 특성치 및 수평극한지지력 Hu 동적 산정
         let chi_norm = 1.0 / beta_norm;
         let eta_h_norm = (kh_norm * D) / chi_norm;
         let eta_norm = Math.pow(eta_h_norm / horizRes.EI, 0.2);
@@ -1068,16 +1154,14 @@ export function initPileModule(container) {
         let etaL_seis = eta_seis * L;
         let betaL_seis = beta_seis * L;
 
-        let Kp_gamma_D3_norm = Kp_norm * gamma_sub_norm * Math.pow(D, 3);
-        let Kp_gamma_D4_norm = Kp_norm * gamma_sub_norm * Math.pow(D, 4);
-        let My_ratio_norm = My_kNm / Kp_gamma_D4_norm;
+        let cu_norm = Math.max(10.0, soil_info_norm.avgC);
+        let cu_seis = Math.max(10.0, soil_info_seis.avgC);
 
-        let Kp_gamma_D3_seis = Kp_seis * gamma_sub_seis * Math.pow(D, 3);
-        let Kp_gamma_D4_seis = Kp_seis * gamma_sub_seis * Math.pow(D, 4);
-        let My_ratio_seis = My_kNm / Kp_gamma_D4_seis;
+        const broms_norm = calcBromsHu(head_cond, top_soil_type, betaL_norm, etaL_norm, D, L, cu_norm, My_kNm, Kp_norm, gamma_sub_norm, 0);
+        const broms_seis = calcBromsHu(head_cond, top_soil_type, betaL_seis, etaL_seis, D, L, cu_seis, My_kNm, Kp_seis, gamma_sub_seis, 0);
 
-        let Hu_norm = 2.38 * Math.pow(My_ratio_norm, 2.0 / 3.0) * Kp_gamma_D3_norm;
-        let Hu_seis = 2.38 * Math.pow(My_ratio_seis, 2.0 / 3.0) * Kp_gamma_D3_seis;
+        let Hu_norm = broms_norm.Hu;
+        let Hu_seis = broms_seis.Hu;
 
         let Ha_broms_norm = Hu_norm / 3.0;
         let Ha_broms_seis = Hu_seis / 2.0;
@@ -1322,7 +1406,7 @@ export function initPileModule(container) {
                             </tr>
                             <tr style="${lastLayer.type === 'clay' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
                                 <td>점토 (굳은~연약)</td>
-                                <td>0.03 ~ 0.03</td>
+                                <td>0.02 ~ 0.03</td>
                                 <td>0.03 ~ 0.06</td>
                             </tr>
                             <tr>
@@ -1555,11 +1639,10 @@ export function initPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>(4) Broms 극한평형법 수평 지지력 산정</strong><br>
                 
-                <div style="font-weight:bold; color:#2c3e50; margin-top:4px; margin-bottom:6px;">
-                    ■ 극한지반 반력법에 의한 수평지지력 산정식 기준표 (${head_cond === 'fixed' ? '표 7. 말뚝머리 구속' : '표 8. 말뚝머리 자유'})
+                <div style="font-weight:bold; color:#2c3e50; margin-top:6px; margin-bottom:4px;">
+                    ■ 표 7. 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 구속)
                 </div>
-
-                <div class="table-container" style="margin-bottom:10px;">
+                <div class="table-container" style="margin-bottom:12px;">
                     <table class="result-table" style="font-size:0.83em; text-align:center;">
                         <thead>
                             <tr style="background:#eaeded;">
@@ -1570,81 +1653,98 @@ export function initPileModule(container) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${head_cond === 'fixed' ? `
-                                <tr style="${top_soil_type === 'clay' && betaL_norm < 2.25 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td rowspan="3" style="vertical-align:middle; background:#f9f9f9;">점성토</td>
-                                    <td>&beta;L &lt; 2.25</td>
-                                    <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 9 c<sub>u</sub> D'² { (L/D') - 1.5 }</td>
-                                    <td>${top_soil_type === 'clay' && betaL_norm < 2.25 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                                <tr style="${top_soil_type === 'clay' && betaL_norm >= 2.25 && betaL_norm <= 2.25 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td>중간</td>
-                                    <td style="text-align:left; padding-left:10px;">(H<sub>u</sub> / c<sub>u</sub> D'²)² + (27 + 18 L/D')(H<sub>u</sub> / c<sub>u</sub> D'²) - 81(L/D' - 1.5)² = 36(M<sub>y</sub> / c<sub>u</sub> D'³)</td>
-                                    <td>-</td>
-                                </tr>
-                                <tr style="${top_soil_type === 'clay' && betaL_norm > 2.25 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td>&beta;L &gt; 2.25</td>
-                                    <td style="text-align:left; padding-left:10px;">{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + 27 { H<sub>u</sub> / (c<sub>u</sub> D'²) } = 36 { M<sub>y</sub> / (c<sub>u</sub> D'³) }</td>
-                                    <td>${top_soil_type === 'clay' && betaL_norm > 2.25 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                                <tr style="${top_soil_type === 'sand' && etaL_norm < 2.0 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td rowspan="3" style="vertical-align:middle; background:#f9f9f9;">사질토</td>
-                                    <td>&eta;L &lt; 2</td>
-                                    <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 1.5 K<sub>p</sub> &gamma;' D' L²</td>
-                                    <td>${top_soil_type === 'sand' && etaL_norm < 2.0 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                                <tr style="${top_soil_type === 'sand' && etaL_norm >= 2.0 && etaL_norm <= 4.0 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td>2 &le; &eta;L &le; 4</td>
-                                    <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = K<sub>p</sub> D'³ &gamma;' { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') + 0.5(L/D')³ } (D'/L)</td>
-                                    <td>${top_soil_type === 'sand' && etaL_norm >= 2.0 && etaL_norm <= 4.0 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                                <tr style="${top_soil_type === 'sand' && etaL_norm > 4.0 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td>&eta;L &gt; 4</td>
-                                    <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 2.38 { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') }<sup>2/3</sup> K<sub>p</sub> D'³ &gamma;'</td>
-                                    <td>${top_soil_type === 'sand' && etaL_norm > 4.0 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                            ` : `
-                                <tr style="${top_soil_type === 'clay' && betaL_norm < 2.25 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td rowspan="3" style="vertical-align:middle; background:#f9f9f9;">점성토</td>
-                                    <td>&beta;L &lt; 2.25</td>
-                                    <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 9 c<sub>u</sub> D'² [ { 4(h/D')² + 2(L/D')² + 4(h/D')(L/D') + 6(h/D') + 4.5 }<sup>1/2</sup> - { 2(h/D') + (L/D') } ]</td>
-                                    <td>${top_soil_type === 'clay' && betaL_norm < 2.25 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                                <tr>
-                                    <td>중간</td>
-                                    <td style="text-align:left; padding-left:10px;">-</td>
-                                    <td>-</td>
-                                </tr>
-                                <tr style="${top_soil_type === 'clay' && betaL_norm > 2.25 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td>&beta;L &gt; 2.25</td>
-                                    <td style="text-align:left; padding-left:10px;">{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + { 18(h/D') + 27 } { H<sub>u</sub> / (c<sub>u</sub> D'²) } = 18 { M<sub>y</sub> / (c<sub>u</sub> D'³) }</td>
-                                    <td>${top_soil_type === 'clay' && betaL_norm > 2.25 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                                <tr style="${top_soil_type === 'sand' && etaL_norm < 2.0 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td rowspan="3" style="vertical-align:middle; background:#f9f9f9;">사질토</td>
-                                    <td>&eta;L &lt; 2</td>
-                                    <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = ( K<sub>p</sub> &gamma; D' L² ) / { 2 (1 + h/L) }</td>
-                                    <td>${top_soil_type === 'sand' && etaL_norm < 2.0 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                                <tr>
-                                    <td>2 &le; &eta;L &le; 4</td>
-                                    <td style="text-align:left; padding-left:10px;">-</td>
-                                    <td>-</td>
-                                </tr>
-                                <tr style="${top_soil_type === 'sand' && etaL_norm > 4.0 ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                                    <td>&eta;L &gt; 4</td>
-                                    <td style="text-align:left; padding-left:10px;">{ H<sub>u</sub> / (K<sub>p</sub> &gamma; D'³) } [ h/D' + 0.544 { H<sub>u</sub> / (K<sub>p</sub> &gamma; D'³) }<sup>1/2</sup> ] = { M<sub>y</sub> / (K<sub>p</sub> &gamma; D'⁴) }</td>
-                                    <td>${top_soil_type === 'sand' && etaL_norm > 4.0 ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
-                                </tr>
-                            `}
+                            <tr style="${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_clay_short' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td rowspan="3" style="vertical-align:middle; background:#f9f9f9;">점성토</td>
+                                <td>&beta;L &lt; 2.25</td>
+                                <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 9 c<sub>u</sub> D'² { (L/D') - 1.5 }</td>
+                                <td>${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_clay_short' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_clay_mid' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td>중간</td>
+                                <td style="text-align:left; padding-left:10px;">(H<sub>u</sub> / c<sub>u</sub> D'²)² + (27 + 18 L/D')(H<sub>u</sub> / c<sub>u</sub> D'²) - 81(L/D' - 1.5)² = 36(M<sub>y</sub> / c<sub>u</sub> D'³)</td>
+                                <td>${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_clay_mid' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_clay_long' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td>&beta;L &gt; 2.25</td>
+                                <td style="text-align:left; padding-left:10px;">{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + 27 { H<sub>u</sub> / (c<sub>u</sub> D'²) } = 36 { M<sub>y</sub> / (c<sub>u</sub> D'³) }</td>
+                                <td>${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_clay_long' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_sand_short' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td rowspan="3" style="vertical-align:middle; background:#f9f9f9;">사질토</td>
+                                <td>&eta;L &lt; 2</td>
+                                <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 1.5 K<sub>p</sub> &gamma;' D' L²</td>
+                                <td>${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_sand_short' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_sand_mid' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td>2 &le; &eta;L &le; 4</td>
+                                <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = K<sub>p</sub> D'³ &gamma;' { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') + 0.5(L/D')³ } (D'/L)</td>
+                                <td>${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_sand_mid' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_sand_long' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td>&eta;L &gt; 4</td>
+                                <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 2.38 { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') }<sup>2/3</sup> K<sub>p</sub> D'³ &gamma;'</td>
+                                <td>${head_cond === 'fixed' && broms_norm.caseKey === 'fixed_sand_long' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
 
-                &nbsp;&nbsp;• <strong>Broms 허용수평지지력 (H<sub>a,broms</sub>) 수치 대입 결과 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>u,norm</sub> = 2.38 &times; (${My_ratio_norm.toFixed(2)})<sup>2/3</sup> &times; ${formatComma(Kp_gamma_D3_norm, 1)} = <strong>${formatComma(Hu_norm, 1)} kN/본</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>a,broms</sub> = ${frac("H<sub>u</sub>", "3.0")} = ${frac(formatComma(Hu_norm, 1), "3.0")} = <strong>${formatComma(Ha_broms_norm, 1)} kN/본</strong> (안전율 F.S = 3.0)<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>u,seis</sub> = 2.38 &times; (${My_ratio_seis.toFixed(2)})<sup>2/3</sup> &times; ${formatComma(Kp_gamma_D3_seis, 1)} = <strong>${formatComma(Hu_seis, 1)} kN/본</strong><br>
+                <div style="font-weight:bold; color:#2c3e50; margin-top:10px; margin-bottom:4px;">
+                    ■ 표 8. 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 자유)
+                </div>
+                <div class="table-container" style="margin-bottom:12px;">
+                    <table class="result-table" style="font-size:0.83em; text-align:center;">
+                        <thead>
+                            <tr style="background:#eaeded;">
+                                <th style="width:12%;">지반</th>
+                                <th style="width:18%;">구분</th>
+                                <th>수평지지력, H<sub>u</sub> (kN)</th>
+                                <th style="width:12%;">적용공식</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="${head_cond === 'free' && broms_norm.caseKey === 'free_clay_short' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td rowspan="3" style="vertical-align:middle; background:#f9f9f9;">점성토</td>
+                                <td>&beta;L &lt; 2.25</td>
+                                <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 9 c<sub>u</sub> D'² [ { 4(h/D')² + 2(L/D')² + 4(h/D')(L/D') + 6(h/D') + 4.5 }<sup>1/2</sup> - { 2(h/D') + (L/D') } ]</td>
+                                <td>${head_cond === 'free' && broms_norm.caseKey === 'free_clay_short' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'free' && broms_norm.caseKey === 'free_clay_mid' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td>중간</td>
+                                <td style="text-align:left; padding-left:10px;">-</td>
+                                <td>${head_cond === 'free' && broms_norm.caseKey === 'free_clay_mid' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'free' && broms_norm.caseKey === 'free_clay_long' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td>&beta;L &gt; 2.25</td>
+                                <td style="text-align:left; padding-left:10px;">{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + { 18(h/D') + 27 } { H<sub>u</sub> / (c<sub>u</sub> D'²) } = 18 { M<sub>y</sub> / (c<sub>u</sub> D'³) }</td>
+                                <td>${head_cond === 'free' && broms_norm.caseKey === 'free_clay_long' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'free' && broms_norm.caseKey === 'free_sand_short' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td rowspan="3" style="vertical-align:middle; background:#f9f9f9;">사질토</td>
+                                <td>&eta;L &lt; 2</td>
+                                <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = ( K<sub>p</sub> &gamma;' D' L² ) / { 2 (1 + h/L) }</td>
+                                <td>${head_cond === 'free' && broms_norm.caseKey === 'free_sand_short' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'free' && broms_norm.caseKey === 'free_sand_mid' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td>2 &le; &eta;L &le; 4</td>
+                                <td style="text-align:left; padding-left:10px;">-</td>
+                                <td>${head_cond === 'free' && broms_norm.caseKey === 'free_sand_mid' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                            <tr style="${head_cond === 'free' && broms_norm.caseKey === 'free_sand_long' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
+                                <td>&eta;L &gt; 4</td>
+                                <td style="text-align:left; padding-left:10px;">{ H<sub>u</sub> / (K<sub>p</sub> &gamma;' D'³) } [ h/D' + 0.544 { H<sub>u</sub> / (K<sub>p</sub> &gamma;' D'³) }<sup>1/2</sup> ] = { M<sub>y</sub> / (K<sub>p</sub> &gamma;' D'⁴) }</td>
+                                <td>${head_cond === 'free' && broms_norm.caseKey === 'free_sand_long' ? '<span style="color:#27ae60; font-size:1.2em;">O</span>' : '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                &nbsp;&nbsp;• <strong>Broms 허용수평지지력 (H<sub>a,broms</sub>) 조건별 수치 대입 및 계산 결과 :</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>u,norm</sub> 적용 산정식: ${broms_norm.formulaText}<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>u,norm</sub> = <strong>${formatComma(Hu_norm, 1)} kN/본</strong><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>a,broms</sub> = ${frac("H<sub>u</sub>", "3.0")} = ${frac(formatComma(Hu_norm, 1), "3.0")} = <strong>${formatComma(Ha_broms_norm, 1)} kN/본</strong> (안전율 F.S = 3.0)<br><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>u,seis</sub> 적용 산정식: ${broms_seis.formulaText}<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>u,seis</sub> = <strong>${formatComma(Hu_seis, 1)} kN/본</strong><br>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H<sub>a,broms</sub> = ${frac("H<sub>u</sub>", "2.0")} = ${frac(formatComma(Hu_seis, 1), "2.0")} = <strong>${formatComma(Ha_broms_seis, 1)} kN/본</strong> (안전율 F.S = 2.0)
             </div>
 
