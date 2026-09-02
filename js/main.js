@@ -3,6 +3,7 @@ import { initSettlementModule } from './settlement.js';
 import { initConsolidationModule } from './consolidation.js';
 import { initSlopeModule } from './slope.js';
 import { initPileModule } from './pile.js';
+import { initCastPileModule } from './cast_pile.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // 상단 전체 초기화 버튼 전역 이벤트 리스너
@@ -10,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (globalResetBtn) {
         globalResetBtn.addEventListener('click', () => {
             if (confirm("모든 탭에 입력된 설계 자료, 지층 정보 및 계산 결과가 초기화됩니다. 계속하시겠습니까?")) {
-                // 'geo_'로 시작하는 모든 로컬 스토리지 데이터 일괄 삭제
                 Object.keys(localStorage).forEach(key => {
                     if (key.startsWith('geo_')) {
                         localStorage.removeItem(key);
@@ -31,13 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 탭 클릭 이벤트 바인딩
     tabButtons.forEach(button => {
         button.addEventListener('click', (e) => {
-            // 활성 탭 스타일 토글
             tabButtons.forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
 
             const tabName = e.target.getAttribute('data-tab');
 
-            // 탭 종류에 따라 모듈 로드
             switch (tabName) {
                 case 'bearing':
                     initBearingModule(contentContainer);
@@ -53,6 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case 'pile':
                     initPileModule(contentContainer);
+                    break;
+                case 'cast_pile':
+                    initCastPileModule(contentContainer);
                     break;
                 default:
                     contentContainer.innerHTML = `<p>페이지를 찾을 수 없습니다.</p>`;
