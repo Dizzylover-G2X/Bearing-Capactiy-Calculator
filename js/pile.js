@@ -696,7 +696,7 @@ export function initPileModule(container) {
         };
     }
 
-    // Broms 극한수평지지력(Hu) 및 공식/계산과정 동적 산정
+    // Broms 극한수평지지력(Hu) 및 공식/계산과정 동적 산정 (분수식 적용)
     function calcBromsHu(headCond, soilType, betaL, etaL, D, L, cu, My, Kp, gamma_sub, h = 0) {
         let Hu = 0;
         let formulaText = "";
@@ -710,15 +710,15 @@ export function initPileModule(container) {
                 if (betaL < 2.25) {
                     caseKey = "fixed_clay_short";
                     Hu = 9.0 * cu * Math.pow(D, 2) * ((L / D) - 1.5);
-                    formulaText = `9 c<sub>u</sub> D'² { (L/D') - 1.5 }`;
-                    calcProcessText = `9 &times; ${cu.toFixed(1)} &times; ${D.toFixed(3)}² &times; { (${L.toFixed(1)} / ${D.toFixed(3)}) - 1.5 }`;
+                    formulaText = `9 c<sub>u</sub> D'² { ${frac("L", "D'")} - 1.5 }`;
+                    calcProcessText = `9 &times; ${cu.toFixed(1)} &times; ${D.toFixed(3)}² &times; { ${frac(L.toFixed(1), D.toFixed(3))} - 1.5 }`;
                 } else {
                     caseKey = "fixed_clay_long";
                     let C = (36.0 * My) / (cu * Math.pow(D, 3));
                     let x = (-27.0 + Math.sqrt(27.0 * 27.0 + 4.0 * C)) / 2.0;
                     Hu = x * cu * Math.pow(D, 2);
-                    formulaText = `{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + 27 { H<sub>u</sub> / (c<sub>u</sub> D'²) } = 36 { M<sub>y</sub> / (c<sub>u</sub> D'³) }`;
-                    calcProcessText = `{ H<sub>u</sub> / (${cu.toFixed(1)} &times; ${D.toFixed(3)}²) }² + 27 { H<sub>u</sub> / (${cu.toFixed(1)} &times; ${D.toFixed(3)}²) } = 36 &times; { ${formatComma(My, 1)} / (${cu.toFixed(1)} &times; ${D.toFixed(3)}³) }`;
+                    formulaText = `{ ${frac("H<sub>u</sub>", "c<sub>u</sub> D'²")} }² + 27 { ${frac("H<sub>u</sub>", "c<sub>u</sub> D'²")} } = 36 { ${frac("M<sub>y</sub>", "c<sub>u</sub> D'³")} }`;
+                    calcProcessText = `{ ${frac("H<sub>u</sub>", cu.toFixed(1) + " &times; " + D.toFixed(3) + "²")} }² + 27 { ${frac("H<sub>u</sub>", cu.toFixed(1) + " &times; " + D.toFixed(3) + "²")} } = 36 &times; { ${frac(formatComma(My, 1), cu.toFixed(1) + " &times; " + D.toFixed(3) + "³")} }`;
                 }
             } else { // sand
                 if (etaL < 2.0) {
@@ -729,14 +729,14 @@ export function initPileModule(container) {
                 } else if (etaL <= 4.0) {
                     caseKey = "fixed_sand_mid";
                     Hu = Kp * Math.pow(D, 3) * gamma_sub * ((My / (Kp * Math.pow(D, 4) * gamma_sub)) + 0.5 * Math.pow(L / D, 3)) * (D / L);
-                    formulaText = `K<sub>p</sub> D'³ &gamma;' { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') + 0.5(L/D')³ } (D'/L)`;
-                    calcProcessText = `${Kp.toFixed(3)} &times; ${D.toFixed(3)}³ &times; ${gamma_sub.toFixed(1)} &times; { ${formatComma(My, 1)} / (${Kp.toFixed(3)} &times; ${D.toFixed(3)}⁴ &times; ${gamma_sub.toFixed(1)}) + 0.5(${L.toFixed(1)}/${D.toFixed(3)})³ } &times; (${D.toFixed(3)}/${L.toFixed(1)})`;
+                    formulaText = `K<sub>p</sub> D'³ &gamma;' { ${frac("M<sub>y</sub>", "K<sub>p</sub> D'⁴ &gamma;'")} + 0.5(${frac("L", "D'")})³ } (${frac("D'", "L")})`;
+                    calcProcessText = `${Kp.toFixed(3)} &times; ${D.toFixed(3)}³ &times; ${gamma_sub.toFixed(1)} &times; { ${frac(formatComma(My, 1), Kp.toFixed(3) + " &times; " + D.toFixed(3) + "⁴ &times; " + gamma_sub.toFixed(1))} + 0.5(${frac(L.toFixed(1), D.toFixed(3))})³ } &times; (${frac(D.toFixed(3), L.toFixed(1))})`;
                 } else {
                     caseKey = "fixed_sand_long";
                     let My_ratio = My / (Kp * gamma_sub * Math.pow(D, 4));
                     Hu = 2.38 * Math.pow(My_ratio, 2.0 / 3.0) * (Kp * gamma_sub * Math.pow(D, 3));
-                    formulaText = `2.38 { M<sub>y</sub> / (K<sub>p</sub> D'⁴ &gamma;') }<sup>2/3</sup> K<sub>p</sub> D'³ &gamma;'`;
-                    calcProcessText = `2.38 &times; { ${formatComma(My, 1)} / (${Kp.toFixed(3)} &times; ${D.toFixed(3)}⁴ &times; ${gamma_sub.toFixed(1)}) }<sup>2/3</sup> &times; ${Kp.toFixed(3)} &times; ${D.toFixed(3)}³ &times; ${gamma_sub.toFixed(1)}`;
+                    formulaText = `2.38 { ${frac("M<sub>y</sub>", "K<sub>p</sub> D'⁴ &gamma;'")} }<sup>2/3</sup> K<sub>p</sub> D'³ &gamma;'`;
+                    calcProcessText = `2.38 &times; { ${frac(formatComma(My, 1), Kp.toFixed(3) + " &times; " + D.toFixed(3) + "⁴ &times; " + gamma_sub.toFixed(1))} }<sup>2/3</sup> &times; ${Kp.toFixed(3)} &times; ${D.toFixed(3)}³ &times; ${gamma_sub.toFixed(1)}`;
                 }
             }
         } else { // free
@@ -746,23 +746,23 @@ export function initPileModule(container) {
                     let term1 = 4.0 * Math.pow(h / D, 2) + 2.0 * Math.pow(L / D, 2) + 4.0 * (h / D) * (L / D) + 6.0 * (h / D) + 4.5;
                     let term2 = 2.0 * (h / D) + (L / D);
                     Hu = 9.0 * cu * Math.pow(D, 2) * (Math.sqrt(term1) - term2);
-                    formulaText = `9 c<sub>u</sub> D'² [ { 4(h/D')² + 2(L/D')² + 4(h/D')(L/D') + 6(h/D') + 4.5 }<sup>1/2</sup> - { 2(h/D') + (L/D') } ]`;
-                    calcProcessText = `9 &times; ${cu.toFixed(1)} &times; ${D.toFixed(3)}² &times; [ { 4(${h}/${D.toFixed(3)})² + 2(${L.toFixed(1)}/${D.toFixed(3)})² + 4(${h}/${D.toFixed(3)})(${L.toFixed(1)}/${D.toFixed(3)}) + 6(${h}/${D.toFixed(3)}) + 4.5 }<sup>1/2</sup> - { 2(${h}/${D.toFixed(3)}) + (${L.toFixed(1)}/${D.toFixed(3)}) } ]`;
+                    formulaText = `9 c<sub>u</sub> D'² [ { 4(${frac("h", "D'")})² + 2(${frac("L", "D'")})² + 4(${frac("h", "D'")})(${frac("L", "D'")}) + 6(${frac("h", "D'")}) + 4.5 }<sup>1/2</sup> - { 2(${frac("h", "D'")}) + ${frac("L", "D'")} } ]`;
+                    calcProcessText = `9 &times; ${cu.toFixed(1)} &times; ${D.toFixed(3)}² &times; [ { 4(${frac(h, D.toFixed(3))})² + 2(${frac(L.toFixed(1), D.toFixed(3))})² + 4(${frac(h, D.toFixed(3))})(${frac(L.toFixed(1), D.toFixed(3))}) + 6(${frac(h, D.toFixed(3))}) + 4.5 }<sup>1/2</sup> - { 2(${frac(h, D.toFixed(3))}) + ${frac(L.toFixed(1), D.toFixed(3))} } ]`;
                 } else {
                     caseKey = "free_clay_long";
                     let A = 18.0 * (h / D) + 27.0;
                     let B = 18.0 * My / (cu * Math.pow(D, 3));
                     let x = (-A + Math.sqrt(A * A + 4.0 * B)) / 2.0;
                     Hu = x * cu * Math.pow(D, 2);
-                    formulaText = `{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + { 18(h/D') + 27 } { H<sub>u</sub> / (c<sub>u</sub> D'²) } = 18 { M<sub>y</sub> / (c<sub>u</sub> D'³) }`;
-                    calcProcessText = `{ H<sub>u</sub> / (${cu.toFixed(1)} &times; ${D.toFixed(3)}²) }² + { 18(${h}/${D.toFixed(3)}) + 27 } { H<sub>u</sub> / (${cu.toFixed(1)} &times; ${D.toFixed(3)}²) } = 18 &times; { ${formatComma(My, 1)} / (${cu.toFixed(1)} &times; ${D.toFixed(3)}³) }`;
+                    formulaText = `{ ${frac("H<sub>u</sub>", "c<sub>u</sub> D'²")} }² + { 18(${frac("h", "D'")}) + 27 } { ${frac("H<sub>u</sub>", "c<sub>u</sub> D'²")} } = 18 { ${frac("M<sub>y</sub>", "c<sub>u</sub> D'³")} }`;
+                    calcProcessText = `{ ${frac("H<sub>u</sub>", cu.toFixed(1) + " &times; " + D.toFixed(3) + "²")} }² + { 18(${frac(h, D.toFixed(3))}) + 27 } { ${frac("H<sub>u</sub>", cu.toFixed(1) + " &times; " + D.toFixed(3) + "²")} } = 18 &times; { ${frac(formatComma(My, 1), cu.toFixed(1) + " &times; " + D.toFixed(3) + "³")} }`;
                 }
             } else { // sand
                 if (etaL < 2.0) {
                     caseKey = "free_sand_short";
                     Hu = (Kp * gamma_sub * D * Math.pow(L, 2)) / (2.0 * (1.0 + h / L));
-                    formulaText = `( K<sub>p</sub> &gamma;' D' L² ) / { 2 (1 + h/L) }`;
-                    calcProcessText = `( ${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)} &times; ${L.toFixed(1)}² ) / { 2 &times; (1 + ${h}/${L.toFixed(1)}) }`;
+                    formulaText = `${frac("K<sub>p</sub> &gamma;' D' L²", "2 (1 + " + frac("h", "L") + ")")}`;
+                    calcProcessText = `${frac(Kp.toFixed(3) + " &times; " + gamma_sub.toFixed(1) + " &times; " + D.toFixed(3) + " &times; " + L.toFixed(1) + "²", "2 &times; (1 + " + frac(h, L.toFixed(1)) + ")")}`;
                 } else {
                     caseKey = "free_sand_long";
                     let My_ratio = My / (Kp * gamma_sub * Math.pow(D, 4));
@@ -781,8 +781,8 @@ export function initPileModule(container) {
                         }
                     }
                     Hu = Math.pow(y, 2) * (Kp * gamma_sub * Math.pow(D, 3));
-                    formulaText = `{ H<sub>u</sub> / (K<sub>p</sub> &gamma;' D'³) } [ h/D' + 0.544 { H<sub>u</sub> / (K<sub>p</sub> &gamma;' D'³) }<sup>1/2</sup> ] = { M<sub>y</sub> / (K<sub>p</sub> &gamma;' D'⁴) }`;
-                    calcProcessText = `{ H<sub>u</sub> / (${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}³) } [ ${h}/${D.toFixed(3)} + 0.544 { H<sub>u</sub> / (${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}³) }<sup>1/2</sup> ] = { ${formatComma(My, 1)} / (${Kp.toFixed(3)} &times; ${gamma_sub.toFixed(1)} &times; ${D.toFixed(3)}⁴) }`;
+                    formulaText = `{ ${frac("H<sub>u</sub>", "K<sub>p</sub> &gamma;' D'³")} } [ ${frac("h", "D'")} + 0.544 { ${frac("H<sub>u</sub>", "K<sub>p</sub> &gamma;' D'³")} }<sup>1/2</sup> ] = { ${frac("M<sub>y</sub>", "K<sub>p</sub> &gamma;' D'⁴")} }`;
+                    calcProcessText = `{ ${frac("H<sub>u</sub>", Kp.toFixed(3) + " &times; " + gamma_sub.toFixed(1) + " &times; " + D.toFixed(3) + "³")} } [ ${frac(h, D.toFixed(3))} + 0.544 { ${frac("H<sub>u</sub>", Kp.toFixed(3) + " &times; " + gamma_sub.toFixed(1) + " &times; " + D.toFixed(3) + "³")} }<sup>1/2</sup> ] = { ${frac(formatComma(My, 1), Kp.toFixed(3) + " &times; " + gamma_sub.toFixed(1) + " &times; " + D.toFixed(3) + "⁴")} }`;
                 }
             }
         }
