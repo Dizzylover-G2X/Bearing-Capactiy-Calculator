@@ -1029,7 +1029,7 @@ export function initCastPileModule(container) {
                                   `&bull; <i>&beta;</i> = 2.0 - 0.00082(z)<sup>0.75</sup> &rarr; <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
                                   `&bull; q<sub>s</sub> = min(190 kPa, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else {
-                    // 점성토일 때 KDS 24 14 51 (AASHTO α-방법) 적용
+                    // 점성토 KDS 24 14 51 (AASHTO α-방법) 적용
                     let Su = c_val_i; // kPa
                     let Pa = 101.0;  // 대기압 kPa
                     let ratio_su_pa = Su / Pa;
@@ -1070,25 +1070,26 @@ export function initCastPileModule(container) {
             cum_sigma_v += gamma_i * dz_i;
         });
 
-        // Hoek & Brown 그래프 생성
+        // Hoek & Brown m값과 s값 그래프 분리 (좌: m, 우: s)
         let extraRockTablesHtml = "";
         if (p_type === 'CAST_ROCK' && qp_formula_key === 'rock_case2') {
-            const svgW = 600, svgH = 320;
-            const padX = 60, padY = 30;
-            const plotW = svgW - padX * 2, plotH = svgH - padY * 2;
-            const getPxRMR = (rmr) => padX + (Math.max(0, Math.min(100, rmr)) / 100.0) * plotW;
-            const getPyM = (mVal) => padY + plotH - (Math.max(0, Math.min(25, mVal)) / 25.0) * plotH;
+            const svgW = 290, svgH = 250;
+            const padL_m = 45, padR_m = 15, padT_m = 20, padB_m = 45;
+            const plotW_m = svgW - padL_m - padR_m, plotH_m = svgH - padT_m - padB_m;
 
-            const gridRMR = [0, 20, 40, 60, 80, 100];
-            let xGridHB = gridRMR.map(r => `
-                <line x1="${getPxRMR(r)}" y1="${padY}" x2="${getPxRMR(r)}" y2="${padY+plotH}" stroke="#e0e0e0" stroke-width="1"/>
-                <text x="${getPxRMR(r)}" y="${padY+plotH+15}" font-size="11" text-anchor="middle" fill="#555">${r}</text>
+            const getPxRMR_m = (rmr) => padL_m + (Math.max(0, Math.min(100, rmr)) / 100.0) * plotW_m;
+            const getPyM = (mVal) => padT_m + plotH_m - (Math.max(0, Math.min(25, mVal)) / 25.0) * plotH_m;
+
+            const gridRMR_m = [0, 20, 40, 60, 80, 100];
+            let xGridM = gridRMR_m.map(r => `
+                <line x1="${getPxRMR_m(r)}" y1="${padT_m}" x2="${getPxRMR_m(r)}" y2="${padT_m+plotH_m}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="${getPxRMR_m(r)}" y="${padT_m+plotH_m+15}" font-size="10" text-anchor="middle" fill="#555">${r}</text>
             `).join('');
 
             const gridM = [0, 5, 10, 15, 20, 25];
-            let yGridHB = gridM.map(m => `
-                <line x1="${padX}" y1="${getPyM(m)}" x2="${padX+plotW}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1"/>
-                <text x="${padX-5}" y="${getPyM(m)+4}" font-size="11" text-anchor="end" fill="#555">${m}</text>
+            let yGridM = gridM.map(m => `
+                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="${padL_m-5}" y="${getPyM(m)+4}" font-size="10" text-anchor="end" fill="#555">${m}</text>
             `).join('');
 
             const rockTypesArr = [
@@ -1099,16 +1100,49 @@ export function initCastPileModule(container) {
                 { key: 25, label: "E:변성암", color: "#c0392b" }
             ];
 
-            let hbPaths = rockTypesArr.map(rt => {
+            let hbPathsM = rockTypesArr.map(rt => {
                 let points = HB_TABLE_DATA.map(d => [d.rmr, d.m[rt.key]]);
-                let dStr = points.map((p, i) => `${i===0?'M':'L'} ${getPxRMR(p[0])} ${getPyM(p[1])}`).join(' ');
+                let dStr = points.map((p, i) => `${i===0?'M':'L'} ${getPxRMR_m(p[0])} ${getPyM(p[1])}`).join(' ');
                 let isSel = (rt.key === hb_mi);
-                let strokeW = isSel ? "3.0" : "1.2";
-                let opacity = isSel ? "1.0" : "0.4";
+                let strokeW = isSel ? "2.5" : "1.0";
+                let opacity = isSel ? "1.0" : "0.35";
                 return `<path d="${dStr}" fill="none" stroke="${rt.color}" stroke-width="${strokeW}" stroke-opacity="${opacity}"/>`;
             }).join('');
 
-            const ptHBX = getPxRMR(input_rmr), ptHBY = getPyM(hb_m);
+            const ptHBX_m = getPxRMR_m(input_rmr), ptHBY_m = getPyM(hb_m);
+
+            // 우측 S값 그래프 (Log Scale)
+            const padL_s = 52, padR_s = 15, padT_s = 20, padB_s = 45;
+            const plotW_s = svgW - padL_s - padR_s, plotH_s = svgH - padT_s - padB_s;
+
+            const getPxRMR_s = (rmr) => padL_s + (Math.max(0, Math.min(100, rmr)) / 100.0) * plotW_s;
+            const getPyS = (sVal) => {
+                let logVal = Math.log10(Math.max(1.0e-7, sVal));
+                return padT_s + plotH_s - ((logVal - (-7.0)) / 7.0) * plotH_s;
+            };
+
+            let xGridS = gridRMR_m.map(r => `
+                <line x1="${getPxRMR_s(r)}" y1="${padT_s}" x2="${getPxRMR_s(r)}" y2="${padT_s+plotH_s}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="${getPxRMR_s(r)}" y="${padT_s+plotH_s+15}" font-size="10" text-anchor="middle" fill="#555">${r}</text>
+            `).join('');
+
+            const gridS_ticks = [
+                { val: 1.0e-7, lbl: "1e-7" },
+                { val: 1.0e-5, lbl: "1e-5" },
+                { val: 1.0e-3, lbl: "1e-3" },
+                { val: 0.082,  lbl: "0.08" },
+                { val: 1.0,    lbl: "1.0" }
+            ];
+
+            let yGridS = gridS_ticks.map(st => `
+                <line x1="${padL_s}" y1="${getPyS(st.val)}" x2="${padL_s+plotW_s}" y2="${getPyS(st.val)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="${padL_s-5}" y="${getPyS(st.val)+4}" font-size="9" text-anchor="end" fill="#555">${st.lbl}</text>
+            `).join('');
+
+            let sPoints = HB_TABLE_DATA.map(d => [d.rmr, d.s]);
+            let dStrS = sPoints.map((p, i) => `${i===0?'M':'L'} ${getPxRMR_s(p[0])} ${getPyS(p[1])}`).join(' ');
+
+            const ptHBX_s = getPxRMR_s(input_rmr), ptHBY_s = getPyS(hb_s);
 
             extraRockTablesHtml = `
                 <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
@@ -1148,46 +1182,70 @@ export function initCastPileModule(container) {
                         </table>
                     </div>
 
-                    <div style="font-weight: bold; margin-top: 10px; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ Hoek & Brown 재료상수 (m) 보간 산출 그래프</div>
-                    <div style="text-align:center; margin: 10px 0;">
-                        <svg width="${svgW}" height="${svgH}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
-                            ${xGridHB} ${yGridHB} ${hbPaths}
-                            <rect x="${padX}" y="${padY}" width="${plotW}" height="${plotH}" fill="none" stroke="#2c3e50" stroke-width="2"/>
-                            <text x="${padX-35}" y="${svgH/2}" transform="rotate(-90 ${padX-35},${svgH/2})" font-size="12" font-weight="bold">m 값</text>
-                            <text x="${svgW/2}" y="${svgH-8}" font-size="12" font-weight="bold">RMR</text>
-                            <circle cx="${ptHBX}" cy="${ptHBY}" r="6" fill="#e74c3c" stroke="white" stroke-width="2"/>
-                            <text x="${ptHBX+10}" y="${ptHBY-5}" font-size="12" font-weight="bold" fill="#e74c3c">m = ${hb_m.toFixed(3)} (s=${hb_s.toExponential(2)})</text>
-                        </svg>
+                    <div style="font-weight: bold; margin-top: 10px; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ Hoek & Brown 재료상수 (m, s) 보간 산출 그래프</div>
+                    <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center; margin: 10px 0;">
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 0.8em; font-weight: bold; color: #2980b9; margin-bottom: 3px;">(a) RMR - m 상관 그래프</div>
+                            <svg width="${svgW}" height="${svgH}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
+                                ${xGridM} ${yGridM} ${hbPathsM}
+                                <rect x="${padL_m}" y="${padT_m}" width="${plotW_m}" height="${plotH_m}" fill="none" stroke="#2c3e50" stroke-width="1.5"/>
+                                <text x="14" y="${padT_m + plotH_m/2}" transform="rotate(-90 14,${padT_m + plotH_m/2})" font-size="11" font-weight="bold" fill="#2c3e50" text-anchor="middle">m 값</text>
+                                <text x="${padL_m + plotW_m/2}" y="${svgH - 8}" font-size="11" font-weight="bold" fill="#2c3e50" text-anchor="middle">RMR</text>
+                                <circle cx="${ptHBX_m}" cy="${ptHBY_m}" r="5" fill="#e74c3c" stroke="white" stroke-width="1.5"/>
+                                <rect x="${ptHBX_m + 5}" y="${ptHBY_m - 18}" width="65" height="15" fill="#ffffff" fill-opacity="0.9" rx="3" stroke="#e74c3c" stroke-width="0.8"/>
+                                <text x="${ptHBX_m + 8}" y="${ptHBY_m - 7}" font-size="10" font-weight="bold" fill="#e74c3c">m = ${hb_m.toFixed(3)}</text>
+                            </svg>
+                        </div>
+
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 0.8em; font-weight: bold; color: #8e44ad; margin-bottom: 3px;">(b) RMR - s 상관 그래프 (Log)</div>
+                            <svg width="${svgW}" height="${svgH}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
+                                ${xGridS} ${yGridS}
+                                <path d="${dStrS}" fill="none" stroke="#8e44ad" stroke-width="2.5"/>
+                                <rect x="${padL_s}" y="${padT_s}" width="${plotW_s}" height="${plotH_s}" fill="none" stroke="#2c3e50" stroke-width="1.5"/>
+                                <text x="14" y="${padT_s + plotH_s/2}" transform="rotate(-90 14,${padT_s + plotH_s/2})" font-size="11" font-weight="bold" fill="#2c3e50" text-anchor="middle">s 값</text>
+                                <text x="${padL_s + plotW_s/2}" y="${svgH - 8}" font-size="11" font-weight="bold" fill="#2c3e50" text-anchor="middle">RMR</text>
+                                <circle cx="${ptHBX_s}" cy="${ptHBY_s}" r="5" fill="#e74c3c" stroke="white" stroke-width="1.5"/>
+                                <rect x="${ptHBX_s + 5}" y="${ptHBY_s - 18}" width="78" height="15" fill="#ffffff" fill-opacity="0.9" rx="3" stroke="#e74c3c" stroke-width="0.8"/>
+                                <text x="${ptHBX_s + 8}" y="${ptHBY_s - 7}" font-size="10" font-weight="bold" fill="#e74c3c">s = ${hb_s.toExponential(2)}</text>
+                            </svg>
+                        </div>
                     </div>
                 </div>
             `;
         }
 
-        // RQD - Em/Ei 그래프 및 표3, 표4 나란히 배치
+        // RQD - Em/Ei 그래프 레이아웃 최적화 (축 제목/눈금 겹침 해소 및 라벨 시인성 개선)
         let extraRockQsTablesHtml = "";
         if (p_type === 'CAST_ROCK') {
-            const svgW = 600, svgH = 320;
-            const padX = 60, padY = 30;
-            const plotW = svgW - padX * 2, plotH = svgH - padY * 2;
-            const getPxRQD = (rqd) => padX + (Math.max(0, Math.min(100, rqd)) / 100.0) * plotW;
-            const getPyRatio = (r) => padY + plotH - (Math.max(0, Math.min(1.0, r)) / 1.0) * plotH;
+            const svgW = 600, svgH = 310;
+            const padLeft = 65, padRight = 20, padTop = 20, padBottom = 48;
+            const plotW = svgW - padLeft - padRight, plotH = svgH - padTop - padBottom;
+
+            const getPxRQD = (rqd) => padLeft + (Math.max(0, Math.min(100, rqd)) / 100.0) * plotW;
+            const getPyRatio = (r) => padTop + plotH - (Math.max(0, Math.min(1.0, r)) / 1.0) * plotH;
 
             const gridRQD = [0, 20, 40, 60, 80, 100];
             let xGridRQD = gridRQD.map(rqd => `
-                <line x1="${getPxRQD(rqd)}" y1="${padY}" x2="${getPxRQD(rqd)}" y2="${padY+plotH}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
-                <text x="${getPxRQD(rqd)}" y="${padY+plotH+15}" font-size="11" text-anchor="middle" fill="#555">${rqd}</text>
+                <line x1="${getPxRQD(rqd)}" y1="${padTop}" x2="${getPxRQD(rqd)}" y2="${padTop+plotH}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="${getPxRQD(rqd)}" y="${padTop+plotH+16}" font-size="11" text-anchor="middle" fill="#555">${rqd}</text>
             `).join('');
 
             const gridRatio = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
             let yGridRatio = gridRatio.map(r => `
-                <line x1="${padX}" y1="${getPyRatio(r)}" x2="${padX+plotW}" y2="${getPyRatio(r)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
-                <text x="${padX-8}" y="${getPyRatio(r)+4}" font-size="11" text-anchor="end" fill="#555">${r.toFixed(2)}</text>
+                <line x1="${padLeft}" y1="${getPyRatio(r)}" x2="${padLeft+plotW}" y2="${getPyRatio(r)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="${padLeft-8}" y="${getPyRatio(r)+4}" font-size="11" text-anchor="end" fill="#555">${r.toFixed(2)}</text>
             `).join('');
 
             let pathClosed = TABLE_EM_EI.map((p, i) => `${i===0?'M':'L'} ${getPxRQD(p.rqd)} ${getPyRatio(p.closed)}`).join(' ');
             let pathOpen = TABLE_EM_EI.map((p, i) => `${i===0?'M':'L'} ${getPxRQD(p.rqd)} ${getPyRatio(p.open)}`).join(' ');
 
             const ptRQD_X = getPxRQD(user_rqd), ptRQD_Y = getPyRatio(em_ei_val);
+
+            // 라벨 위치 오버랩 방지 로직
+            let labelY = em_ei_val < 0.25 ? ptRQD_Y - 10 : ptRQD_Y + 18;
+            let labelX = ptRQD_X + 10;
+            if (user_rqd > 80) labelX = ptRQD_X - 55;
 
             extraRockQsTablesHtml = `
                 <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
@@ -1248,12 +1306,16 @@ export function initCastPileModule(container) {
                         <svg width="${svgW}" height="${svgH}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
                             ${xGridRQD} ${yGridRatio}
                             <path d="${pathClosed}" fill="none" stroke="#1b4f72" stroke-width="2.5"/>
-                            <path d="${pathOpen}" fill="none" stroke="#e74c3c" stroke-width="2.5"/>
-                            <rect x="${padX}" y="${padY}" width="${plotW}" height="${plotH}" fill="none" stroke="#2c3e50" stroke-width="2"/>
-                            <text x="${padX-35}" y="${svgH/2}" transform="rotate(-90 ${padX-35},${svgH/2})" font-size="12" font-weight="bold">Em / Ei</text>
-                            <text x="${svgW/2}" y="${svgH-8}" font-size="12" font-weight="bold">RQD (%)</text>
+                            <path d="${pathOpen}" fill="none" stroke="#27ae60" stroke-width="2.5"/>
+                            <rect x="${padLeft}" y="${padTop}" width="${plotW}" height="${plotH}" fill="none" stroke="#2c3e50" stroke-width="1.5"/>
+                            
+                            <text x="18" y="${padTop + plotH/2}" transform="rotate(-90 18,${padTop + plotH/2})" font-size="12" font-weight="bold" fill="#2c3e50" text-anchor="middle">Em / Ei</text>
+                            <text x="${padLeft + plotW/2}" y="${padTop + plotH + 36}" font-size="12" font-weight="bold" fill="#2c3e50" text-anchor="middle">RQD (%)</text>
+                            
                             <circle cx="${ptRQD_X}" cy="${ptRQD_Y}" r="6" fill="#e74c3c" stroke="white" stroke-width="2"/>
-                            <text x="${ptRQD_X+10}" y="${ptRQD_Y+4}" font-size="12" font-weight="bold" fill="#e74c3c">${em_ei_val.toFixed(3)}</text>
+                            
+                            <rect x="${labelX - 4}" y="${labelY - 11}" width="46" height="15" fill="#ffffff" fill-opacity="0.9" rx="3" stroke="#e74c3c" stroke-width="0.8"/>
+                            <text x="${labelX}" y="${labelY}" font-size="11" font-weight="bold" fill="#e74c3c">${em_ei_val.toFixed(3)}</text>
                         </svg>
                     </div>
                 </div>
