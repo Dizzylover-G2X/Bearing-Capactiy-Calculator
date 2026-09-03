@@ -964,6 +964,7 @@ export function initCastPileModule(container) {
         const beta_seis = horizRes.applied_beta_seis;
 
         const fy_kNm2 = fck_eff * 1000.0;
+        const fy_detail_str = `현장타설말뚝 (${conc_str_detail}): f<sub>y</sub> = <strong>${formatComma(fy_kNm2)} kPa</strong>`;
         const My_kNm = fy_kNm2 * Z_m3; 
 
         const topLayer = pileLayers[0] || { c_val: 5, phi: 25, gamma: 18.5 };
@@ -1578,10 +1579,10 @@ export function initCastPileModule(container) {
                         </thead>
                         <tbody>
                             <tr>
-                                <td>평상시</td><td>${formatComma(Ha_broms_norm, 1)}</td><td>${formatComma(Ha_chang_norm, 1)}</td><td style="font-weight:bold; color:#27ae60;">${formatComma(Ha_app_norm, 1)}</td><td style="font-weight:bold; color:#2980b9;">${Ha_norm_source}</td><td>${formatComma(H_norm, 1)}</td><td style="font-weight:bold; color:${H_norm <= Ha_app_norm ? '#27ae60' : '#c0392b'};">${h_status_norm}</td>
+                                <td>평상시</td><td>${formatComma(Ha_broms_norm, 1)}</td><td>${formatComma(Ha_chang_norm, 1)}</td><td style="font-weight:bold; color:#27ae60;">${formatComma(Ha_app_norm, 1)}</td><td style="font-weight:bold; color:#2980b9;">${Ha_norm_source}</td><td>${formatComma(H_norm, 1)}</td><td style="font-weight:bold; color:${H_norm <= Ha_app_norm ? '#27ae60' : '#c0392b'};">${H_norm <= Ha_app_norm ? 'O.K' : 'N.G'} (${ratio_h_norm.toFixed(1)}%)</td>
                             </tr>
                             <tr>
-                                <td>지진시</td><td>${formatComma(Ha_broms_seis, 1)}</td><td>${formatComma(Ha_chang_seis, 1)}</td><td style="font-weight:bold; color:#27ae60;">${formatComma(Ha_app_seis, 1)}</td><td style="font-weight:bold; color:#2980b9;">${Ha_seis_source}</td><td>${formatComma(H_seis, 1)}</td><td style="font-weight:bold; color:${H_seis <= Ha_app_seis ? '#27ae60' : '#c0392b'};">${h_status_seis}</td>
+                                <td>지진시</td><td>${formatComma(Ha_broms_seis, 1)}</td><td>${formatComma(Ha_chang_seis, 1)}</td><td style="font-weight:bold; color:#27ae60;">${formatComma(Ha_app_seis, 1)}</td><td style="font-weight:bold; color:#2980b9;">${Ha_seis_source}</td><td>${formatComma(H_seis, 1)}</td><td style="font-weight:bold; color:${H_seis <= Ha_app_seis ? '#27ae60' : '#c0392b'};">${H_seis <= Ha_app_seis ? 'O.K' : 'N.G'} (${ratio_h_seis.toFixed(1)}%)</td>
                             </tr>
                         </tbody>
                     </table>
