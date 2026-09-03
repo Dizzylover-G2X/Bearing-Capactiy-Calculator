@@ -208,7 +208,6 @@ export function initCastPileModule(container) {
         <div id="pile-result" class="result-box" style="display: none;"></div>
     `;
 
-    // 콤마 입력 실시간 제어
     container.addEventListener('input', (e) => {
         if (e.target.classList.contains('comma-input')) {
             let rawVal = e.target.value.replace(/,/g, '');
@@ -218,7 +217,6 @@ export function initCastPileModule(container) {
         }
     });
 
-    // 지층 표 Tab 키 누름 시 세로 방향 이동 처리
     container.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') {
             const target = e.target;
@@ -280,7 +278,7 @@ export function initCastPileModule(container) {
         let fcu = fc_prime + 4.0;
         let Ep_MPa = 8500 * Math.cbrt(fcu);
         let Ep_raw_kPa = Ep_MPa * 1000;
-        let Ep_kPa = Math.floor(Ep_raw_kPa / 10000) * 10000; // 10,000단위 이하 절사
+        let Ep_kPa = Math.floor(Ep_raw_kPa / 10000) * 10000;
 
         const epInput = container.querySelector('#pile_Ep');
         if (epInput) {
@@ -1029,9 +1027,8 @@ export function initCastPileModule(container) {
                                   `&bull; <i>&beta;</i> = 2.0 - 0.00082(z)<sup>0.75</sup> &rarr; <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
                                   `&bull; q<sub>s</sub> = min(190 kPa, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else {
-                    // 점성토 KDS 24 14 51 (AASHTO α-방법) 적용
-                    let Su = c_val_i; // kPa
-                    let Pa = 101.0;  // 대기압 kPa
+                    let Su = c_val_i;
+                    let Pa = 101.0;
                     let ratio_su_pa = Su / Pa;
                     let alpha_clay = 0.55;
 
@@ -1070,11 +1067,11 @@ export function initCastPileModule(container) {
             cum_sigma_v += gamma_i * dz_i;
         });
 
-        // Hoek & Brown m값과 s값 그래프 분리 (좌: m, 우: s)
+        // Hoek & Brown m값과 s값 그래프 분리 및 계산 수식 밀착 샘플링
         let extraRockTablesHtml = "";
         if (p_type === 'CAST_ROCK' && qp_formula_key === 'rock_case2') {
             const svgW = 290, svgH = 250;
-            const padL_m = 45, padR_m = 15, padT_m = 20, padB_m = 45;
+            const padL_m = 45, padR_m = 15, padT_m = 25, padB_m = 45;
             const plotW_m = svgW - padL_m - padR_m, plotH_m = svgH - padT_m - padB_m;
 
             const getPxRMR_m = (rmr) => padL_m + (Math.max(0, Math.min(100, rmr)) / 100.0) * plotW_m;
@@ -1088,7 +1085,7 @@ export function initCastPileModule(container) {
 
             const gridM = [0, 5, 10, 15, 20, 25];
             let yGridM = gridM.map(m => `
-                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${padL_m+plotW_m}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
                 <text x="${padL_m-5}" y="${getPyM(m)+4}" font-size="10" text-anchor="end" fill="#555">${m}</text>
             `).join('');
 
@@ -1100,9 +1097,14 @@ export function initCastPileModule(container) {
                 { key: 25, label: "E:변성암", color: "#c0392b" }
             ];
 
+            // (a) m값 그래프: 보간 수식을 밀착 샘플링하여 렌더링
             let hbPathsM = rockTypesArr.map(rt => {
-                let points = HB_TABLE_DATA.map(d => [d.rmr, d.m[rt.key]]);
-                let dStr = points.map((p, i) => `${i===0?'M':'L'} ${getPxRMR_m(p[0])} ${getPyM(p[1])}`).join(' ');
+                let pts = [];
+                for (let r = 3; r <= 100; r += 1) {
+                    let res = interpolateHoekBrown(r, rt.key);
+                    pts.push([r, res.m]);
+                }
+                let dStr = pts.map((p, i) => `${i===0?'M':'L'} ${getPxRMR_m(p[0])} ${getPyM(p[1])}`).join(' ');
                 let isSel = (rt.key === hb_mi);
                 let strokeW = isSel ? "2.5" : "1.0";
                 let opacity = isSel ? "1.0" : "0.35";
@@ -1111,8 +1113,8 @@ export function initCastPileModule(container) {
 
             const ptHBX_m = getPxRMR_m(input_rmr), ptHBY_m = getPyM(hb_m);
 
-            // 우측 S값 그래프 (Log Scale)
-            const padL_s = 52, padR_s = 15, padT_s = 20, padB_s = 45;
+            // (b) s값 그래프 (Log Scale): 보간 수식 밀착 샘플링으로 정확한 선상 배치 보장
+            const padL_s = 52, padR_s = 15, padT_s = 25, padB_s = 45;
             const plotW_s = svgW - padL_s - padR_s, plotH_s = svgH - padT_s - padB_s;
 
             const getPxRMR_s = (rmr) => padL_s + (Math.max(0, Math.min(100, rmr)) / 100.0) * plotW_s;
@@ -1139,7 +1141,11 @@ export function initCastPileModule(container) {
                 <text x="${padL_s-5}" y="${getPyS(st.val)+4}" font-size="9" text-anchor="end" fill="#555">${st.lbl}</text>
             `).join('');
 
-            let sPoints = HB_TABLE_DATA.map(d => [d.rmr, d.s]);
+            let sPoints = [];
+            for (let r = 3; r <= 100; r += 1) {
+                let res = interpolateHoekBrown(r, hb_mi);
+                sPoints.push([r, res.s]);
+            }
             let dStrS = sPoints.map((p, i) => `${i===0?'M':'L'} ${getPxRMR_s(p[0])} ${getPyS(p[1])}`).join(' ');
 
             const ptHBX_s = getPxRMR_s(input_rmr), ptHBY_s = getPyS(hb_s);
@@ -1183,6 +1189,18 @@ export function initCastPileModule(container) {
                     </div>
 
                     <div style="font-weight: bold; margin-top: 10px; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ Hoek & Brown 재료상수 (m, s) 보간 산출 그래프</div>
+                    
+                    <!-- Hoek & Brown 범례 (Legend) -->
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.78em; background: #f8f9f9; padding: 5px 8px; border-radius: 4px; border: 1px solid #ebedef;">
+                        <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:12px; height:2px; background:#2980b9; display:inline-block;"></span> A:탄산염암</span>
+                        <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:12px; height:2px; background:#27ae60; display:inline-block;"></span> B:이질암</span>
+                        <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:12px; height:2px; background:#d35400; display:inline-block;"></span> C:사질암</span>
+                        <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:12px; height:2px; background:#8e44ad; display:inline-block;"></span> D:화성암</span>
+                        <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:12px; height:2px; background:#c0392b; display:inline-block;"></span> E:변성암</span>
+                        <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:12px; height:2px; background:#8e44ad; stroke-dasharray:2,2; display:inline-block;"></span> s 보간곡선</span>
+                        <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:8px; height:8px; border-radius:50%; background:#e74c3c; display:inline-block;"></span> 보간 산출지점</span>
+                    </div>
+
                     <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center; margin: 10px 0;">
                         <div style="flex: 1; text-align: center;">
                             <div style="font-size: 0.8em; font-weight: bold; color: #2980b9; margin-bottom: 3px;">(a) RMR - m 상관 그래프</div>
@@ -1215,11 +1233,11 @@ export function initCastPileModule(container) {
             `;
         }
 
-        // RQD - Em/Ei 그래프 레이아웃 최적화 (축 제목/눈금 겹침 해소 및 라벨 시인성 개선)
+        // RQD - Em/Ei 상관 그래프 (범례 추가 및 레이아웃 패딩 최적화)
         let extraRockQsTablesHtml = "";
         if (p_type === 'CAST_ROCK') {
             const svgW = 600, svgH = 310;
-            const padLeft = 65, padRight = 20, padTop = 20, padBottom = 48;
+            const padLeft = 70, padRight = 20, padTop = 20, padBottom = 50;
             const plotW = svgW - padLeft - padRight, plotH = svgH - padTop - padBottom;
 
             const getPxRQD = (rqd) => padLeft + (Math.max(0, Math.min(100, rqd)) / 100.0) * plotW;
@@ -1234,7 +1252,7 @@ export function initCastPileModule(container) {
             const gridRatio = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
             let yGridRatio = gridRatio.map(r => `
                 <line x1="${padLeft}" y1="${getPyRatio(r)}" x2="${padLeft+plotW}" y2="${getPyRatio(r)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
-                <text x="${padLeft-8}" y="${getPyRatio(r)+4}" font-size="11" text-anchor="end" fill="#555">${r.toFixed(2)}</text>
+                <text x="${padLeft-10}" y="${getPyRatio(r)+4}" font-size="11" text-anchor="end" fill="#555">${r.toFixed(2)}</text>
             `).join('');
 
             let pathClosed = TABLE_EM_EI.map((p, i) => `${i===0?'M':'L'} ${getPxRQD(p.rqd)} ${getPyRatio(p.closed)}`).join(' ');
@@ -1242,7 +1260,6 @@ export function initCastPileModule(container) {
 
             const ptRQD_X = getPxRQD(user_rqd), ptRQD_Y = getPyRatio(em_ei_val);
 
-            // 라벨 위치 오버랩 방지 로직
             let labelY = em_ei_val < 0.25 ? ptRQD_Y - 10 : ptRQD_Y + 18;
             let labelX = ptRQD_X + 10;
             if (user_rqd > 80) labelX = ptRQD_X - 55;
@@ -1302,6 +1319,14 @@ export function initCastPileModule(container) {
                     </div>
 
                     <div style="font-weight: bold; margin-top: 10px; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ RQD에 따른 <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> 상관 그래프</div>
+                    
+                    <!-- RQD - Em/Ei 범례 (Legend) -->
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 8px; font-size: 0.8em; background: #f8f9f9; padding: 5px 8px; border-radius: 4px; border: 1px solid #ebedef;">
+                        <span style="display:inline-flex; align-items:center; gap:4px;"><span style="width:14px; height:3px; background:#1b4f72; display:inline-block;"></span> Closed Joints (닫힌 절리)</span>
+                        <span style="display:inline-flex; align-items:center; gap:4px;"><span style="width:14px; height:3px; background:#27ae60; display:inline-block;"></span> Open Joints (열린 절리)</span>
+                        <span style="display:inline-flex; align-items:center; gap:4px;"><span style="width:9px; height:9px; border-radius:50%; background:#e74c3c; display:inline-block;"></span> 보간 산출지점 (${em_ei_val.toFixed(3)})</span>
+                    </div>
+
                     <div style="text-align:center; margin: 10px 0;">
                         <svg width="${svgW}" height="${svgH}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
                             ${xGridRQD} ${yGridRatio}
