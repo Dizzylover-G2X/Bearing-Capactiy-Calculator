@@ -623,6 +623,7 @@ export function initCastPileModule(container) {
         { ratio: 1.000, alpha: 1.000 }
     ];
 
+    // s값의 Log 스케일 보간 적용
     function interpolateHoekBrown(rmrVal, miVal) {
         if (rmrVal <= 3) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 3, r2: 3 };
         if (rmrVal >= 100) return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s, r1: 100, r2: 100 };
@@ -630,9 +631,12 @@ export function initCastPileModule(container) {
             const row1 = HB_TABLE_DATA[i], row2 = HB_TABLE_DATA[i + 1];
             if (rmrVal >= row1.rmr && rmrVal <= row2.rmr) {
                 const t = (rmrVal - row1.rmr) / (row2.rmr - row1.rmr);
+                const logS1 = Math.log10(row1.s);
+                const logS2 = Math.log10(row2.s);
+                const interpLogS = logS1 + t * (logS2 - logS1);
                 return { 
                     m: row1.m[miVal] + t * (row2.m[miVal] - row1.m[miVal]), 
-                    s: row1.s + t * (row2.s - row1.s),
+                    s: Math.pow(10, interpLogS),
                     r1: row1.rmr,
                     r2: row2.rmr
                 };
@@ -946,7 +950,7 @@ export function initCastPileModule(container) {
                 q_p = factor * qu_tip;
 
                 qp_calc_detail = `• 입력 파라미터 : RMR = ${input_rmr}, 암의 유형 = ${ROCK_TYPE_NAME_MAP[hb_mi]}<br>` +
-                                 `• 1차 보간 결과 : m = <strong>${hb_m.toFixed(5)}</strong>, s = <strong>${hb_s.toExponential(4)}</strong> (RMR ${hbRes.r1} ~ ${hbRes.r2} 구간)<br>` +
+                                 `• 1차 보간 결과 : m = <strong>${hb_m.toFixed(5)}</strong>, s = <strong>${hb_s.toExponential(4)}</strong> (RMR ${hbRes.r1} ~ ${hbRes.r2} 구간 Log보간)<br>` +
                                  `• <i>q<sub>p</sub></i> 산정 공식 : [&radic;s + &radic;(m&radic;s + s)] &times; <i>q<sub>u</sub></i><br>` +
                                  `&nbsp;&nbsp;= [&radic;${hb_s.toExponential(3)} + &radic;(${hb_m.toFixed(4)}&times;&radic;${hb_s.toExponential(3)} + ${hb_s.toExponential(3)})] &times; ${formatComma(qu_tip, 1)}<br>` +
                                  `&nbsp;&nbsp;= ${factor.toFixed(4)} &times; ${formatComma(qu_tip, 1)}<br>` +
@@ -1067,7 +1071,7 @@ export function initCastPileModule(container) {
             cum_sigma_v += gamma_i * dz_i;
         });
 
-        // Hoek & Brown m값과 s값 그래프 분리 및 계산 수식 밀착 샘플링
+        // Hoek & Brown 그래프 수정 (격자선 오류 및 s 곡선 보간 수정)
         let extraRockTablesHtml = "";
         if (p_type === 'CAST_ROCK' && qp_formula_key === 'rock_case2') {
             const svgW = 290, svgH = 250;
@@ -1084,8 +1088,9 @@ export function initCastPileModule(container) {
             `).join('');
 
             const gridM = [0, 5, 10, 15, 20, 25];
+            // Y축 격자선 좌표 y2 버그 수정 (padL_m+plotW_m -> getPyM(m))
             let yGridM = gridM.map(m => `
-                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${padL_m+plotW_m}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
                 <text x="${padL_m-5}" y="${getPyM(m)+4}" font-size="10" text-anchor="end" fill="#555">${m}</text>
             `).join('');
 
@@ -1097,7 +1102,6 @@ export function initCastPileModule(container) {
                 { key: 25, label: "E:변성암", color: "#c0392b" }
             ];
 
-            // (a) m값 그래프: 보간 수식을 밀착 샘플링하여 렌더링
             let hbPathsM = rockTypesArr.map(rt => {
                 let pts = [];
                 for (let r = 3; r <= 100; r += 1) {
@@ -1113,7 +1117,7 @@ export function initCastPileModule(container) {
 
             const ptHBX_m = getPxRMR_m(input_rmr), ptHBY_m = getPyM(hb_m);
 
-            // (b) s값 그래프 (Log Scale): 보간 수식 밀착 샘플링으로 정확한 선상 배치 보장
+            // (b) s값 그래프 (Log Scale 선형 보간으로 매끄러운 곡선 구현)
             const padL_s = 52, padR_s = 15, padT_s = 25, padB_s = 45;
             const plotW_s = svgW - padL_s - padR_s, plotH_s = svgH - padT_s - padB_s;
 
@@ -1190,7 +1194,6 @@ export function initCastPileModule(container) {
 
                     <div style="font-weight: bold; margin-top: 10px; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ Hoek & Brown 재료상수 (m, s) 보간 산출 그래프</div>
                     
-                    <!-- Hoek & Brown 범례 (Legend) -->
                     <div style="display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.78em; background: #f8f9f9; padding: 5px 8px; border-radius: 4px; border: 1px solid #ebedef;">
                         <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:12px; height:2px; background:#2980b9; display:inline-block;"></span> A:탄산염암</span>
                         <span style="display:inline-flex; align-items:center; gap:3px;"><span style="width:12px; height:2px; background:#27ae60; display:inline-block;"></span> B:이질암</span>
@@ -1233,7 +1236,6 @@ export function initCastPileModule(container) {
             `;
         }
 
-        // RQD - Em/Ei 상관 그래프 (범례 추가 및 레이아웃 패딩 최적화)
         let extraRockQsTablesHtml = "";
         if (p_type === 'CAST_ROCK') {
             const svgW = 600, svgH = 310;
@@ -1320,7 +1322,6 @@ export function initCastPileModule(container) {
 
                     <div style="font-weight: bold; margin-top: 10px; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ RQD에 따른 <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> 상관 그래프</div>
                     
-                    <!-- RQD - Em/Ei 범례 (Legend) -->
                     <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 8px; font-size: 0.8em; background: #f8f9f9; padding: 5px 8px; border-radius: 4px; border: 1px solid #ebedef;">
                         <span style="display:inline-flex; align-items:center; gap:4px;"><span style="width:14px; height:3px; background:#1b4f72; display:inline-block;"></span> Closed Joints (닫힌 절리)</span>
                         <span style="display:inline-flex; align-items:center; gap:4px;"><span style="width:14px; height:3px; background:#27ae60; display:inline-block;"></span> Open Joints (열린 절리)</span>
