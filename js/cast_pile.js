@@ -116,7 +116,7 @@ export function initCastPileModule(container) {
         </div>
 
         <div style="font-weight: bold; margin-bottom: 8px; color: #8e44ad; font-size: 0.95em;">■ 수평 해석 및 허용 기준 조건</div>
-        <div class="input-grid" style="margin-bottom: 10px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+        <div class="input-grid" style="margin-bottom: 8px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
             <div class="input-group" style="background:#fff; margin:0;">
                 <label class="grid-label">말뚝 두부조건</label>
                 <select id="pile_head_cond" class="grid-select" style="text-align: left;">
@@ -128,7 +128,6 @@ export function initCastPileModule(container) {
             <div class="input-group" style="background:#fff; margin:0;">
                 <label class="grid-label" style="color:#8e44ad;">콘크리트 E<sub>p</sub> (kPa)</label>
                 <input type="text" id="pile_Ep" value="${formatComma(getVal('Ep', '26701700'))}" class="pl-input comma-input">
-                <div style="font-size:0.7em; color:#7f8c8d; margin-top:2px;">※ 콘크리트 탄성계수 : 8,500 &times; &sup3;&radic;f<sub>cu</sub>, f<sub>cu</sub> = f<sub>ck</sub> + 4</div>
             </div>
             <div class="input-group" style="background:#fff; margin:0;"><label class="grid-label" style="color:#d4ac0d;">허용 침하량 (mm)</label><input type="text" id="pile_allow_settle" value="${formatComma(getVal('allow_settle', '25.0'), 1)}" class="pl-input dec-input"></div>
             <div class="input-group" style="background:#fff; margin:0;">
@@ -140,25 +139,30 @@ export function initCastPileModule(container) {
             </div>
         </div>
 
-        <div style="margin-bottom: 15px; background: #fafafa; padding: 8px 12px; border-radius: 4px; border: 1px solid #e0e0e0; font-size: 0.8em; color: #333;">
-            <div style="font-weight:bold; margin-bottom:4px; color:#2c3e50;">[참고 표 1] 수평 지반반력계수 추정계수 &alpha; 및 지반 변형계수 E<sub>0</sub> 산정 기준 (도로교설계기준)</div>
-            <div style="display:flex; gap:12px;">
-                <table class="result-table" style="font-size: 0.9em; text-align: center; flex: 1;">
-                    <thead><tr style="background:#eaeded;"><th>상태 구분</th><th>추정계수 &alpha;</th><th>비고</th></tr></thead>
+        <div id="ep_calc_info_box" style="margin-bottom: 10px; font-size: 0.82em; color: #2c3e50; background: #fafafa; padding: 6px 10px; border-radius: 4px; border: 1px solid #e0e0e0; line-height: 1.4;"></div>
+
+        <details style="margin-bottom: 15px; border: 1px solid #d5d8dc; border-radius: 4px; padding: 6px 10px; background: #fafafa;">
+            <summary style="font-weight: bold; cursor: pointer; color: #2980b9; font-size: 0.85em;">
+                ▼ E<sub>0</sub>와 &alpha; 값 (구조물기초설계기준) <span style="font-weight: normal; font-size: 0.9em; color: #7f8c8d;">► (클릭하여 펼치기/접기)</span>
+            </summary>
+            <div style="margin-top: 8px;">
+                <table class="result-table" style="font-size: 0.82em; text-align: center; width: 100%;">
+                    <thead>
+                        <tr style="background-color: #eaeded;">
+                            <th style="text-align: center;">시험방법에 의한 변형계수 E<sub>0</sub> (kPa)</th>
+                            <th style="width: 20%;">&alpha; (평상시)</th>
+                            <th style="width: 20%; color: #c0392b;">&alpha; (지진 시)</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        <tr><td>평상시 (상시)</td><td>1.0</td><td>기본값 적용</td></tr>
-                        <tr><td>지진시 (내진)</td><td>2.0</td><td>상시의 2배 적용</td></tr>
-                    </tbody>
-                </table>
-                <table class="result-table" style="font-size: 0.9em; text-align: center; flex: 1.5;">
-                    <thead><tr style="background:#eaeded;"><th>E<sub>0</sub> 산정 방법</th><th>산정 공식 (kPa)</th><th>비고</th></tr></thead>
-                    <tbody>
-                        <tr><td>N치에 의한 추정</td><td>E<sub>0</sub> = 2,800 &times; N</td><td>사질토 및 점성토 공통</td></tr>
-                        <tr><td>공내재하시험 (PMT)</td><td>E<sub>0</sub> = E<sub>m</sub></td><td>실측 변형계수 적용</td></tr>
+                        <tr><td style="text-align: left; padding-left: 10px;">지름 30cm 원판 평판재하시험 반복곡선 변형계수의 1/2</td><td>1</td><td style="color: #c0392b; font-weight: bold;">2</td></tr>
+                        <tr><td style="text-align: left; padding-left: 10px;">보링 공내에서 측정한 변형계수</td><td>4</td><td style="color: #c0392b; font-weight: bold;">8</td></tr>
+                        <tr><td style="text-align: left; padding-left: 10px;">공시체의 1축 또는 3축 압축시험 변형계수</td><td>4</td><td style="color: #c0392b; font-weight: bold;">8</td></tr>
+                        <tr><td style="text-align: left; padding-left: 10px;">표준관입시험 N값 추정 변형계수 (E<sub>0</sub> = 2,800N)</td><td>1</td><td style="color: #c0392b; font-weight: bold;">2</td></tr>
                     </tbody>
                 </table>
             </div>
-        </div>
+        </details>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 15px;">
@@ -265,8 +269,12 @@ export function initCastPileModule(container) {
         const concCond = container.querySelector('#pile_conc_cond')?.value || 'underwater';
 
         let fc_prime = fckInput;
+        let condStr = "";
         if (concCond === 'underwater') {
             fc_prime = 0.6 * fckInput + 6.0;
+            condStr = `수중타설 f'<sub>c</sub> = 0.6 &times; ${fckInput.toFixed(1)} + 6 = ${fc_prime.toFixed(1)} MPa`;
+        } else {
+            condStr = `비수중타설 f'<sub>c</sub> = ${fckInput.toFixed(1)} MPa`;
         }
 
         let fcu = fc_prime + 4.0;
@@ -277,6 +285,14 @@ export function initCastPileModule(container) {
         if (epInput) {
             epInput.value = formatComma(Ep_kPa);
             try { localStorage.setItem('geo_cast_pile_Ep', Ep_kPa); } catch(err){}
+        }
+
+        const epBox = container.querySelector('#ep_calc_info_box');
+        if (epBox) {
+            epBox.innerHTML = `
+                <strong>※ 콘크리트 탄성계수 (E<sub>p</sub>) 산정공식 및 실시간 계산과정:</strong> E<sub>p</sub> = 8,500 &times; &sup3;&radic;(f<sub>cu</sub>) (MPa) [단, f<sub>cu</sub> = f'<sub>c</sub> + 4]<br>
+                &bull; <strong>계산단계:</strong> f<sub>ck</sub> = ${fckInput.toFixed(1)} MPa (${condStr}) &rArr; f<sub>cu</sub> = ${fc_prime.toFixed(1)} + 4 = <strong>${fcu.toFixed(1)} MPa</strong> &rArr; E<sub>p</sub> = 8,500 &times; &sup3;&radic;(${fcu.toFixed(1)}) = <strong>${formatComma(Ep_MPa.toFixed(1), 1)} MPa (${formatComma(Ep_kPa)} kPa)</strong>
+            `;
         }
     }
 
@@ -358,7 +374,7 @@ export function initCastPileModule(container) {
             <div class="input-group" style="margin:0;">
                 <label class="grid-label">보강철근 제원</label>
                 <div style="display:flex; gap:2px; height:32px; align-items:center;">
-                    <select id="pile_rebar_d" class="grid-select" style="flex:1.2; padding:2px; font-size:0.8em;">
+                    <select id="pile_rebar_d" class="grid-select" style="flex:1.2; padding:2px; font-size:0.85em;">
                         <option value="19.10" ${initialRebarD === '19.10' ? 'selected' : ''}>D19</option>
                         <option value="22.20" ${initialRebarD === '22.20' ? 'selected' : ''}>D22</option>
                         <option value="25.40" ${initialRebarD === '25.40' ? 'selected' : ''}>D25</option>
@@ -367,12 +383,12 @@ export function initCastPileModule(container) {
                         <option value="34.90" ${initialRebarD === '34.90' ? 'selected' : ''}>D35</option>
                         <option value="38.10" ${initialRebarD === '38.10' ? 'selected' : ''}>D38</option>
                     </select>
-                    <select id="pile_rebar_fy" class="grid-select" style="flex:1.3; padding:2px; font-size:0.8em;">
+                    <select id="pile_rebar_fy" class="grid-select" style="flex:1.3; padding:2px; font-size:0.85em;">
                         <option value="400" ${initialRebarFy === '400' ? 'selected' : ''}>SD400</option>
                         <option value="500" ${initialRebarFy === '500' ? 'selected' : ''}>SD500</option>
                     </select>
                     <input type="number" id="pile_rebar_count" value="${initialRebarCount}" class="pl-input" placeholder="개수" style="width:38px; height:100%;">
-                    <span style="font-size:0.8em; color:#2c3e50;">개</span>
+                    <span style="font-size:0.85em; color:#2c3e50;">개</span>
                 </div>
             </div>
         `;
@@ -380,15 +396,15 @@ export function initCastPileModule(container) {
         if (type === 'CAST_ROCK') {
             grid2Label.innerHTML = '암의 유형 / RMR';
             grid2Content.innerHTML = `
-                <div style="display:flex; gap:3px; width:100%; height:100%;">
-                    <select id="pile_rock_type" class="grid-select" style="flex:1.8; text-align:left; padding-left:4px; font-size:0.8em;">
+                <div style="display:flex; gap:3px; width:100%; height:100%; align-items:center;">
+                    <select id="pile_rock_type" class="grid-select" style="flex:2.4; text-align:left; padding-left:2px; padding-right:2px; font-size:0.83em; text-overflow:ellipsis;">
                         <option value="7">A:벽개발달 탄산염암</option>
                         <option value="10">B:석화 이질암</option>
                         <option value="15">C:뚜렷한벽개 사질암</option>
                         <option value="17" selected>D:세립결정 화성암</option>
                         <option value="25">E:조립결정 화성변성</option>
                     </select>
-                    <input type="number" id="pile_rmr" value="${getVal('rmr', '30')}" step="1" placeholder="RMR" class="pl-input" style="flex:1;">
+                    <input type="number" id="pile_rmr" value="${getVal('rmr', '30')}" step="1" placeholder="RMR" class="pl-input" style="flex:0.8; min-width:42px; padding:2px;">
                 </div>
             `;
 
@@ -432,6 +448,7 @@ export function initCastPileModule(container) {
             `;
         }
         updateFormulaInfoText();
+        autoCalculateEp();
     }
 
     container.addEventListener('click', (e) => {
