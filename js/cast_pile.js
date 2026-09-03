@@ -280,7 +280,7 @@ export function initCastPileModule(container) {
         let fcu = fc_prime + 4.0;
         let Ep_MPa = 8500 * Math.cbrt(fcu);
         let Ep_raw_kPa = Ep_MPa * 1000;
-        let Ep_kPa = Math.floor(Ep_raw_kPa / 10000) * 10000; // 10,000단위 이하 버림(절사)
+        let Ep_kPa = Math.floor(Ep_raw_kPa / 10000) * 10000; // 10,000단위 이하 절사
 
         const epInput = container.querySelector('#pile_Ep');
         if (epInput) {
@@ -907,9 +907,11 @@ export function initCastPileModule(container) {
         }
 
         let em_ei_val = 0.01, alpha_e_val = 0.370;
+        let user_rqd = 4.0;
+        let user_joint_state = 'closed';
         if (p_type === 'CAST_ROCK') {
-            const user_joint_state = container.querySelector('#pile_joint_state')?.value || 'closed';
-            const user_rqd = parseNum(container.querySelector('#pile_rqd')?.value) || 4.0;
+            user_joint_state = container.querySelector('#pile_joint_state')?.value || 'closed';
+            user_rqd = parseNum(container.querySelector('#pile_rqd')?.value) || 4.0;
             em_ei_val = interpolateEmEi(user_rqd, user_joint_state);
             alpha_e_val = interpolateAlphaE(em_ei_val);
         }
@@ -945,7 +947,7 @@ export function initCastPileModule(container) {
                 let factor = Math.sqrt(hb_s) + Math.sqrt(hb_m * Math.sqrt(hb_s) + hb_s);
                 q_p = factor * qu_tip;
 
-                qp_calc_detail = `• 입력 파라미터 : RMR = ${input_rmr}, 암의 유형 = ${ROCK_TYPE_NAME_MAP[hb_mi]} (<i>m<sub>i</sub></i> = ${hb_mi})<br>` +
+                qp_calc_detail = `• 입력 파라미터 : RMR = ${input_rmr}, 암의 유형 = ${ROCK_TYPE_NAME_MAP[hb_mi]}<br>` +
                                  `• 1차 보간 결과 : m = <strong>${hb_m.toFixed(5)}</strong>, s = <strong>${hb_s.toExponential(4)}</strong> (RMR ${hbRes.r1} ~ ${hbRes.r2} 구간)<br>` +
                                  `• <i>q<sub>p</sub></i> 산정 공식 : [&radic;s + &radic;(m&radic;s + s)] &times; <i>q<sub>u</sub></i><br>` +
                                  `&nbsp;&nbsp;= [&radic;${hb_s.toExponential(3)} + &radic;(${hb_m.toFixed(4)}&times;&radic;${hb_s.toExponential(3)} + ${hb_s.toExponential(3)})] &times; ${formatComma(qu_tip, 1)}<br>` +
@@ -1027,9 +1029,30 @@ export function initCastPileModule(container) {
                                   `&bull; <i>&beta;</i> = 2.0 - 0.00082(z)<sup>0.75</sup> &rarr; <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
                                   `&bull; q<sub>s</sub> = min(190 kPa, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else {
-                    let calc_val = 0.55 * c_val_i;
+                    // 점성토일 때 KDS 24 14 51 (AASHTO α-방법) 적용
+                    let Su = c_val_i; // kPa
+                    let Pa = 101.0;  // 대기압 kPa
+                    let ratio_su_pa = Su / Pa;
+                    let alpha_clay = 0.55;
+
+                    if (ratio_su_pa <= 1.5) {
+                        alpha_clay = 0.55;
+                    } else if (ratio_su_pa <= 2.5) {
+                        alpha_clay = 0.55 - 0.1 * (ratio_su_pa - 1.5);
+                    } else {
+                        alpha_clay = 0.45;
+                    }
+
+                    let calc_val = alpha_clay * Su;
                     f_unit = Math.min(190.0, calc_val);
-                    formula_str = `&bull; q<sub>s</sub> = min(190, 0.55&middot;<i>c<sub>u</sub></i>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+
+                    let alpha_formula_str = ratio_su_pa <= 1.5 
+                        ? `0.55 (S<sub>u</sub>/P<sub>a</sub> &le; 1.5)` 
+                        : `0.55 - 0.1(S<sub>u</sub>/P<sub>a</sub> - 1.5) = ${alpha_clay.toFixed(3)}`;
+
+                    formula_str = `&bull; S<sub>u</sub> = ${Su.toFixed(1)} kPa, S<sub>u</sub>/P<sub>a</sub> = ${ratio_su_pa.toFixed(2)} (P<sub>a</sub> = 101 kPa)<br>` +
+                                  `&bull; 부착력계수 &alpha; = ${alpha_formula_str}<br>` +
+                                  `&bull; q<sub>s</sub> = min(190, &alpha;&middot;S<sub>u</sub>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 }
             }
 
@@ -1047,8 +1070,46 @@ export function initCastPileModule(container) {
             cum_sigma_v += gamma_i * dz_i;
         });
 
+        // Hoek & Brown 그래프 생성
         let extraRockTablesHtml = "";
         if (p_type === 'CAST_ROCK' && qp_formula_key === 'rock_case2') {
+            const svgW = 600, svgH = 320;
+            const padX = 60, padY = 30;
+            const plotW = svgW - padX * 2, plotH = svgH - padY * 2;
+            const getPxRMR = (rmr) => padX + (Math.max(0, Math.min(100, rmr)) / 100.0) * plotW;
+            const getPyM = (mVal) => padY + plotH - (Math.max(0, Math.min(25, mVal)) / 25.0) * plotH;
+
+            const gridRMR = [0, 20, 40, 60, 80, 100];
+            let xGridHB = gridRMR.map(r => `
+                <line x1="${getPxRMR(r)}" y1="${padY}" x2="${getPxRMR(r)}" y2="${padY+plotH}" stroke="#e0e0e0" stroke-width="1"/>
+                <text x="${getPxRMR(r)}" y="${padY+plotH+15}" font-size="11" text-anchor="middle" fill="#555">${r}</text>
+            `).join('');
+
+            const gridM = [0, 5, 10, 15, 20, 25];
+            let yGridHB = gridM.map(m => `
+                <line x1="${padX}" y1="${getPyM(m)}" x2="${padX+plotW}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1"/>
+                <text x="${padX-5}" y="${getPyM(m)+4}" font-size="11" text-anchor="end" fill="#555">${m}</text>
+            `).join('');
+
+            const rockTypesArr = [
+                { key: 7, label: "A:탄산염암", color: "#2980b9" },
+                { key: 10, label: "B:이질암", color: "#27ae60" },
+                { key: 15, label: "C:사질암", color: "#d35400" },
+                { key: 17, label: "D:화성암", color: "#8e44ad" },
+                { key: 25, label: "E:변성암", color: "#c0392b" }
+            ];
+
+            let hbPaths = rockTypesArr.map(rt => {
+                let points = HB_TABLE_DATA.map(d => [d.rmr, d.m[rt.key]]);
+                let dStr = points.map((p, i) => `${i===0?'M':'L'} ${getPxRMR(p[0])} ${getPyM(p[1])}`).join(' ');
+                let isSel = (rt.key === hb_mi);
+                let strokeW = isSel ? "3.0" : "1.2";
+                let opacity = isSel ? "1.0" : "0.4";
+                return `<path d="${dStr}" fill="none" stroke="${rt.color}" stroke-width="${strokeW}" stroke-opacity="${opacity}"/>`;
+            }).join('');
+
+            const ptHBX = getPxRMR(input_rmr), ptHBY = getPyM(hb_m);
+
             extraRockTablesHtml = `
                 <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
                     <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 1. 비선형 강도 정의상 암질과 재료상수의 대략적인 관계 (Hoek & Brown, 1988)</div>
@@ -1086,62 +1147,114 @@ export function initCastPileModule(container) {
                             </tbody>
                         </table>
                     </div>
+
+                    <div style="font-weight: bold; margin-top: 10px; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ Hoek & Brown 재료상수 (m) 보간 산출 그래프</div>
+                    <div style="text-align:center; margin: 10px 0;">
+                        <svg width="${svgW}" height="${svgH}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
+                            ${xGridHB} ${yGridHB} ${hbPaths}
+                            <rect x="${padX}" y="${padY}" width="${plotW}" height="${plotH}" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                            <text x="${padX-35}" y="${svgH/2}" transform="rotate(-90 ${padX-35},${svgH/2})" font-size="12" font-weight="bold">m 값</text>
+                            <text x="${svgW/2}" y="${svgH-8}" font-size="12" font-weight="bold">RMR</text>
+                            <circle cx="${ptHBX}" cy="${ptHBY}" r="6" fill="#e74c3c" stroke="white" stroke-width="2"/>
+                            <text x="${ptHBX+10}" y="${ptHBY-5}" font-size="12" font-weight="bold" fill="#e74c3c">m = ${hb_m.toFixed(3)} (s=${hb_s.toExponential(2)})</text>
+                        </svg>
+                    </div>
                 </div>
             `;
         }
 
+        // RQD - Em/Ei 그래프 및 표3, 표4 나란히 배치
         let extraRockQsTablesHtml = "";
         if (p_type === 'CAST_ROCK') {
-            const user_joint_state = container.querySelector('#pile_joint_state')?.value || 'closed';
-            const user_rqd = parseNum(container.querySelector('#pile_rqd')?.value) || 4.0;
+            const svgW = 600, svgH = 320;
+            const padX = 60, padY = 30;
+            const plotW = svgW - padX * 2, plotH = svgH - padY * 2;
+            const getPxRQD = (rqd) => padX + (Math.max(0, Math.min(100, rqd)) / 100.0) * plotW;
+            const getPyRatio = (r) => padY + plotH - (Math.max(0, Math.min(1.0, r)) / 1.0) * plotH;
+
+            const gridRQD = [0, 20, 40, 60, 80, 100];
+            let xGridRQD = gridRQD.map(rqd => `
+                <line x1="${getPxRQD(rqd)}" y1="${padY}" x2="${getPxRQD(rqd)}" y2="${padY+plotH}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="${getPxRQD(rqd)}" y="${padY+plotH+15}" font-size="11" text-anchor="middle" fill="#555">${rqd}</text>
+            `).join('');
+
+            const gridRatio = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+            let yGridRatio = gridRatio.map(r => `
+                <line x1="${padX}" y1="${getPyRatio(r)}" x2="${padX+plotW}" y2="${getPyRatio(r)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="${padX-8}" y="${getPyRatio(r)+4}" font-size="11" text-anchor="end" fill="#555">${r.toFixed(2)}</text>
+            `).join('');
+
+            let pathClosed = TABLE_EM_EI.map((p, i) => `${i===0?'M':'L'} ${getPxRQD(p.rqd)} ${getPyRatio(p.closed)}`).join(' ');
+            let pathOpen = TABLE_EM_EI.map((p, i) => `${i===0?'M':'L'} ${getPxRQD(p.rqd)} ${getPyRatio(p.open)}`).join(' ');
+
+            const ptRQD_X = getPxRQD(user_rqd), ptRQD_Y = getPyRatio(em_ei_val);
+
             extraRockQsTablesHtml = `
                 <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
-                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 3. RQD에 따른 <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> (O'Neill & Reese, 1999)</div>
-                    <div class="table-container" style="margin-bottom: 10px;">
-                        <table class="result-table" style="font-size: 0.8em; text-align: center;">
-                            <thead>
-                                <tr style="background-color: #eaeded;">
-                                    <th>RQD (%)</th>
-                                    <th>Closed Joints (<i>E<sub>m</sub></i> / <i>E<sub>i</sub></i>)</th>
-                                    <th>Open Joints (<i>E<sub>m</sub></i> / <i>E<sub>i</sub></i>)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${TABLE_EM_EI.map(row => `
-                                    <tr>
-                                        <td>${row.rqd}</td>
-                                        <td>${row.closed.toFixed(2)}</td>
-                                        <td>${row.open.toFixed(2)}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="font-size: 0.82em; color: #2c3e50; margin-bottom: 12px; background:#e8f8f5; padding:6px; border-radius:3px;">
-                        • 입력 RQD = <strong>${user_rqd}%</strong> (${user_joint_state === 'closed' ? 'Closed Joints' : 'Open Joints'}) &rarr; 산정 <strong><i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> = ${em_ei_val.toFixed(3)}</strong>
+                    <div style="display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.83em;">■ 표 3. RQD에 따른 <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> (O'Neill & Reese, 1999)</div>
+                            <div class="table-container" style="margin: 0;">
+                                <table class="result-table" style="font-size: 0.8em; text-align: center; width: 100%;">
+                                    <thead>
+                                        <tr style="background-color: #eaeded;">
+                                            <th>RQD (%)</th>
+                                            <th>Closed Joints</th>
+                                            <th>Open Joints</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${TABLE_EM_EI.map(row => `
+                                            <tr>
+                                                <td>${row.rqd}</td>
+                                                <td style="${user_joint_state==='closed'&&Math.abs(user_rqd-row.rqd)<5?'background:#fef9e7;font-weight:bold;':''}">${row.closed.toFixed(2)}</td>
+                                                <td style="${user_joint_state==='open'&&Math.abs(user_rqd-row.rqd)<5?'background:#fef9e7;font-weight:bold;':''}">${row.open.toFixed(2)}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.83em;">■ 표 4. 감소계수 <i>&alpha;<sub>E</sub></i> (O'Neill & Reese, 1999)</div>
+                            <div class="table-container" style="margin: 0;">
+                                <table class="result-table" style="font-size: 0.8em; text-align: center; width: 100%;">
+                                    <thead>
+                                        <tr style="background-color: #eaeded;">
+                                            <th><i>E<sub>m</sub></i> / <i>E<sub>i</sub></i></th>
+                                            <th>감소계수 <i>&alpha;<sub>E</sub></i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${TABLE_ALPHA_E.map(row => `
+                                            <tr>
+                                                <td>${row.ratio.toFixed(3)}</td>
+                                                <td>${row.alpha.toFixed(3)}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
-                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 4. 감소계수 <i>&alpha;<sub>E</sub></i> (O'Neill & Reese, 1999)</div>
-                    <div class="table-container" style="margin-bottom: 10px;">
-                        <table class="result-table" style="font-size: 0.8em; text-align: center;">
-                            <thead>
-                                <tr style="background-color: #eaeded;">
-                                    <th><i>E<sub>m</sub></i> / <i>E<sub>i</sub></i></th>
-                                    <th>감소계수 <i>&alpha;<sub>E</sub></i></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${TABLE_ALPHA_E.map(row => `
-                                    <tr>
-                                        <td>${row.ratio.toFixed(3)}</td>
-                                        <td>${row.alpha.toFixed(3)}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                    <div style="font-size: 0.82em; color: #2c3e50; margin-bottom: 10px; background:#e8f8f5; padding:6px; border-radius:3px;">
+                        • 입력 RQD = <strong>${user_rqd}%</strong> (${user_joint_state === 'closed' ? 'Closed Joints' : 'Open Joints'}) &rarr; 산정 <strong><i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> = ${em_ei_val.toFixed(3)}</strong>, <strong>감소계수 <i>&alpha;<sub>E</sub></i> = ${alpha_e_val.toFixed(3)}</strong>
                     </div>
-                    <div style="font-size: 0.82em; color: #2c3e50; background:#e8f8f5; padding:6px; border-radius:3px;">
-                        • <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> = ${em_ei_val.toFixed(3)} 적용 &rarr; 산정 <strong>감소계수 <i>&alpha;<sub>E</sub></i> = ${alpha_e_val.toFixed(3)}</strong>
+
+                    <div style="font-weight: bold; margin-top: 10px; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ RQD에 따른 <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> 상관 그래프</div>
+                    <div style="text-align:center; margin: 10px 0;">
+                        <svg width="${svgW}" height="${svgH}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
+                            ${xGridRQD} ${yGridRatio}
+                            <path d="${pathClosed}" fill="none" stroke="#1b4f72" stroke-width="2.5"/>
+                            <path d="${pathOpen}" fill="none" stroke="#e74c3c" stroke-width="2.5"/>
+                            <rect x="${padX}" y="${padY}" width="${plotW}" height="${plotH}" fill="none" stroke="#2c3e50" stroke-width="2"/>
+                            <text x="${padX-35}" y="${svgH/2}" transform="rotate(-90 ${padX-35},${svgH/2})" font-size="12" font-weight="bold">Em / Ei</text>
+                            <text x="${svgW/2}" y="${svgH-8}" font-size="12" font-weight="bold">RQD (%)</text>
+                            <circle cx="${ptRQD_X}" cy="${ptRQD_Y}" r="6" fill="#e74c3c" stroke="white" stroke-width="2"/>
+                            <text x="${ptRQD_X+10}" y="${ptRQD_Y+4}" font-size="12" font-weight="bold" fill="#e74c3c">${em_ei_val.toFixed(3)}</text>
+                        </svg>
                     </div>
                 </div>
             `;
@@ -1448,7 +1561,7 @@ export function initCastPileModule(container) {
             `;
 
             settlementHtmlStr = `
-                <div class="section-title">[상세검증 3] 현장타설말뚝(암반소켓) 연직침하량 산정 (Pells & Turner, 1979)</div>
+                <div class="section-title">[검증 3] 현장타설말뚝(암반소켓) 연직침하량 산정 (Pells & Turner, 1979)</div>
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                     <strong>■ 암반소켓 침하량 영향계수 (I<sub>ps</sub>) 산출</strong><br>
                     &nbsp;&nbsp;- 콘크리트 강도 조건: <strong>${conc_str_detail}</strong><br>
@@ -1519,7 +1632,7 @@ export function initCastPileModule(container) {
             `;
 
             settlementHtmlStr = `
-                <div class="section-title">[상세검증 3] 토사층 현장타설말뚝 연직 경험적 침하량 산정 (Vesic, 1977)</div>
+                <div class="section-title">[검증 3] 토사층 현장타설말뚝 연직 경험적 침하량 산정 (Vesic, 1977)</div>
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                     <strong>■ Vesic 경험적 침하 공식 (S = S<sub>1</sub> + S<sub>2</sub> + S<sub>3</sub>)</strong><br>
                     &nbsp;&nbsp;• <strong>S<sub>1</sub> (말뚝 본체 탄성변형량) :</strong> ${frac("(P<sub>p</sub> + 0.5 P<sub>s</sub>) &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")}<br>
@@ -1613,7 +1726,7 @@ export function initCastPileModule(container) {
                 </table>
             </div>
 
-            <div class="section-title">[상세검증 1] 지반에 의한 연직 허용지지력 산정</div>
+            <div class="section-title">[검증 1] 지반에 의한 연직 허용지지력 산정</div>
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
                 <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
                 • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
@@ -1678,7 +1791,7 @@ export function initCastPileModule(container) {
                 • 내진시 허용지지력 (안전율 F.S = 2.0) : <strong>${formatComma(Qa_soil_seis, 1)} kN</strong>
             </div>
 
-            <div class="section-title">[상세검증 2] 현장타설말뚝 본체부 단면 내하력 (재료 허용압축하중 Q<sub>as</sub>) 산정</div>
+            <div class="section-title">[검증 2] 현장타설말뚝 본체부 단면 내하력 (재료 허용압축하중 Q<sub>as</sub>) 산정</div>
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px; line-height: 1.6;">
                 ${qMatBaseDetailStr}<br>
                 • 장경비 감소율 (&mu;) = max(0, ${L_over_D.toFixed(2)} - 60) = <strong>${mu1.toFixed(2)} %</strong><br>
@@ -1687,7 +1800,7 @@ export function initCastPileModule(container) {
 
             ${settlementHtmlStr}
 
-            <div class="section-title">[상세검증 4] 수평방향 지지력 및 수평변위 상세 산정 (기초 구조계산)</div>
+            <div class="section-title">[검증 4] 수평방향 지지력 및 수평변위 상세 산정 (기초 구조계산)</div>
             
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                 <strong>1. 수평지반반력계수 k<sub>h</sub> 산정 (구조물기초설계기준 축차계산법)</strong><br>
