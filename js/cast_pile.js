@@ -464,13 +464,21 @@ export function initCastPileModule(container) {
 
     // Hoek & Brown 데이터
     const HB_TABLE_DATA = [
-        { rmr: 3,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7 },
-        { rmr: 23,  m: { 7: 0.029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6 },
-        { rmr: 44,  m: { 7: 0.128, 10: 0.183, 15: 0.275, 17: 0.311, 25: 0.458 }, s: 9.0e-5 },
-        { rmr: 65,  m: { 7: 0.575, 10: 0.821, 15: 1.231, 17: 1.395, 25: 2.052 }, s: 0.0029 },
-        { rmr: 85,  m: { 7: 2.400, 10: 3.430, 15: 5.140, 17: 5.820, 25: 8.567 }, s: 0.082 },
-        { rmr: 100, m: { 7: 7.000, 10: 10.000, 15: 15.000, 17: 17.000, 25: 25.000 }, s: 1.00 }
+        { rmr: 3,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7, label: "매우 불량한 암반 (3~23)" },
+        { rmr: 23,  m: { 7: 0.029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6, label: "불량한 암반 (23~44)" },
+        { rmr: 44,  m: { 7: 0.128, 10: 0.183, 15: 0.275, 17: 0.311, 25: 0.458 }, s: 9.0e-5, label: "보통의 암반 (44~65)" },
+        { rmr: 65,  m: { 7: 0.575, 10: 0.821, 15: 1.231, 17: 1.395, 25: 2.052 }, s: 0.0029, label: "양호한 암반 (65~85)" },
+        { rmr: 85,  m: { 7: 2.400, 10: 3.430, 15: 5.140, 17: 5.820, 25: 8.567 }, s: 0.082,  label: "매우 양호한 암반 (85~100)" },
+        { rmr: 100, m: { 7: 7.000, 10: 10.000, 15: 15.000, 17: 17.000, 25: 25.000 }, s: 1.00,   label: "신선암 시료 (100)" }
     ];
+
+    const ROCK_TYPE_NAME_MAP = {
+        7: "A : 벽개발달 탄산염암",
+        10: "B : 석화 이질암",
+        15: "C : 뚜렷한 벽개 사질암",
+        17: "D : 세립결정 화성암",
+        25: "E : 조립결정 화성,변성암"
+    };
 
     const TABLE_EM_EI = [
         { rqd: 0,   closed: 0.0,  open: 0.0 },
@@ -491,16 +499,21 @@ export function initCastPileModule(container) {
     ];
 
     function interpolateHoekBrown(rmrVal, miVal) {
-        if (rmrVal <= 3) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s };
-        if (rmrVal >= 100) return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s };
+        if (rmrVal <= 3) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 3, r2: 3 };
+        if (rmrVal >= 100) return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s, r1: 100, r2: 100 };
         for (let i = 0; i < HB_TABLE_DATA.length - 1; i++) {
             const row1 = HB_TABLE_DATA[i], row2 = HB_TABLE_DATA[i + 1];
             if (rmrVal >= row1.rmr && rmrVal <= row2.rmr) {
                 const t = (rmrVal - row1.rmr) / (row2.rmr - row1.rmr);
-                return { m: row1.m[miVal] + t * (row2.m[miVal] - row1.m[miVal]), s: row1.s + t * (row2.s - row1.s) };
+                return { 
+                    m: row1.m[miVal] + t * (row2.m[miVal] - row1.m[miVal]), 
+                    s: row1.s + t * (row2.s - row1.s),
+                    r1: row1.rmr,
+                    r2: row2.rmr
+                };
             }
         }
-        return { m: HB_TABLE_DATA[2].m[miVal], s: HB_TABLE_DATA[2].s };
+        return { m: HB_TABLE_DATA[2].m[miVal], s: HB_TABLE_DATA[2].s, r1: 44, r2: 44 };
     }
 
     function interpolateEmEi(rqdVal, jointState) {
@@ -798,34 +811,45 @@ export function initCastPileModule(container) {
         const Ap = (Math.PI * Math.pow(D, 2)) / 4.0;
         
         let q_p = 0; 
+        let qp_formula_name = "";
         let qp_calc_detail = "";
-        let hbRes = null, hb_m = 0, hb_s = 0;
+        let hbRes = null, hb_m = 0, hb_s = 0, hb_mi = 17, input_rmr = 30;
 
         if (p_type === 'CAST_ROCK') {
             if (qp_formula_key === 'rock_case1') {
+                qp_formula_name = "현장타설말뚝(기반암) - Case-1 (절리 미고려/신선암)";
                 q_p = 2.5 * qu_tip;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = 2.5 &times; q<sub>u</sub><br>• 계산: 2.5 &times; ${formatComma(qu_tip, 1)}<br>• 결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
+                qp_calc_detail = `• 산정식: q<sub>p</sub> = 2.5 &times; q<sub>u</sub><br>• 계산과정: 2.5 &times; ${formatComma(qu_tip, 1)}<br>• 계산결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
             } else {
-                let hb_mi = parseInt(container.querySelector('#pile_rock_type')?.value) || 17;
-                let input_rmr = parseNum(container.querySelector('#pile_rmr')?.value) || 30;
+                qp_formula_name = "현장타설말뚝(기반암) - Case-2 (여러방향 절리, Hoek & Brown 1988 적용)";
+                hb_mi = parseInt(container.querySelector('#pile_rock_type')?.value) || 17;
+                input_rmr = parseNum(container.querySelector('#pile_rmr')?.value) || 30;
                 hbRes = interpolateHoekBrown(input_rmr, hb_mi);
                 hb_m = hbRes.m; hb_s = hbRes.s;
                 let factor = Math.sqrt(hb_s) + Math.sqrt(hb_m * Math.sqrt(hb_s) + hb_s);
                 q_p = factor * qu_tip;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = [&radic;s + &radic;(m&radic;s + s)] &times; q<sub>u</sub><br>• 계산: [&radic;${hb_s.toExponential(3)} + &radic;(${hb_m.toFixed(4)}&times;&radic;${hb_s.toExponential(3)} + ${hb_s.toExponential(3)})] &times; ${formatComma(qu_tip, 1)} = ${factor.toFixed(4)} &times; ${formatComma(qu_tip, 1)}<br>• 결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
+
+                qp_calc_detail = `• 입력 파라미터 : RMR = ${input_rmr}, 암의 유형 = ${ROCK_TYPE_NAME_MAP[hb_mi]} (<i>m<sub>i</sub></i> = ${hb_mi})<br>` +
+                                 `• 표 1 1차 보간 결과 : m = <strong>${hb_m.toFixed(5)}</strong>, s = <strong>${hb_s.toExponential(4)}</strong> (RMR ${hbRes.r1} ~ ${hbRes.r2} 구간)<br>` +
+                                 `• <i>q<sub>p</sub></i> 산정 공식 : [&radic;s + &radic;(m&radic;s + s)] &times; <i>q<sub>u</sub></i><br>` +
+                                 `&nbsp;&nbsp;= [&radic;${hb_s.toExponential(3)} + &radic;(${hb_m.toFixed(4)}&times;&radic;${hb_s.toExponential(3)} + ${hb_s.toExponential(3)})] &times; ${formatComma(qu_tip, 1)}<br>` +
+                                 `&nbsp;&nbsp;= ${factor.toFixed(4)} &times; ${formatComma(qu_tip, 1)}<br>` +
+                                 `&nbsp;&nbsp;= <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
             }
         } else { // CAST
+            qp_formula_name = "현장타설말뚝 - O'Neill & Reese (1999)";
             if (qp_formula_key === 'oneill') {
                 q_p = raw_N_tip <= 75 ? 57.4 * raw_N_tip : 4309.2;
-                qp_calc_detail = `• 공식: q<sub>p</sub> = ${raw_N_tip <= 75 ? "57.4 &times; N" : "4309.2 (N>75 상한)"}<br>• 계산: ${raw_N_tip <= 75 ? `57.4 &times; ${raw_N_tip}` : "4309.2"}<br>• 결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
+                qp_calc_detail = `• 산정식: q<sub>p</sub> = ${raw_N_tip <= 75 ? "57.4 &times; N" : "4309.2 (N>75 상한)"}<br>• 계산과정: ${raw_N_tip <= 75 ? `57.4 &times; ${raw_N_tip}` : "4309.2"}<br>• 계산결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
             } else {
+                qp_formula_name = "건축기초 구조설계지침 (2004)";
                 let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type);
                 if (isGranular) {
                     q_p = 100.0 * raw_N_tip;
-                    qp_calc_detail = `• 공식: q<sub>p</sub> = 100 &times; N<br>• 계산: 100 &times; ${raw_N_tip}<br>• 결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
+                    qp_calc_detail = `• 산정식: q<sub>p</sub> = 100 &times; N<br>• 계산과정: 100 &times; ${raw_N_tip}<br>• 계산결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
                 } else {
                     q_p = 6.0 * c_tip;
-                    qp_calc_detail = `• 공식: q<sub>p</sub> = 6 &times; c<sub>u</sub><br>• 계산: 6 &times; ${c_tip}<br>• 결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
+                    qp_calc_detail = `• 산정식: q<sub>p</sub> = 6 &times; c<sub>u</sub><br>• 계산과정: 6 &times; ${c_tip}<br>• 계산결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
                 }
             }
         }
@@ -836,6 +860,7 @@ export function initCastPileModule(container) {
         const As = Math.PI * D;
         let total_Qus = 0;
         let layer_calc_rows = [];
+        let qs_formula_name = p_type === 'CAST_ROCK' || (p_type === 'CAST' && qs_formula_key === 'oneill') ? "AASHTO LRFD (2012) 및 O'Neill & Reese (1999)" : "건축기초 구조설계지침 (2004)";
 
         let soilLayers = pileLayers.filter(l => l.type !== 'rock');
         let sum_N_dz = 0, sum_dz = 0;
@@ -870,7 +895,9 @@ export function initCastPileModule(container) {
                 let fs_limit_MPa = 7.8 * P_a * Math.pow(fck_eff / P_a, 0.5); 
                 let f_unit_MPa = Math.min(fs_MPa, fs_limit_MPa);
                 f_unit = f_unit_MPa * 1000.0; 
-                formula_str = `• 공식: min(0.65 &times; &alpha;<sub>E</sub> &times; P<sub>a</sub>(q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup>, 7.8 &times; P<sub>a</sub>(f'<sub>c</sub>/P<sub>a</sub>)<sup>0.5</sup>)<br>• 계산: min(${(fs_MPa*1000).toFixed(1)}, ${(fs_limit_MPa*1000).toFixed(1)})<br>• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                formula_str = `min(0.65&middot;<i>&alpha;<sub>E</sub></i>&middot;<i>P<sub>a</sub></i>&middot;(<i>q<sub>u</sub></i>/<i>P<sub>a</sub></i>)<sup>0.5</sup>, &nbsp; 7.8&middot;<i>P<sub>a</sub></i>&middot;(<i>f'<sub>c</sub></i>/<i>P<sub>a</sub></i>)<sup>0.5</sup>)<br>` +
+                              `= min(0.65&times;${alpha_e_val.toFixed(3)}&times;${P_a}&times;(${qu_MPa.toFixed(2)}/${P_a})<sup>0.5</sup>, &nbsp; 7.8&times;${P_a}&times;(${fck_eff.toFixed(1)}/${P_a})<sup>0.5</sup>)<br>` +
+                              `= min(${(fs_MPa*1000).toFixed(1)}, ${(fs_limit_MPa*1000).toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
             } else if ((p_type === 'CAST' || p_type === 'CAST_ROCK') && qs_formula_key === 'oneill') {
                 if (l.type === 'sand' || l.type === 'weathered_rock') {
                     let z_mm = z_mid * 1000.0;
@@ -879,29 +906,43 @@ export function initCastPileModule(container) {
                     let beta_clamped = Math.max(0.25, Math.min(1.20, beta));
                     let calc_val = beta_clamped * sigma_v_prime;
                     f_unit = Math.min(190.0, calc_val);
-                    formula_str = `• 공식: min(190, &beta; &times; &sigma;'<sub>v</sub>)<br>• 계산: min(190, ${beta_clamped.toFixed(3)} &times; ${sigma_v_prime.toFixed(1)}) = min(190, ${calc_val.toFixed(1)})<br>• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    
+                    let condStr = N_60 > 15 ? `N<sub>60</sub> > 15` : `N<sub>60</sub> &le; 15`;
+                    let formulaBase = N_60 > 15 ? `1.5 - (7.7&times;10<sup>-3</sup>&radic;z)` : `(N<sub>60</sub> / 15) &times; [1.5 - (7.7&times;10<sup>-3</sup>&radic;z)]`;
+
+                    formula_str = `<i>&beta;</i> = ${formulaBase}<br>` +
+                                  `(${condStr}, z=${z_mm.toFixed(0)}mm) &rarr; 계산 <i>&beta;</i>=${beta.toFixed(3)}<br>` +
+                                  `상/하한 적용(0.25~1.20) <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
+                                  `min(190, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = min(190, ${beta_clamped.toFixed(3)}&times;${sigma_v_prime.toFixed(1)})<br>` +
+                                  `= min(190, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else if (l.type === 'gravel') {
                     let z_mm = z_mid * 1000.0;
                     let beta = 2.0 - 0.00082 * Math.pow(z_mm, 0.75);
                     let beta_clamped = Math.max(0.25, Math.min(1.20, beta));
                     let calc_val = beta_clamped * sigma_v_prime;
                     f_unit = Math.min(190.0, calc_val);
-                    formula_str = `• 공식: min(190, &beta; &times; &sigma;'<sub>v</sub>)<br>• 계산: min(190, ${beta_clamped.toFixed(3)} &times; ${sigma_v_prime.toFixed(1)}) = min(190, ${calc_val.toFixed(1)})<br>• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+
+                    formula_str = `<i>&beta;</i> = 2.0 - 0.00082&times;z<sup>0.75</sup><br>` +
+                                  `(z=${z_mm.toFixed(0)}mm) &rarr; 계산 <i>&beta;</i>=${beta.toFixed(3)}<br>` +
+                                  `상/하한 적용(0.25~1.20) <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
+                                  `min(190, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = min(190, ${beta_clamped.toFixed(3)}&times;${sigma_v_prime.toFixed(1)})<br>` +
+                                  `= min(190, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else {
                     let calc_val = 0.55 * c_val_i;
                     f_unit = Math.min(190.0, calc_val);
-                    formula_str = `• 공식: min(190, 0.55 &times; c<sub>u</sub>)<br>• 계산: min(190, 0.55 &times; ${c_val_i}) = min(190, ${calc_val.toFixed(1)})<br>• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    formula_str = `min(190, 0.55&middot;<i>c<sub>u</sub></i>) = min(190, 0.55&times;${c_val_i})<br>` +
+                                  `= min(190, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 }
             } else { // AIJ
                 let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(l.type);
                 if (isGranular) {
                     let calc_val = 3.3 * l.n_val;
                     f_unit = calc_val;
-                    formula_str = `• 공식: 3.3 &times; N<br>• 계산: 3.3 &times; ${l.n_val}<br>• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    formula_str = `• 산정식: 3.3 &times; N<br>• 계산과정: 3.3 &times; ${l.n_val}<br>• 계산결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else {
                     let calc_val = 1.0 * c_val_i;
                     f_unit = calc_val;
-                    formula_str = `• 공식: 1.0 &times; c<sub>u</sub><br>• 계산: 1.0 &times; ${c_val_i}<br>• 결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
+                    formula_str = `• 산정식: 1.0 &times; c<sub>u</sub><br>• 계산과정: 1.0 &times; ${c_val_i}<br>• 계산결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 }
             }
 
@@ -918,6 +959,108 @@ export function initCastPileModule(container) {
             cum_depth += dz_i;
             cum_sigma_v += gamma_i * dz_i;
         });
+
+        // Hoek & Brown 표 1 HTML 렌더링 준비
+        let extraRockTablesHtml = "";
+        if (p_type === 'CAST_ROCK' && qp_formula_key === 'rock_case2') {
+            extraRockTablesHtml = `
+                <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
+                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 1. 비선형 강도 정의상 암질과 재료상수의 대략적인 관계 (Hoek & Brown, 1988)</div>
+                    <div class="table-container" style="margin-bottom: 12px;">
+                        <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                            <thead>
+                                <tr style="background-color: #eaeded;">
+                                    <th rowspan="2">암 질</th><th rowspan="2">정수</th>
+                                    <th colspan="5">암의 유형 (<i>m<sub>i</sub></i>)</th>
+                                </tr>
+                                <tr style="background-color: #f2f4f4;">
+                                    <th style="${hb_mi===7?'background:#d4efdf;font-weight:bold;':''}">A: 탄산염암</th>
+                                    <th style="${hb_mi===10?'background:#d4efdf;font-weight:bold;':''}">B: 이질암</th>
+                                    <th style="${hb_mi===15?'background:#d4efdf;font-weight:bold;':''}">C: 사질암</th>
+                                    <th style="${hb_mi===17?'background:#d4efdf;font-weight:bold;':''}">D: 화성암</th>
+                                    <th style="${hb_mi===25?'background:#d4efdf;font-weight:bold;':''}">E: 변성암</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${HB_TABLE_DATA.map(row => {
+                                    const isTargetRow = (hbRes && (row.rmr === hbRes.r1 || row.rmr === hbRes.r2));
+                                    const rowStyle = isTargetRow ? 'background-color:#fef9e7; font-weight:bold;' : '';
+                                    return `
+                                        <tr style="${rowStyle}">
+                                            <td>${row.label}</td>
+                                            <td>m<br>s</td>
+                                            <td>${row.m[7].toFixed(3)}<br>${row.s.toExponential(1)}</td>
+                                            <td>${row.m[10].toFixed(3)}<br>${row.s.toExponential(1)}</td>
+                                            <td>${row.m[15].toFixed(3)}<br>${row.s.toExponential(1)}</td>
+                                            <td>${row.m[17].toFixed(3)}<br>${row.s.toExponential(1)}</td>
+                                            <td>${row.m[25].toFixed(3)}<br>${row.s.toExponential(1)}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 주면마찰력 관련 표 3 및 표 4 HTML 렌더링 준비 (CAST_ROCK)
+        let extraRockQsTablesHtml = "";
+        if (p_type === 'CAST_ROCK') {
+            const user_joint_state = container.querySelector('#pile_joint_state')?.value || 'closed';
+            const user_rqd = parseNum(container.querySelector('#pile_rqd')?.value) || 4.0;
+            extraRockQsTablesHtml = `
+                <div style="margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
+                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 3. RQD에 따른 <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> (O'Neill & Reese, 1999)</div>
+                    <div class="table-container" style="margin-bottom: 10px;">
+                        <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                            <thead>
+                                <tr style="background-color: #eaeded;">
+                                    <th>RQD (%)</th>
+                                    <th>Closed Joints (<i>E<sub>m</sub></i> / <i>E<sub>i</sub></i>)</th>
+                                    <th>Open Joints (<i>E<sub>m</sub></i> / <i>E<sub>i</sub></i>)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${TABLE_EM_EI.map(row => `
+                                    <tr>
+                                        <td>${row.rqd}</td>
+                                        <td>${row.closed.toFixed(2)}</td>
+                                        <td>${row.open.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="font-size: 0.82em; color: #2c3e50; margin-bottom: 12px; background:#e8f8f5; padding:6px; border-radius:3px;">
+                        • 입력 RQD = <strong>${user_rqd}%</strong> (${user_joint_state === 'closed' ? 'Closed Joints' : 'Open Joints'}) &rarr; 1차 보간 산정된 <strong><i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> = ${em_ei_val.toFixed(3)}</strong>
+                    </div>
+
+                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 표 4. 감소계수 <i>&alpha;<sub>E</sub></i> (O'Neill & Reese, 1999)</div>
+                    <div class="table-container" style="margin-bottom: 10px;">
+                        <table class="result-table" style="font-size: 0.8em; text-align: center;">
+                            <thead>
+                                <tr style="background-color: #eaeded;">
+                                    <th><i>E<sub>m</sub></i> / <i>E<sub>i</sub></i></th>
+                                    <th>감소계수 <i>&alpha;<sub>E</sub></i></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${TABLE_ALPHA_E.map(row => `
+                                    <tr>
+                                        <td>${row.ratio.toFixed(3)}</td>
+                                        <td>${row.alpha.toFixed(3)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="font-size: 0.82em; color: #2c3e50; background:#e8f8f5; padding:6px; border-radius:3px;">
+                        • <i>E<sub>m</sub></i> / <i>E<sub>i</sub></i> = ${em_ei_val.toFixed(3)} 적용 &rarr; 1차 보간 산정된 <strong>감소계수 <i>&alpha;<sub>E</sub></i> = ${alpha_e_val.toFixed(3)}</strong>
+                    </div>
+                </div>
+            `;
+        }
 
         const Qu_total = Qup + total_Qus;
         const Qa_soil_norm = Qu_total / 3.0;
@@ -1396,13 +1539,21 @@ export function initCastPileModule(container) {
             <div class="section-title">[상세검증 1] 지반에 의한 연직 허용지지력 산정</div>
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
                 <strong>(1) 말뚝 선단지지력 (Q<sub>up</sub>)</strong><br>
+                • 적용 산정식 : <strong>${qp_formula_name}</strong><br>
+                • 최하단 지층 : <strong>${lastLayer.name}</strong> (N = ${raw_N_tip}, <i>q<sub>u</sub></i> = ${formatComma(qu_tip, 1)} kPa)<br>
                 • 단위면적당 극한선단지지력 q<sub>p</sub> :<br>
                 <div style="margin-left: 15px; background: #fdf2e9; padding: 10px; border-radius: 4px; margin: 6px 0; line-height: 1.6; font-size: 0.9em; color: #2c3e50; border: 1px solid #fae5d3;">${qp_calc_detail}</div>
+                • 선단면적 <i>A<sub>p</sub></i> = &pi; &times; <i>D</i>² / 4 = &pi; &times; ${D.toFixed(3)}² / 4 = <strong>${Ap.toFixed(5)} m²</strong><br>
                 • <strong>극한선단지지력 Q<sub>up</sub></strong> = q<sub>p</sub> &times; A<sub>p</sub> = ${formatComma(q_p, 1)} &times; ${Ap.toFixed(5)} = <span style="font-weight:bold; color:#2980b9;">${formatComma(Qup, 1)} kN</span>
+
+                ${extraRockTablesHtml}
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
                 <strong>(2) 말뚝 주면마찰력 (Q<sub>us</sub>)</strong><br>
+                • 적용 산정식 : <strong>${qs_formula_name}</strong><br>
+                ${(p_type.includes('CAST') && qs_formula_key === 'oneill') ? `• 토사층 평균 N치 (N<sub>60</sub>) : <strong style="color:#d35400;">${N_60.toFixed(1)}</strong> <span style="font-size:0.85em; color:#7f8c8d;">(기반암 제외 지층 심도가중평균)</span><br>` : ''}
+                • 말뚝 둘레 <i>A<sub>s</sub></i> = &pi; &times; <i>D</i> = <strong>${As.toFixed(3)} m</strong><br>
                 • <strong>총 극한주면마찰력 Q<sub>us</sub></strong> = &sum; (f<sub>s,i</sub> &times; L<sub>i</sub>) &times; A<sub>s</sub> = <span style="font-weight:bold; color:#2980b9;">${formatComma(total_Qus, 1)} kN</span>
 
                 <div class="table-container" style="margin-top: 10px; margin-bottom: 5px;">
@@ -1439,6 +1590,8 @@ export function initCastPileModule(container) {
                         </tfoot>
                     </table>
                 </div>
+
+                ${extraRockQsTablesHtml}
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px;">
