@@ -588,13 +588,14 @@ export function initCastPileModule(container) {
     }
     renderLayers();
 
+    // RMR 범위별 암질 구분 명칭 수정 (0~3, 3~23, 23~44, 44~65, 65~85, 85~100)
     const HB_TABLE_DATA = [
-        { rmr: 3,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7, label: "매우 불량한 암반 (3~23)" },
-        { rmr: 23,  m: { 7: 0.029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6, label: "불량한 암반 (23~44)" },
-        { rmr: 44,  m: { 7: 0.128, 10: 0.183, 15: 0.275, 17: 0.311, 25: 0.458 }, s: 9.0e-5, label: "보통의 암반 (44~65)" },
-        { rmr: 65,  m: { 7: 0.575, 10: 0.821, 15: 1.231, 17: 1.395, 25: 2.052 }, s: 0.0029, label: "양호한 암반 (65~85)" },
-        { rmr: 85,  m: { 7: 2.400, 10: 3.430, 15: 5.140, 17: 5.820, 25: 8.567 }, s: 0.082,  label: "매우 양호한 암반 (85~100)" },
-        { rmr: 100, m: { 7: 7.000, 10: 10.000, 15: 15.000, 17: 17.000, 25: 25.000 }, s: 1.00,   label: "신선암 시료 (100)" }
+        { rmr: 3,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7, label: "매우 불량한 암반 (0~3)" },
+        { rmr: 23,  m: { 7: 0.029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6, label: "불량한 암반 (3~23)" },
+        { rmr: 44,  m: { 7: 0.128, 10: 0.183, 15: 0.275, 17: 0.311, 25: 0.458 }, s: 9.0e-5, label: "보통의 암반 (23~44)" },
+        { rmr: 65,  m: { 7: 0.575, 10: 0.821, 15: 1.231, 17: 1.395, 25: 2.052 }, s: 0.0029, label: "양호한 암반 (44~65)" },
+        { rmr: 85,  m: { 7: 2.400, 10: 3.430, 15: 5.140, 17: 5.820, 25: 8.567 }, s: 0.082,  label: "매우 양호한 암반 (65~85)" },
+        { rmr: 100, m: { 7: 7.000, 10: 10.000, 15: 15.000, 17: 17.000, 25: 25.000 }, s: 1.00,   label: "신선암 시료 (85~100)" }
     ];
 
     const ROCK_TYPE_NAME_MAP = {
@@ -623,10 +624,10 @@ export function initCastPileModule(container) {
         { ratio: 1.000, alpha: 1.000 }
     ];
 
-    // s값의 Log 스케일 보간 적용
+    // RMR 보간 알고리즘 재확인
     function interpolateHoekBrown(rmrVal, miVal) {
-        if (rmrVal <= 3) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 3, r2: 3 };
-        if (rmrVal >= 100) return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s, r1: 100, r2: 100 };
+        if (rmrVal <= 3) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 0, r2: 3 };
+        if (rmrVal >= 100) return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s, r1: 85, r2: 100 };
         for (let i = 0; i < HB_TABLE_DATA.length - 1; i++) {
             const row1 = HB_TABLE_DATA[i], row2 = HB_TABLE_DATA[i + 1];
             if (rmrVal >= row1.rmr && rmrVal <= row2.rmr) {
@@ -642,7 +643,7 @@ export function initCastPileModule(container) {
                 };
             }
         }
-        return { m: HB_TABLE_DATA[2].m[miVal], s: HB_TABLE_DATA[2].s, r1: 44, r2: 44 };
+        return { m: HB_TABLE_DATA[2].m[miVal], s: HB_TABLE_DATA[2].s, r1: 23, r2: 44 };
     }
 
     function interpolateEmEi(rqdVal, jointState) {
@@ -1071,7 +1072,6 @@ export function initCastPileModule(container) {
             cum_sigma_v += gamma_i * dz_i;
         });
 
-        // Hoek & Brown 그래프 수정 (격자선 오류 및 s 곡선 보간 수정)
         let extraRockTablesHtml = "";
         if (p_type === 'CAST_ROCK' && qp_formula_key === 'rock_case2') {
             const svgW = 290, svgH = 250;
@@ -1088,7 +1088,6 @@ export function initCastPileModule(container) {
             `).join('');
 
             const gridM = [0, 5, 10, 15, 20, 25];
-            // Y축 격자선 좌표 y2 버그 수정 (padL_m+plotW_m -> getPyM(m))
             let yGridM = gridM.map(m => `
                 <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
                 <text x="${padL_m-5}" y="${getPyM(m)+4}" font-size="10" text-anchor="end" fill="#555">${m}</text>
@@ -1117,7 +1116,6 @@ export function initCastPileModule(container) {
 
             const ptHBX_m = getPxRMR_m(input_rmr), ptHBY_m = getPyM(hb_m);
 
-            // (b) s값 그래프 (Log Scale 선형 보간으로 매끄러운 곡선 구현)
             const padL_s = 52, padR_s = 15, padT_s = 25, padB_s = 45;
             const plotW_s = svgW - padL_s - padR_s, plotH_s = svgH - padT_s - padB_s;
 
@@ -1879,11 +1877,36 @@ export function initCastPileModule(container) {
                 • 내진시 허용지지력 (안전율 F.S = 2.0) : <strong>${formatComma(Qa_soil_seis, 1)} kN</strong>
             </div>
 
-            <div class="section-title">[검증 2] 현장타설말뚝 본체부 단면 내하력 (재료 허용압축하중 Q<sub>as</sub>) 산정</div>
+            <div class="section-title">[검증 2] 현장타설말뚝 본체부 단면 내하력 (재료 허용압축하중 Qas) 산정</div>
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px; line-height: 1.6;">
                 ${qMatBaseDetailStr}<br>
                 • 장경비 감소율 (&mu;) = max(0, ${L_over_D.toFixed(2)} - 60) = <strong>${mu1.toFixed(2)} %</strong><br>
                 • <strong>말뚝 내하력 Q<sub>as</sub></strong> = (1 - ${frac("&mu;", "100")}) &times; Q<sub>mat_base</sub> = <span style="color:#2980b9; font-weight:bold; font-size:1.05em;">${formatComma(Qas, 1)} kN</span>
+
+                <div style="margin-top: 12px; background: #fff; padding: 8px 10px; border-radius: 4px; border: 1px solid #d5d8dc;">
+                    <div style="font-weight: bold; margin-bottom: 6px; color: #2c3e50; font-size: 0.85em;">■ 현장타설말뚝 장경비 및 감소계수 기준</div>
+                    <div class="table-container" style="margin: 0;">
+                        <table class="result-table" style="font-size: 0.82em; text-align: center; width: 100%;">
+                            <thead>
+                                <tr style="background-color: #eaeded;">
+                                    <th>구 분</th>
+                                    <th>n (장경비 감소 기준)</th>
+                                    <th>장경비의 상한계 <sup>1)</sup></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="background-color: #e8f8f5; font-weight: bold;">
+                                    <td>현장타설말뚝</td>
+                                    <td>60</td>
+                                    <td>80</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 5px; font-size: 0.8em; color: #7f8c8d; line-height: 1.3;">
+                        1) 장경비에 의한 말뚝재료 허용응력 감소를 감안하더라도, 장경비 상한계 이상으로 설계하지 않는 것이 좋다.
+                    </div>
+                </div>
             </div>
 
             ${settlementHtmlStr}
