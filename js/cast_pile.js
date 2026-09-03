@@ -116,7 +116,7 @@ export function initCastPileModule(container) {
         </div>
 
         <div style="font-weight: bold; margin-bottom: 8px; color: #8e44ad; font-size: 0.95em;">■ 수평 해석 및 허용 기준 조건</div>
-        <div class="input-grid" style="margin-bottom: 8px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+        <div class="input-grid" style="margin-bottom: 8px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
             <div class="input-group" style="background:#fff; margin:0;">
                 <label class="grid-label">말뚝 두부조건</label>
                 <select id="pile_head_cond" class="grid-select" style="text-align: left;">
@@ -127,14 +127,14 @@ export function initCastPileModule(container) {
             <div class="input-group" style="background:#fff; margin:0;"><label class="grid-label" style="color:#2980b9;">추정계수 &alpha; (상시)</label><input type="text" id="pile_alpha_norm" value="${formatComma(getVal('alpha_norm', '1.0'), 1)}" class="pl-input dec-input"></div>
             <div class="input-group" style="background:#fff; margin:0;">
                 <label class="grid-label" style="color:#8e44ad;">콘크리트 E<sub>p</sub> (kPa)</label>
-                <input type="text" id="pile_Ep" value="${formatComma(getVal('Ep', '26701700'))}" class="pl-input comma-input">
+                <input type="text" id="pile_Ep" value="${formatComma(getVal('Ep', '26700000'))}" class="pl-input comma-input">
             </div>
-            <div class="input-group" style="background:#fff; margin:0;"><label class="grid-label" style="color:#d4ac0d;">허용 침하량 (mm)</label><input type="text" id="pile_allow_settle" value="${formatComma(getVal('allow_settle', '25.0'), 1)}" class="pl-input dec-input"></div>
             <div class="input-group" style="background:#fff; margin:0;">
-                <label class="grid-label" style="color:#16a085;">허용 수평변위 (상시 / 지진시) (mm)</label>
+                <label class="grid-label" style="color:#d4ac0d;">허용 변위 기준 (연직 / 수평상시 / 수평지진시) (mm)</label>
                 <div style="display:flex; gap:3px; height:32px;">
-                    <input type="text" id="pile_allow_h_disp_norm" value="${formatComma(getVal('allow_h_disp_norm', '15.0'), 1)}" placeholder="상시" class="pl-input dec-input" style="width:50%; height:100%;">
-                    <input type="text" id="pile_allow_h_disp_seis" value="${formatComma(getVal('allow_h_disp_seis', '25.0'), 1)}" placeholder="지진시" class="pl-input dec-input" style="width:50%; height:100%;">
+                    <input type="text" id="pile_allow_settle" value="${formatComma(getVal('allow_settle', '25.0'), 1)}" placeholder="연직" class="pl-input dec-input" style="width:33.3%; height:100%;">
+                    <input type="text" id="pile_allow_h_disp_norm" value="${formatComma(getVal('allow_h_disp_norm', '15.0'), 1)}" placeholder="상시" class="pl-input dec-input" style="width:33.3%; height:100%;">
+                    <input type="text" id="pile_allow_h_disp_seis" value="${formatComma(getVal('allow_h_disp_seis', '25.0'), 1)}" placeholder="지진" class="pl-input dec-input" style="width:33.3%; height:100%;">
                 </div>
             </div>
         </div>
@@ -279,7 +279,8 @@ export function initCastPileModule(container) {
 
         let fcu = fc_prime + 4.0;
         let Ep_MPa = 8500 * Math.cbrt(fcu);
-        let Ep_kPa = Math.round(Ep_MPa * 1000);
+        let Ep_raw_kPa = Ep_MPa * 1000;
+        let Ep_kPa = Math.floor(Ep_raw_kPa / 10000) * 10000; // 10,000단위 이하 버림(절사)
 
         const epInput = container.querySelector('#pile_Ep');
         if (epInput) {
@@ -290,8 +291,8 @@ export function initCastPileModule(container) {
         const epBox = container.querySelector('#ep_calc_info_box');
         if (epBox) {
             epBox.innerHTML = `
-                <strong>※ 콘크리트 탄성계수 (E<sub>p</sub>) 산정공식 및 실시간 계산과정:</strong> E<sub>p</sub> = 8,500 &times; &sup3;&radic;(f<sub>cu</sub>) (MPa) [단, f<sub>cu</sub> = f'<sub>c</sub> + 4]<br>
-                &bull; <strong>계산단계:</strong> f<sub>ck</sub> = ${fckInput.toFixed(1)} MPa (${condStr}) &rArr; f<sub>cu</sub> = ${fc_prime.toFixed(1)} + 4 = <strong>${fcu.toFixed(1)} MPa</strong> &rArr; E<sub>p</sub> = 8,500 &times; &sup3;&radic;(${fcu.toFixed(1)}) = <strong>${formatComma(Ep_MPa.toFixed(1), 1)} MPa (${formatComma(Ep_kPa)} kPa)</strong>
+                <strong>※ 콘크리트 탄성계수 (E<sub>p</sub>) 산정공식 및 실시간 계산과정:</strong> E<sub>p</sub> = 8,500 &times; &sup3;&radic;(f<sub>cu</sub>) (MPa) [단, f<sub>cu</sub> = f'<sub>c</sub> + 4, 10,000 kPa 단위 이하 절사]<br>
+                &bull; <strong>계산단계:</strong> f<sub>ck</sub> = ${fckInput.toFixed(1)} MPa (${condStr}) &rArr; f<sub>cu</sub> = ${fc_prime.toFixed(1)} + 4 = <strong>${fcu.toFixed(1)} MPa</strong> &rArr; E<sub>p</sub> = 8,500 &times; &sup3;&radic;(${fcu.toFixed(1)}) = ${formatComma(Ep_MPa.toFixed(1), 1)} MPa (${formatComma(Math.round(Ep_raw_kPa))} kPa) &rArr; <strong>${formatComma(Ep_kPa)} kPa</strong>
             `;
         }
     }
@@ -918,7 +919,7 @@ export function initCastPileModule(container) {
         const P_seis = parseNum(container.querySelector('#pile_P_seis').value) || 0;
         const H_norm = parseNum(container.querySelector('#pile_H_norm').value) || 0;
         const H_seis = parseNum(container.querySelector('#pile_H_seis').value) || 0;
-        const user_Ep = parseNum(container.querySelector('#pile_Ep')?.value) || 26701700;
+        const user_Ep = parseNum(container.querySelector('#pile_Ep')?.value) || 26700000;
 
         let lastLayer = pileLayers[pileLayers.length - 1] || { name: '지반', n_val: 50, qu_val: 30000 };
         let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
