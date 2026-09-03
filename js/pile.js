@@ -900,7 +900,7 @@ export function initPileModule(container) {
         let v00 = grid[r0][c0], v01 = grid[r0][c1];
         let v10 = grid[r1][c0], v11 = grid[r1][c1];
         let v0 = v00 + tx * (v01 - v00);
-        let v1 = v10 + ty * (v11 - v10);
+        let v1 = v10 + tx * (v11 - v10);
         return v0 + ty * (v1 - v0);
     }
 
@@ -1571,10 +1571,10 @@ export function initPileModule(container) {
             </div>`;
         }
 
-        // 5. 연직 침하량 검토 (기성말뚝/토사층: Vesic 경험식, 기반암: Pells & Turner)
+        // 5. 연직 침하량 검토 (Pells & Turner, 1979)
         let settlementHtmlStr = "";
         let finalS_norm = 0, finalS_seis = 0;
-        let settlementSummary = "";
+        let pellsTurnerSummary = "";
 
         if (p_type === 'CAST_ROCK') {
             let sumDr = 0, sumLs = 0;
@@ -1650,7 +1650,7 @@ export function initPileModule(container) {
 
             const ptX = getPx(dr_br), ptY = getPy(I_ps);
 
-            settlementSummary = `
+            pellsTurnerSummary = `
                 <tr>
                     <td rowspan="2" style="background:#f5eef8; font-weight:bold;">연직 침하량 검토</td>
                     <td>평상시 (Pells & Turner)</td>
@@ -1697,72 +1697,6 @@ export function initPileModule(container) {
                     &nbsp;&nbsp;- <strong>지진시 침하량</strong> = ${P_seis.toFixed(1)} &times; [ ${frac(I_ps.toFixed(3), D_r.toFixed(2) + " &times; " + E_m.toLocaleString())} + ${frac(L_s.toFixed(2), A_net.toFixed(5) + " &times; " + E_c.toExponential(3))} ] &times; 1000 = <strong><span style="color:#8e44ad;">${finalS_seis.toFixed(3)} mm</span></strong>
                 </div>
             `;
-        } else {
-            // 기성말뚝 (PHC, 강관) 및 토사층 말뚝: Vesic (1977) 경험적 침하 산정식 (Cp, Cs 적용)
-            let Pp_norm = Qu_total > 0 ? P_norm * (Qup / Qu_total) : P_norm * 0.5;
-            let Ps_norm = Qu_total > 0 ? P_norm * (total_Qus / Qu_total) : P_norm * 0.5;
-
-            let Pp_seis = Qu_total > 0 ? P_seis * (Qup / Qu_total) : P_seis * 0.5;
-            let Ps_seis = Qu_total > 0 ? P_seis * (total_Qus / Qu_total) : P_seis * 0.5;
-
-            // Vesic 경험계수 (Cp, Cs) 산정
-            let isTipSand = ['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type);
-            let Cp = method === 'driven' ? (isTipSand ? 0.04 : 0.03) : (isTipSand ? 0.09 : 0.03);
-            let Cs = (0.93 + 0.16 * Math.sqrt(L / D)) * Cp;
-            let calc_qp = Math.max(q_p, 1.0); // 0으로 나누기 방지
-
-            // 평상시 침하량 성분 (mm)
-            let S1_norm = ((Pp_norm + 0.5 * Ps_norm) * L) / (A_net * user_Ep) * 1000.0;
-            let S2_norm = (Pp_norm * Cp) / (D * calc_qp) * 1000.0;
-            let S3_norm = (Ps_norm * Cs) / (L * calc_qp) * 1000.0;
-            finalS_norm = S1_norm + S2_norm + S3_norm;
-
-            // 지진시 침하량 성분 (mm)
-            let S1_seis = ((Pp_seis + 0.5 * Ps_seis) * L) / (A_net * user_Ep) * 1000.0;
-            let S2_seis = (Pp_seis * Cp) / (D * calc_qp) * 1000.0;
-            let S3_seis = (Ps_seis * Cs) / (L * calc_qp) * 1000.0;
-            finalS_seis = S1_seis + S2_seis + S3_seis;
-
-            settlementSummary = `
-                <tr>
-                    <td rowspan="2" style="background:#f5eef8; font-weight:bold;">연직 침하량 검토</td>
-                    <td>평상시 (Vesic 경험공식)</td>
-                    <td style="font-weight:bold; color:#8e44ad;">${finalS_norm.toFixed(2)} mm</td>
-                    <td rowspan="2" style="vertical-align: middle;">${allow_settle.toFixed(1)} mm</td>
-                    <td style="font-size:0.85em;">Vesic (1977) 경험적 침하 산정식</td>
-                    <td style="font-weight:bold; color:${finalS_norm <= allow_settle ? '#27ae60' : '#c0392b'};">${finalS_norm <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
-                </tr>
-                <tr>
-                    <td>지진시 (Vesic 경험공식)</td>
-                    <td style="font-weight:bold; color:#8e44ad;">${finalS_seis.toFixed(2)} mm</td>
-                    <td style="font-size:0.85em;">Vesic (1977) 경험적 침하 산정식</td>
-                    <td style="font-weight:bold; color:${finalS_seis <= allow_settle ? '#27ae60' : '#c0392b'};">${finalS_seis <= allow_settle ? '안정 (O.K)' : 'NG'}</td>
-                </tr>
-            `;
-
-            settlementHtmlStr = `
-                <div class="section-title">[검증 3] 기성말뚝 / 토사층 말뚝 연직 경험적 침하량 산정 (Vesic, 1977)</div>
-                <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                    <strong>■ Vesic 경험적 침하 공식 (S = S<sub>1</sub> + S<sub>2</sub> + S<sub>3</sub>)</strong><br>
-                    &nbsp;&nbsp;• <strong>S<sub>1</sub> (말뚝 본체 탄성변형량) :</strong> ${frac("(P<sub>p</sub> + 0.5 P<sub>s</sub>) &times; L", "A<sub>net</sub> &times; E<sub>p</sub>")}<br>
-                    &nbsp;&nbsp;• <strong>S<sub>2</sub> (선단지반 침하량) :</strong> ${frac("P<sub>p</sub> &times; C<sub>p</sub>", "D &times; q<sub>p</sub>")}<br>
-                    &nbsp;&nbsp;• <strong>S<sub>3</sub> (주면지반 침하량) :</strong> ${frac("P<sub>s</sub> &times; C<sub>s</sub>", "L &times; q<sub>p</sub>")}<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- 지반/시공조건 경험계수: C<sub>p</sub> = <strong>${Cp.toFixed(3)}</strong>, C<sub>s</sub> = [0.93 + 0.16&radic;(${frac("L","D")})] &times; C<sub>p</sub> = <strong>${Cs.toFixed(3)}</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- 극한 단위선단지지력 (q<sub>p</sub>) = <strong>${calc_qp.toLocaleString()} kPa</strong>
-                </div>
-
-                <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 20px; line-height: 1.6;">
-                    <strong>■ 조건별 연직 침하량 산정 결과</strong><br>
-                    &nbsp;&nbsp;• <strong>평상시 (P<sub>norm</sub> = ${P_norm.toFixed(1)} kN) :</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- P<sub>p</sub> = ${Pp_norm.toFixed(1)} kN, P<sub>s</sub> = ${Ps_norm.toFixed(1)} kN<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- S<sub>1</sub> = <strong>${S1_norm.toFixed(2)} mm</strong>, S<sub>2</sub> = <strong>${S2_norm.toFixed(2)} mm</strong>, S<sub>3</sub> = <strong>${S3_norm.toFixed(2)} mm</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>총 발생침하량 (S<sub>norm</sub>)</strong> = ${S1_norm.toFixed(2)} + ${S2_norm.toFixed(2)} + ${S3_norm.toFixed(2)} = <strong><span style="color:#8e44ad;">${finalS_norm.toFixed(2)} mm</span></strong> (&le; ${allow_settle.toFixed(1)} mm)<br><br>
-                    &nbsp;&nbsp;• <strong>지진시 (P<sub>seis</sub> = ${P_seis.toFixed(1)} kN) :</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- P<sub>p</sub> = ${Pp_seis.toFixed(1)} kN, P<sub>s</sub> = ${Ps_seis.toFixed(1)} kN<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- S<sub>1</sub> = <strong>${S1_seis.toFixed(2)} mm</strong>, S<sub>2</sub> = <strong>${S2_seis.toFixed(2)} mm</strong>, S<sub>3</sub> = <strong>${S3_seis.toFixed(2)} mm</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>총 발생침하량 (S<sub>seis</sub>)</strong> = ${S1_seis.toFixed(2)} + ${S2_seis.toFixed(2)} + ${S3_seis.toFixed(2)} = <strong><span style="color:#8e44ad;">${finalS_seis.toFixed(2)} mm</span></strong> (&le; ${allow_settle.toFixed(1)} mm)
-                </div>
-            `;
         }
 
         const resultDiv = container.querySelector('#pile-result');
@@ -1800,7 +1734,7 @@ export function initPileModule(container) {
                             <td style="font-size:0.85em;">지반 지지력 / 구조 내하력</td>
                             <td style="font-weight:bold; color:${P_seis <= Q_app_seis ? '#27ae60' : '#c0392b'};">${status_seis}</td>
                         </tr>
-                        ${settlementSummary}
+                        ${pellsTurnerSummary}
                         <tr>
                             <td rowspan="2" style="background:#e8f8f5; font-weight:bold;">수평지지력 검토</td>
                             <td>평상시 (상시)</td>
