@@ -95,7 +95,7 @@ export function initCastPileModule(container) {
                 <label>콘크리트 f<sub>ck</sub> / 조건</label>
                 <div style="display:flex; gap:3px; height:32px;">
                     <input type="text" id="pile_fck" value="${formatComma(getVal('fck', '35'), 1)}" placeholder="fck(MPa)" class="pl-input dec-input" style="width:50%; height:100%;">
-                    <select id="pile_conc_cond" style="width:50%; height:100%; box-sizing:border-box; padding:2px; font-size:0.8eM;">
+                    <select id="pile_conc_cond" style="width:50%; height:100%; box-sizing:border-box; padding:2px; font-size:0.8em;">
                         <option value="underwater" ${getVal('conc_cond', 'underwater') === 'underwater' ? 'selected' : ''}>수중 타설</option>
                         <option value="dry" ${getVal('conc_cond', 'underwater') === 'dry' ? 'selected' : ''}>비수중 타설</option>
                     </select>
@@ -191,23 +191,19 @@ export function initCastPileModule(container) {
     function updateFormulaInfoText() {
         const type = container.querySelector('#pile_type').value;
         const qpVal = container.querySelector('#pile_qp_formula')?.value || 'rock_case2';
-        const qsVal = container.querySelector('#pile_qs_formula')?.value || 'oneill';
         const infoBox = container.querySelector('#formula_info_box');
 
         if (!infoBox) return;
 
         let qpText = "";
-        let qsText = "";
+        let qsText = "AASHTO LRFD (2012) / KDS 24 14 51 : 2021 &beta; 산정식 (사질토/풍화암: &beta;=1.5-7.7&times;10<sup>-3</sup>&radic;z, 자갈층: &beta;=2.0-0.00082z<sup>0.75</sup>, 상한 190kPa)";
 
         if (type === 'CAST_ROCK') {
             if (qpVal === 'rock_case1') qpText = "q<sub>p</sub> = 2.5 &times; q<sub>u</sub> (신선암 / 암반절리 미고려)";
             else qpText = "q<sub>p</sub> = [&radic;s + &radic;(m &times; &radic;s + s)] &times; q<sub>u</sub> (여러방향 절리, Hoek-Brown 1988 적용)";
-            qsText = "토사/자갈: AASHTO LRFD (2012) / KDS 24 14 51 : 2021 &beta; 산정식 (상한 190kPa, 0.25&le;&beta;&le;1.20) / 암반: Horvath & Kenney (1979) [Q<sub>s</sub> = 0.65 &times; &alpha;<sub>E</sub> &times; P<sub>a</sub> &times; (q<sub>u</sub>/P<sub>a</sub>)<sup>0.5</sup>]";
+            qsText = "토사/풍화암/자갈: KDS 24 14 51 / AASHTO LRFD (2012) &beta; 산정식 / 암반: Horvath & Kenney (1979)";
         } else {
-            if (qpVal === 'oneill') qpText = "57.4 &times; N (N&le;75) / 4,309.2 kN/m² (N>75) [O'Neill & Reese (1999)]";
-            else qpText = "100 &times; N_bar (사질토) / 6 &times; c<sub>u</sub> (점성토) [건축기초 구조설계지침]";
-            if (qsVal === 'oneill') qsText = "AASHTO LRFD (2012) / KDS 24 14 51 : 2021 &beta; 산정식 (사질토: &beta;=1.5-7.7&times;10<sup>-3</sup>&radic;z, 자갈층: &beta;=2.0-0.00082z<sup>0.75</sup>, 상한 190kPa)";
-            else qsText = "3.3 &times; N (사질토) / 1.0 &times; c<sub>u</sub> (점성토) [건축기초 구조설계지침]";
+            qpText = "57.4 &times; N (N&le;75) / 4,309.2 kN/m² (N>75) [O'Neill & Reese (1999)]";
         }
 
         infoBox.innerHTML = `
@@ -305,16 +301,14 @@ export function initCastPileModule(container) {
             row2Container.innerHTML = `
                 <div class="input-group" style="margin:0;">
                     <label>선단지지력 산정식</label>
-                    <select id="pile_qp_formula" style="width:100%; height:32px; padding:4px; font-size:0.82em;">
-                        <option value="oneill" ${getVal('qp_formula', 'oneill') === 'oneill' ? 'selected' : ''}>O'Neill & Reese (1999)</option>
-                        <option value="aij" ${getVal('qp_formula', 'oneill') === 'aij' ? 'selected' : ''}>건축기초 구조설계지침 (2004)</option>
+                    <select id="pile_qp_formula" style="width:100%; height:32px; padding:4px; font-size:0.82em;" disabled>
+                        <option value="oneill" selected>O'Neill & Reese (1999)</option>
                     </select>
                 </div>
                 <div class="input-group" style="margin:0;">
                     <label>주면마찰력 산정식</label>
-                    <select id="pile_qs_formula" style="width:100%; height:32px; padding:4px; font-size:0.82em;">
-                        <option value="oneill" ${getVal('qs_formula', 'oneill') === 'oneill' ? 'selected' : ''}>AASHTO LRFD / KDS 24 14 51</option>
-                        <option value="aij" ${getVal('qs_formula', 'oneill') === 'aij' ? 'selected' : ''}>건축기초 구조설계지침 (2004)</option>
+                    <select id="pile_qs_formula" style="width:100%; height:32px; padding:4px; font-size:0.82em;" disabled>
+                        <option value="oneill" selected>AASHTO LRFD / KDS 24 14 51</option>
                     </select>
                 </div>
                 <div class="input-group" style="margin:0; grid-column: span 2;">
@@ -755,7 +749,6 @@ export function initCastPileModule(container) {
         }
 
         const qp_formula_key = container.querySelector('#pile_qp_formula')?.value || 'rock_case2';
-        const qs_formula_key = container.querySelector('#pile_qs_formula')?.value || 'oneill';
 
         const D_mm = parseNum(container.querySelector('#pile_D').value) || 3000;
         const D = D_mm / 1000.0;
@@ -807,7 +800,6 @@ export function initCastPileModule(container) {
         let lastLayer = pileLayers[pileLayers.length - 1] || { name: '지반', n_val: 50, qu_val: 30000 };
         let raw_N_tip = parseFloat(lastLayer.n_val) || 0;
         let qu_tip = parseFloat(lastLayer.qu_val) || 0;
-        let c_tip = parseFloat(lastLayer.c_val) || 0;
         const Ap = (Math.PI * Math.pow(D, 2)) / 4.0;
         
         let q_p = 0; 
@@ -836,31 +828,19 @@ export function initCastPileModule(container) {
                                  `&nbsp;&nbsp;= ${factor.toFixed(4)} &times; ${formatComma(qu_tip, 1)}<br>` +
                                  `&nbsp;&nbsp;= <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
             }
-        } else { // CAST
+        } else { // CAST (O'Neill & Reese)
             qp_formula_name = "현장타설말뚝 - O'Neill & Reese (1999)";
-            if (qp_formula_key === 'oneill') {
-                q_p = raw_N_tip <= 75 ? 57.4 * raw_N_tip : 4309.2;
-                qp_calc_detail = `• 산정식: q<sub>p</sub> = ${raw_N_tip <= 75 ? "57.4 &times; N" : "4309.2 (N>75 상한)"}<br>• 계산과정: ${raw_N_tip <= 75 ? `57.4 &times; ${raw_N_tip}` : "4309.2"}<br>• 계산결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
-            } else {
-                qp_formula_name = "건축기초 구조설계지침 (2004)";
-                let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(lastLayer.type);
-                if (isGranular) {
-                    q_p = 100.0 * raw_N_tip;
-                    qp_calc_detail = `• 산정식: q<sub>p</sub> = 100 &times; N<br>• 계산과정: 100 &times; ${raw_N_tip}<br>• 계산결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
-                } else {
-                    q_p = 6.0 * c_tip;
-                    qp_calc_detail = `• 산정식: q<sub>p</sub> = 6 &times; c<sub>u</sub><br>• 계산과정: 6 &times; ${c_tip}<br>• 계산결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
-                }
-            }
+            q_p = raw_N_tip <= 75 ? 57.4 * raw_N_tip : 4309.2;
+            qp_calc_detail = `• 산정식: q<sub>p</sub> = ${raw_N_tip <= 75 ? "57.4 &times; N" : "4309.2 (N>75 상한)"}<br>• 계산과정: ${raw_N_tip <= 75 ? `57.4 &times; ${raw_N_tip}` : "4309.2"}<br>• 계산결과: q<sub>p</sub> = <strong>${formatComma(q_p, 1)} kN/m²</strong>`;
         }
 
         const Qup = q_p * Ap;
 
-        // 2. 연직 주면마찰력 (Qus)
+        // 2. 연직 주면마찰력 (Qus) - 도로교설계기준 KDS 24 14 51 / AASHTO LRFD 단일 표준
         const As = Math.PI * D;
         let total_Qus = 0;
         let layer_calc_rows = [];
-        let qs_formula_name = p_type === 'CAST_ROCK' || (p_type === 'CAST' && qs_formula_key === 'oneill') ? "AASHTO LRFD (2012) / KDS 24 14 51 : 2021 (도로교설계기준해설, 2015)" : "건축기초 구조설계지침 (2004)";
+        let qs_formula_name = "AASHTO LRFD (2012) / KDS 24 14 51 : 2021 (도로교설계기준해설, 2015)";
 
         let soilLayers = pileLayers.filter(l => l.type !== 'rock');
         let sum_N_dz = 0, sum_dz = 0;
@@ -898,7 +878,8 @@ export function initCastPileModule(container) {
                 formula_str = `&bull; min(0.65&middot;<i>&alpha;<sub>E</sub></i>&middot;<i>P<sub>a</sub></i>&middot;(<i>q<sub>u</sub></i>/<i>P<sub>a</sub></i>)<sup>0.5</sup>, &nbsp; 7.8&middot;<i>P<sub>a</sub></i>&middot;(<i>f'<sub>c</sub></i>/<i>P<sub>a</sub></i>)<sup>0.5</sup>)<br>` +
                               `= min(0.65&times;${alpha_e_val.toFixed(3)}&times;${P_a}&times;(${qu_MPa.toFixed(2)}/${P_a})<sup>0.5</sup>, &nbsp; 7.8&times;${P_a}&times;(${fck_eff.toFixed(1)}/${P_a})<sup>0.5</sup>)<br>` +
                               `= min(${(fs_MPa*1000).toFixed(1)}, ${(fs_limit_MPa*1000).toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
-            } else if ((p_type === 'CAST' || p_type === 'CAST_ROCK') && qs_formula_key === 'oneill') {
+            } else {
+                // 토사, 풍화암 및 자갈층 (KDS 24 14 51 / AASHTO LRFD Beta 방식)
                 if (l.type === 'sand' || l.type === 'weathered_rock') {
                     let z_mm = z_mid * 1000.0;
                     let beta_calc = 1.5 - (7.7e-3 * Math.sqrt(z_mm));
@@ -932,17 +913,6 @@ export function initCastPileModule(container) {
                     f_unit = Math.min(190.0, calc_val);
                     formula_str = `&bull; q<sub>s</sub> = min(190, 0.55&middot;<i>c<sub>u</sub></i>) = min(190, 0.55&times;${c_val_i.toFixed(1)})<br>` +
                                   `&nbsp;&nbsp;= min(190, ${calc_val.toFixed(1)}) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
-                }
-            } else { // AIJ
-                let isGranular = ['sand', 'gravel', 'weathered_rock'].includes(l.type);
-                if (isGranular) {
-                    let calc_val = 3.3 * l.n_val;
-                    f_unit = calc_val;
-                    formula_str = `• 산정식: 3.3 &times; N<br>• 계산과정: 3.3 &times; ${l.n_val}<br>• 계산결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
-                } else {
-                    let calc_val = 1.0 * c_val_i;
-                    f_unit = calc_val;
-                    formula_str = `• 산정식: 1.0 &times; c<sub>u</sub><br>• 계산과정: 1.0 &times; ${c_val_i.toFixed(1)}<br>• 계산결과: <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 }
             }
 
@@ -1515,7 +1485,7 @@ export function initCastPileModule(container) {
                             <td style="font-weight:bold; color:#27ae60;">${formatComma(H_seis, 1)} kN</td>
                             <td>${formatComma(Ha_app_seis, 1)} kN</td>
                             <td style="font-size:0.85em; font-weight:bold; color:#2980b9;">${Ha_seis_source} (k<sub>h</sub>: ${horizRes.kh_seis_source})</td>
-                            <td style="font-weight:bold; color:${H_seis <= Ha_app_seis ? '#27ae60' : '#c0392b'};">${H_seis <= Ha_app_seis ? 'O.K' : 'N.G'} (${ratio_h_seis.toFixed(1)}%)</td>
+                            <td style="font-weight:bold; color:${H_seis <= Ha_app_seis ? '#27ae60' : '#c0392b'};">${H_seis <= Ha_app_seis ? 'O.K' : 'N.G'} (${ratio_seis.toFixed(1)}%)</td>
                         </tr>
                         <tr>
                             <td rowspan="2" style="background:#fef9e7; font-weight:bold;">수평 변위 검토</td>
@@ -1552,7 +1522,7 @@ export function initCastPileModule(container) {
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 12px;">
                 <strong>(2) 말뚝 주면마찰력 (Q<sub>us</sub>)</strong><br>
                 • 적용 산정식 : <strong>${qs_formula_name}</strong><br>
-                ${(p_type.includes('CAST') && qs_formula_key === 'oneill') ? `• 토사층 평균 N치 (N<sub>60</sub>) : <strong style="color:#d35400;">${N_60.toFixed(1)}</strong> <span style="font-size:0.85em; color:#7f8c8d;">(기반암 제외 지층 심도가중평균)</span><br>` : ''}
+                • 토사층 평균 N치 (N<sub>60</sub>) : <strong style="color:#d35400;">${N_60.toFixed(1)}</strong> <span style="font-size:0.85em; color:#7f8c8d;">(기반암 제외 지층 심도가중평균)</span><br>
                 • 말뚝 둘레 <i>A<sub>s</sub></i> = &pi; &times; <i>D</i> = <strong>${As.toFixed(3)} m</strong><br>
                 • <strong>총 극한주면마찰력 Q<sub>us</sub></strong> = &sum; (f<sub>s,i</sub> &times; L<sub>i</sub>) &times; A<sub>s</sub> = <span style="font-weight:bold; color:#2980b9;">${formatComma(total_Qus, 1)} kN</span>
 
