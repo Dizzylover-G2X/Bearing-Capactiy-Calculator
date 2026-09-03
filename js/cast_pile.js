@@ -588,14 +588,14 @@ export function initCastPileModule(container) {
     }
     renderLayers();
 
-    // RMR 범위별 암질 구분 명칭 수정 (0~3, 3~23, 23~44, 44~65, 65~85, 85~100)
+    // Hoek & Brown 원본 표 (각 RMR 구간의 시작점 하한값 정의)
     const HB_TABLE_DATA = [
-        { rmr: 3,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7, label: "매우 불량한 암반 (0~3)" },
-        { rmr: 23,  m: { 7: 0.029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6, label: "불량한 암반 (3~23)" },
-        { rmr: 44,  m: { 7: 0.128, 10: 0.183, 15: 0.275, 17: 0.311, 25: 0.458 }, s: 9.0e-5, label: "보통의 암반 (23~44)" },
-        { rmr: 65,  m: { 7: 0.575, 10: 0.821, 15: 1.231, 17: 1.395, 25: 2.052 }, s: 0.0029, label: "양호한 암반 (44~65)" },
-        { rmr: 85,  m: { 7: 2.400, 10: 3.430, 15: 5.140, 17: 5.820, 25: 8.567 }, s: 0.082,  label: "매우 양호한 암반 (65~85)" },
-        { rmr: 100, m: { 7: 7.000, 10: 10.000, 15: 15.000, 17: 17.000, 25: 25.000 }, s: 1.00,   label: "신선암 시료 (85~100)" }
+        { rmr: 0,   m: { 7: 0.007, 10: 0.010, 15: 0.015, 17: 0.017, 25: 0.025 }, s: 1.0e-7, label: "매우 불량한 암반 (0~3)" },
+        { rmr: 3,   m: { 7: 0.029, 10: 0.041, 15: 0.061, 17: 0.069, 25: 0.102 }, s: 3.0e-6, label: "불량한 암반 (3~23)" },
+        { rmr: 23,  m: { 7: 0.128, 10: 0.183, 15: 0.275, 17: 0.311, 25: 0.458 }, s: 9.0e-5, label: "보통의 암반 (23~44)" },
+        { rmr: 44,  m: { 7: 0.575, 10: 0.821, 15: 1.231, 17: 1.395, 25: 2.052 }, s: 0.0029, label: "양호한 암반 (44~65)" },
+        { rmr: 65,  m: { 7: 2.400, 10: 3.430, 15: 5.140, 17: 5.820, 25: 8.567 }, s: 0.082,  label: "매우 양호한 암반 (65~85)" },
+        { rmr: 85,  m: { 7: 7.000, 10: 10.000, 15: 15.000, 17: 17.000, 25: 25.000 }, s: 1.00,   label: "신선암 시료 (85~100)" }
     ];
 
     const ROCK_TYPE_NAME_MAP = {
@@ -624,22 +624,33 @@ export function initCastPileModule(container) {
         { ratio: 1.000, alpha: 1.000 }
     ];
 
-    // RMR 보간 알고리즘 재확인
+    // RMR 구간 시작점 하한값 기준 보간 함수
     function interpolateHoekBrown(rmrVal, miVal) {
-        if (rmrVal <= 3) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 0, r2: 3 };
-        if (rmrVal >= 100) return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s, r1: 85, r2: 100 };
+        if (rmrVal <= 0) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 0, r2: 3 };
+        if (rmrVal >= 85) {
+            const r1 = 85, r2 = 100;
+            const t = Math.min(1.0, (rmrVal - r1) / (r2 - r1));
+            const row1 = HB_TABLE_DATA[4], row2 = HB_TABLE_DATA[5];
+            const logS1 = Math.log10(row1.s), logS2 = Math.log10(row2.s);
+            return {
+                m: row1.m[miVal] + t * (row2.m[miVal] - row1.m[miVal]),
+                s: Math.pow(10, logS1 + t * (logS2 - logS1)),
+                r1: r1, r2: r2
+            };
+        }
+
+        const boundaries = [0, 3, 23, 44, 65, 85, 100];
         for (let i = 0; i < HB_TABLE_DATA.length - 1; i++) {
-            const row1 = HB_TABLE_DATA[i], row2 = HB_TABLE_DATA[i + 1];
-            if (rmrVal >= row1.rmr && rmrVal <= row2.rmr) {
-                const t = (rmrVal - row1.rmr) / (row2.rmr - row1.rmr);
+            const r1 = boundaries[i], r2 = boundaries[i + 1];
+            if (rmrVal >= r1 && rmrVal <= r2) {
+                const row1 = HB_TABLE_DATA[i], row2 = HB_TABLE_DATA[i + 1];
+                const t = (rmrVal - r1) / (r2 - r1);
                 const logS1 = Math.log10(row1.s);
                 const logS2 = Math.log10(row2.s);
-                const interpLogS = logS1 + t * (logS2 - logS1);
-                return { 
-                    m: row1.m[miVal] + t * (row2.m[miVal] - row1.m[miVal]), 
-                    s: Math.pow(10, interpLogS),
-                    r1: row1.rmr,
-                    r2: row2.rmr
+                return {
+                    m: row1.m[miVal] + t * (row2.m[miVal] - row1.m[miVal]),
+                    s: Math.pow(10, logS1 + t * (logS2 - logS1)),
+                    r1: r1, r2: r2
                 };
             }
         }
@@ -1103,7 +1114,7 @@ export function initCastPileModule(container) {
 
             let hbPathsM = rockTypesArr.map(rt => {
                 let pts = [];
-                for (let r = 3; r <= 100; r += 1) {
+                for (let r = 0; r <= 100; r += 1) {
                     let res = interpolateHoekBrown(r, rt.key);
                     pts.push([r, res.m]);
                 }
@@ -1144,7 +1155,7 @@ export function initCastPileModule(container) {
             `).join('');
 
             let sPoints = [];
-            for (let r = 3; r <= 100; r += 1) {
+            for (let r = 0; r <= 100; r += 1) {
                 let res = interpolateHoekBrown(r, hb_mi);
                 sPoints.push([r, res.s]);
             }
