@@ -1089,7 +1089,7 @@ export function initCastPileModule(container) {
 
             const gridM = [0, 5, 10, 15, 20, 25];
             let yGridM = gridM.map(m => `
-                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${padL_m+plotW_m}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
                 <text x="${padL_m-5}" y="${getPyM(m)+4}" font-size="10" text-anchor="end" fill="#555">${m}</text>
             `).join('');
 
@@ -1620,7 +1620,7 @@ export function initCastPileModule(container) {
                 { r: 1.0, color: '#34495e', pts: [[0, 0.53], [1, 0.53], [2, 0.53], [3, 0.53], [5, 0.53]] },
                 { r: 2.0, color: '#34495e', pts: [[0, 0.53], [0.5, 0.42], [1, 0.38], [2, 0.36], [3, 0.35], [5, 0.34]] },
                 { r: 10,  color: '#34495e', pts: [[0, 0.53], [0.5, 0.30], [1, 0.25], [2, 0.21], [3, 0.20], [5, 0.16]] },
-                { r: 50,  color: '#34495e', pts: [[0, 0.53], [0.5, 0.28], [1, 0.21], [2, 0.15], [3, 0.13], [5, 0.08]] },
+                { r: 50,  color: '#34495e', pts: [[0, 0.53], [0.5, 0.28], [1, 0.21], [2, 0.13], [3, 0.13], [5, 0.08]] },
                 { r: 1000, color: '#34495e', pts: [[0, 0.53], [0.5, 0.25], [1, 0.18], [2, 0.13], [3, 0.09], [5, 0.03]] }
             ];
 
@@ -1811,7 +1811,7 @@ export function initCastPileModule(container) {
                             <td style="font-weight:bold; color:#d35400;">${disp_seis_mm.toFixed(2)} mm</td>
                             <td>${allow_h_disp_seis.toFixed(1)} mm</td>
                             <td style="font-size:0.85em;">Chang 탄성지반반력법</td>
-                            <td style="font-weight:bold; color:${disp_seis_mm <= allow_h_disp_seis ? '#27ae60' : '#c0392b'};">${disp_seis_mm <= allow_h_disp_seis ? 'O.K' : 'N.G'} (${ratio_seis.toFixed(1)}%)</td>
+                            <td style="font-weight:bold; color:${disp_seis_mm <= allow_h_disp_seis ? '#27ae60' : '#c0392b'};">${disp_seis_mm <= allow_h_disp_seis ? 'O.K' : 'N.G'} (${ratio_disp_seis.toFixed(1)}%)</td>
                         </tr>
                     </tbody>
                 </table>
