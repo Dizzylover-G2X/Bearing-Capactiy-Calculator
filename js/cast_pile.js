@@ -118,11 +118,17 @@ export function initCastPileModule(container) {
         <div style="font-weight: bold; margin-bottom: 8px; color: #8e44ad; font-size: 0.95em;">■ 수평 해석 및 허용 기준 조건</div>
         <div class="input-grid" style="margin-bottom: 8px; background-color: #f5eef8; padding: 10px; border-radius: 5px; border: 1px solid #d7bde2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
             <div class="input-group" style="background:#fff; margin:0;">
-                <label class="grid-label">말뚝 두부조건</label>
-                <select id="pile_head_cond" class="grid-select" style="text-align: left;">
-                    <option value="free" ${getVal('head_cond', 'free') === 'free' ? 'selected' : ''}>두부 자유</option>
-                    <option value="fixed" ${getVal('head_cond', 'free') === 'fixed' ? 'selected' : ''}>두부 고정</option>
-                </select>
+                <label class="grid-label">말뚝 두부조건 / 1/&beta; 지층</label>
+                <div style="display:flex; gap:3px; height:32px;">
+                    <select id="pile_head_cond" class="grid-select" style="width:50%; height:100%;">
+                        <option value="free" ${getVal('head_cond', 'free') === 'free' ? 'selected' : ''}>두부 자유</option>
+                        <option value="fixed" ${getVal('head_cond', 'free') === 'fixed' ? 'selected' : ''}>두부 고정</option>
+                    </select>
+                    <select id="pile_beta_soil" class="grid-select" style="width:50%; height:100%;">
+                        <option value="sand" ${getVal('beta_soil', 'sand') === 'sand' ? 'selected' : ''}>사질토</option>
+                        <option value="clay" ${getVal('beta_soil', 'sand') === 'clay' ? 'selected' : ''}>점성토</option>
+                    </select>
+                </div>
             </div>
             <div class="input-group" style="background:#fff; margin:0;"><label class="grid-label" style="color:#2980b9;">추정계수 &alpha; (상시)</label><input type="text" id="pile_alpha_norm" value="${formatComma(getVal('alpha_norm', '1.0'), 1)}" class="pl-input dec-input"></div>
             <div class="input-group" style="background:#fff; margin:0;">
@@ -518,8 +524,12 @@ export function initCastPileModule(container) {
             autoCalculateEp();
             updateFormulaInfoText();
             try { localStorage.setItem('geo_cast_pile_' + e.target.id, e.target.value); } catch(err){}
-        } else if (['pile_qp_formula', 'pile_rmr', 'pile_joint_state', 'pile_rqd', 'pile_rebar_d', 'pile_rebar_fy', 'pile_rebar_count', 'pile_alpha_norm', 'pile_allow_settle', 'pile_allow_h_disp_norm', 'pile_allow_h_disp_seis', 'pile_head_cond'].includes(e.target.id)) {
-            try { localStorage.setItem('geo_cast_pile_' + e.target.id, e.target.value); } catch(err){}
+        } else if (['pile_qp_formula', 'pile_rmr', 'pile_joint_state', 'pile_rqd', 'pile_rebar_d', 'pile_rebar_fy', 'pile_rebar_count', 'pile_alpha_norm', 'pile_allow_settle', 'pile_allow_h_disp_norm', 'pile_allow_h_disp_seis', 'pile_head_cond', 'pile_beta_soil'].includes(e.target.id)) {
+            try {
+                localStorage.setItem('geo_cast_pile_' + e.target.id, e.target.value);
+                if (e.target.id === 'pile_beta_soil') localStorage.setItem('geo_cast_pile_beta_soil', e.target.value);
+                if (e.target.id === 'pile_head_cond') localStorage.setItem('geo_cast_pile_head_cond', e.target.value);
+            } catch(err){}
             if (e.target.id.includes('formula')) updateFormulaInfoText();
         } else if (['pile_Ep', 'pile_D', 'pile_P_norm', 'pile_P_seis', 'pile_H_norm', 'pile_H_seis'].includes(e.target.id)) {
             try { localStorage.setItem('geo_cast_pile_' + e.target.id, parseNum(e.target.value)); } catch(err){}
@@ -921,6 +931,7 @@ export function initCastPileModule(container) {
         const allow_h_disp_seis = parseNum(container.querySelector('#pile_allow_h_disp_seis')?.value) || 25.0;
         
         const head_cond = container.querySelector('#pile_head_cond')?.value || 'free';
+        const beta_soil = container.querySelector('#pile_beta_soil')?.value || 'sand';
         const alpha_norm_val = parseNum(container.querySelector('#pile_alpha_norm')?.value) || 1.0;
 
         const user_fck = parseNum(container.querySelector('#pile_fck')?.value) || 35.0;
@@ -1461,7 +1472,7 @@ export function initCastPileModule(container) {
         let eta_seis = Math.pow(eta_h_seis / horizRes.EI, 0.2);
         let etaL_seis = eta_seis * L;
 
-        const isSand = ['sand', 'gravel', 'weathered_rock'].includes(topLayer.type);
+        const isSand = beta_soil === 'sand';
 
         function getBromsDetails(isNorm, Kp_v, gamma_v) {
             let Hu_val = 0;
