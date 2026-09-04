@@ -735,6 +735,36 @@ export function initCastPileModule(container) {
         return { avgN: sumN / sumCovered, avgEs: sumEs / sumCovered };
     }
 
+    function calcPhiAvgDetails(targetDepth, layers) {
+        let cumDepth = 0;
+        let sumPhi = 0, sumCovered = 0;
+        let rows = [];
+        for (let l of layers) {
+            let dz = parseFloat(l.dz) || 0;
+            let phi = parseFloat(l.phi) || 0;
+            let lTop = cumDepth;
+            let lBot = cumDepth + dz;
+            if (lTop >= targetDepth) break;
+            let coverStart = lTop;
+            let coverEnd = Math.min(lBot, targetDepth);
+            let coverLen = coverEnd - coverStart;
+            if (coverLen > 0) {
+                let phi_dz = phi * coverLen;
+                sumPhi += phi_dz;
+                sumCovered += coverLen;
+                rows.push({
+                    name: l.name,
+                    dz: coverLen,
+                    phi: phi,
+                    phi_dz: phi_dz
+                });
+            }
+            cumDepth += dz;
+        }
+        let avgPhi = sumCovered > 0 ? sumPhi / sumCovered : (parseFloat(layers[0]?.phi) || 0);
+        return { avgPhi, sumCovered, sumPhi, rows };
+    }
+
     function calculateHorizontalSoilReaction(alphaNorm, Ep, D, Ip_cm4, layers) {
         const EI = Ep * (Ip_cm4 / 1.0e8);
         const alphaSeis = alphaNorm * 2.0;
@@ -1017,7 +1047,7 @@ export function initCastPileModule(container) {
                     let condStr = N_60 >= 15 ? `N<sub>60</sub> &ge; 15` : `N<sub>60</sub> &lt; 15`;
                     let formulaBase = N_60 >= 15 ? `1.5 - (7.7&times;10<sup>-3</sup>&radic;z)` : `(N<sub>60</sub> / 15) &times; [1.5 - (7.7&times;10<sup>-3</sup>&radic;z)]`;
 
-                    formula_str = `&bull; <i>&sigma;'<sub>v</sub></i> = ${sigma_v_prime.toFixed(1)} kPa<br>` +
+                    formula_str = `&bull; 유효응력 <i>&sigma;'<sub>v</sub></i> = <i>&sigma;<sub>v</sub></i>(${sigma_v_mid.toFixed(1)}) - u(${u_mid.toFixed(1)}) = <strong>${sigma_v_prime.toFixed(1)} kPa</strong><br>` +
                                   `&bull; <i>&beta;</i> = ${formulaBase} (${condStr}, z=${z_mm.toFixed(0)}mm) &rarr; <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
                                   `&bull; q<sub>s</sub> = min(190 kPa, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else if (l.type === 'gravel') {
@@ -1027,7 +1057,7 @@ export function initCastPileModule(container) {
                     let calc_val = beta_clamped * sigma_v_prime;
                     f_unit = Math.min(190.0, calc_val);
 
-                    formula_str = `&bull; <i>&sigma;'<sub>v</sub></i> = ${sigma_v_prime.toFixed(1)} kPa<br>` +
+                    formula_str = `&bull; 유효응력 <i>&sigma;'<sub>v</sub></i> = <i>&sigma;<sub>v</sub></i>(${sigma_v_mid.toFixed(1)}) - u(${u_mid.toFixed(1)}) = <strong>${sigma_v_prime.toFixed(1)} kPa</strong><br>` +
                                   `&bull; <i>&beta;</i> = 2.0 - 0.00082(z)<sup>0.75</sup> &rarr; <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
                                   `&bull; q<sub>s</sub> = min(190 kPa, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else {
@@ -1397,32 +1427,8 @@ export function initCastPileModule(container) {
 
         const topLayer = pileLayers[0] || { c_val: 5, phi: 25, gamma: 18.5 };
 
-        function calcPhiAvg(targetDepth, layers) {
-            let cumDepth = 0;
-            let sumPhi = 0, sumCovered = 0;
-            let layerParts = [];
-            for (let l of layers) {
-                let dz = parseFloat(l.dz) || 0;
-                let phi = parseFloat(l.phi) || 0;
-                let lTop = cumDepth;
-                let lBot = cumDepth + dz;
-                if (lTop >= targetDepth) break;
-                let coverStart = lTop;
-                let coverEnd = Math.min(lBot, targetDepth);
-                let coverLen = coverEnd - coverStart;
-                if (coverLen > 0) {
-                    sumPhi += phi * coverLen;
-                    sumCovered += coverLen;
-                    layerParts.push(`${l.name}(dz=${coverLen.toFixed(2)}m, &phi;=${phi.toFixed(1)}&deg;)`);
-                }
-                cumDepth += dz;
-            }
-            let avgPhi = sumCovered > 0 ? sumPhi / sumCovered : (parseFloat(layers[0]?.phi) || 0);
-            return { avgPhi, sumCovered, layersStr: layerParts.join(', ') || '지층1' };
-        }
-
-        let phiInfoNorm = calcPhiAvg(1.0 / beta_norm, pileLayers);
-        let phiInfoSeis = calcPhiAvg(1.0 / beta_seis, pileLayers);
+        let phiInfoNorm = calcPhiAvgDetails(1.0 / beta_norm, pileLayers);
+        let phiInfoSeis = calcPhiAvgDetails(1.0 / beta_seis, pileLayers);
 
         let phi_rad_norm = (phiInfoNorm.avgPhi * Math.PI) / 180.0;
         let Kp_norm = (1.0 + Math.sin(phi_rad_norm)) / (1.0 - Math.sin(phi_rad_norm));
@@ -2099,21 +2105,96 @@ export function initCastPileModule(container) {
 
                 <div style="margin-top: 10px; background: #fafafa; padding: 10px; border-radius: 4px; border: 1px solid #e0e0e0;">
                     <div style="font-weight:bold; margin-bottom:6px; color:#2c3e50;">■ 1/&beta; 심도 내 가중평균 내부마찰각 (&phi;<sub>avg</sub>) 및 수동토압계수 (K<sub>p</sub>) 산출과정</div>
-                    <div style="margin-left: 10px; line-height:1.7;">
-                        <strong>1) 평상시 (1/&beta;<sub>norm</sub> = ${(1/beta_norm).toFixed(3)} m 심도 범위):</strong><br>
-                        &nbsp;&nbsp;&bull; 대상 지층: ${phiInfoNorm.layersStr}<br>
-                        &nbsp;&nbsp;&bull; 가중평균 내부마찰각 &phi;<sub>avg,norm</sub> = <strong>${phiInfoNorm.avgPhi.toFixed(2)}&deg;</strong><br>
-                        &nbsp;&nbsp;&bull; 수동토압계수 K<sub>p,norm</sub> = tan²(45&deg; + ${phiInfoNorm.avgPhi.toFixed(2)}&deg;/2) = ${frac("1 + sin(" + phiInfoNorm.avgPhi.toFixed(2) + "&deg;)", "1 - sin(" + phiInfoNorm.avgPhi.toFixed(2) + "&deg;)")} = <strong>${Kp_norm.toFixed(3)}</strong><br>
-                        &nbsp;&nbsp;&bull; 수중단위중량 &gamma;'<sub>norm</sub> = <strong>${gamma_sub_norm.toFixed(1)} kN/m³</strong><br><br>
-
-                        <strong>2) 지진시 (1/&beta;<sub>seis</sub> = ${(1/beta_seis).toFixed(3)} m 심도 범위):</strong><br>
-                        &nbsp;&nbsp;&bull; 대상 지층: ${phiInfoSeis.layersStr}<br>
-                        &nbsp;&nbsp;&bull; 가중평균 내부마찰각 &phi;<sub>avg,seis</sub> = <strong>${phiInfoSeis.avgPhi.toFixed(2)}&deg;</strong><br>
-                        &nbsp;&nbsp;&bull; 수동토압계수 K<sub>p,seis</sub> = tan²(45&deg; + ${phiInfoSeis.avgPhi.toFixed(2)}&deg;/2) = ${frac("1 + sin(" + phiInfoSeis.avgPhi.toFixed(2) + "&deg;)", "1 - sin(" + phiInfoSeis.avgPhi.toFixed(2) + "&deg;)")} = <strong>${Kp_seis.toFixed(3)}</strong><br>
-                        &nbsp;&nbsp;&bull; 수중단위중량 &gamma;'<sub>seis</sub> = <strong>${gamma_sub_seis.toFixed(1)} kN/m³</strong>
+                    
+                    <div style="font-weight:bold; margin-top:6px; margin-bottom:4px; color:#2c3e50; font-size:0.88em;">1) 평상시 (1/&beta;<sub>norm</sub> = ${(1/beta_norm).toFixed(3)} m 심도 범위)</div>
+                    <div class="table-container" style="margin: 4px 0 12px 0;">
+                        <table class="result-table" style="font-size:0.82em; text-align:center; width:100%;">
+                            <thead>
+                                <tr style="background:#eaeded;">
+                                    <th>대상 지층</th>
+                                    <th>적용 층후 dz (m)</th>
+                                    <th>내부마찰각 &phi; (&deg;)</th>
+                                    <th>&phi; &times; dz (&deg;&middot;m)</th>
+                                    <th>가중평균 &phi;<sub>avg</sub></th>
+                                    <th>수동토압계수 K<sub>p</sub></th>
+                                    <th>수중단위중량 &gamma;'</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${phiInfoNorm.rows.map((r, i) => `
+                                    <tr>
+                                        <td>${r.name}</td>
+                                        <td>${r.dz.toFixed(2)}</td>
+                                        <td>${r.phi.toFixed(1)}&deg;</td>
+                                        <td>${r.phi_dz.toFixed(2)}</td>
+                                        ${i === 0 ? `
+                                            <td rowspan="${phiInfoNorm.rows.length}" style="vertical-align:middle; font-weight:bold; color:#2980b9;">${phiInfoNorm.avgPhi.toFixed(2)}&deg;</td>
+                                            <td rowspan="${phiInfoNorm.rows.length}" style="vertical-align:middle; font-weight:bold;">${Kp_norm.toFixed(3)}</td>
+                                            <td rowspan="${phiInfoNorm.rows.length}" style="vertical-align:middle; font-weight:bold;">${gamma_sub_norm.toFixed(1)} kN/m³</td>
+                                        ` : ''}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background:#f4f6f7; font-weight:bold;">
+                                    <td>합 계 (&sum;)</td>
+                                    <td>${phiInfoNorm.sumCovered.toFixed(2)}</td>
+                                    <td>-</td>
+                                    <td>${phiInfoNorm.sumPhi.toFixed(2)}</td>
+                                    <td colspan="3" style="text-align:left; padding-left:10px; font-weight:normal; font-size:0.88em; color:#555;">
+                                        &bull; &phi;<sub>avg,norm</sub> = ${phiInfoNorm.sumPhi.toFixed(2)} / ${phiInfoNorm.sumCovered.toFixed(2)} = <strong>${phiInfoNorm.avgPhi.toFixed(2)}&deg;</strong><br>
+                                        &bull; K<sub>p,norm</sub> = tan²(45&deg; + ${phiInfoNorm.avgPhi.toFixed(2)}&deg;/2) = <strong>${Kp_norm.toFixed(3)}</strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
 
-                    <div style="margin-top:10px; margin-left: 10px;">
+                    <div style="font-weight:bold; margin-top:8px; margin-bottom:4px; color:#2c3e50; font-size:0.88em;">2) 지진시 (1/&beta;<sub>seis</sub> = ${(1/beta_seis).toFixed(3)} m 심도 범위)</div>
+                    <div class="table-container" style="margin: 4px 0 6px 0;">
+                        <table class="result-table" style="font-size:0.82em; text-align:center; width:100%;">
+                            <thead>
+                                <tr style="background:#eaeded;">
+                                    <th>대상 지층</th>
+                                    <th>적용 층후 dz (m)</th>
+                                    <th>내부마찰각 &phi; (&deg;)</th>
+                                    <th>&phi; &times; dz (&deg;&middot;m)</th>
+                                    <th>가중평균 &phi;<sub>avg</sub></th>
+                                    <th>수동토압계수 K<sub>p</sub></th>
+                                    <th>수중단위중량 &gamma;'</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${phiInfoSeis.rows.map((r, i) => `
+                                    <tr>
+                                        <td>${r.name}</td>
+                                        <td>${r.dz.toFixed(2)}</td>
+                                        <td>${r.phi.toFixed(1)}&deg;</td>
+                                        <td>${r.phi_dz.toFixed(2)}</td>
+                                        ${i === 0 ? `
+                                            <td rowspan="${phiInfoSeis.rows.length}" style="vertical-align:middle; font-weight:bold; color:#2980b9;">${phiInfoSeis.avgPhi.toFixed(2)}&deg;</td>
+                                            <td rowspan="${phiInfoSeis.rows.length}" style="vertical-align:middle; font-weight:bold;">${Kp_seis.toFixed(3)}</td>
+                                            <td rowspan="${phiInfoSeis.rows.length}" style="vertical-align:middle; font-weight:bold;">${gamma_sub_seis.toFixed(1)} kN/m³</td>
+                                        ` : ''}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background:#f4f6f7; font-weight:bold;">
+                                    <td>합 계 (&sum;)</td>
+                                    <td>${phiInfoSeis.sumCovered.toFixed(2)}</td>
+                                    <td>-</td>
+                                    <td>${phiInfoSeis.sumPhi.toFixed(2)}</td>
+                                    <td colspan="3" style="text-align:left; padding-left:10px; font-weight:normal; font-size:0.88em; color:#555;">
+                                        &bull; &phi;<sub>avg,seis</sub> = ${phiInfoSeis.sumPhi.toFixed(2)} / ${phiInfoSeis.sumCovered.toFixed(2)} = <strong>${phiInfoSeis.avgPhi.toFixed(2)}&deg;</strong><br>
+                                        &bull; K<sub>p,seis</sub> = tan²(45&deg; + ${phiInfoSeis.avgPhi.toFixed(2)}&deg;/2) = <strong>${Kp_seis.toFixed(3)}</strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div style="margin-top:10px; margin-left: 4px;">
                         &bull; <strong>말뚝 특성치 &eta; 및 &eta;L / &beta;L 판정 :</strong><br>
                         &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 &eta; = <strong>${eta_norm.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_norm.toFixed(3)}</strong>, &beta;L = <strong>${(beta_norm*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${etaL_norm > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝'}</span><br>
                         &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 &eta; = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_seis.toFixed(3)}</strong>, &beta;L = <strong>${(beta_seis*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${etaL_seis > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝'}</span>
