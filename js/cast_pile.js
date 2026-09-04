@@ -674,13 +674,13 @@ export function initCastPileModule(container) {
         const x_vals = [0, 0.5, 1, 2, 3, 5];
         const y_ratios = [0.2, 0.5, 1, 2, 10, 50, 1000];
         const grid = [
-            [0.55, 1.15, 1.30, 1.35, 1.38, 1.42],
-            [0.55, 0.65, 0.68, 0.70, 0.71, 0.72],
-            [0.55, 0.53, 0.53, 0.53, 0.53, 0.53],
-            [0.55, 0.42, 0.38, 0.36, 0.35, 0.34],
-            [0.55, 0.30, 0.25, 0.21, 0.20, 0.16],
-            [0.55, 0.28, 0.21, 0.15, 0.13, 0.08],
-            [0.55, 0.25, 0.18, 0.13, 0.09, 0.03]
+            [0.55, 1.15, 1.30, 1.35, 1.38, 1.45],
+            [0.55, 0.65, 0.68, 0.70, 0.71, 0.73],
+            [0.53, 0.53, 0.53, 0.53, 0.53, 0.53],
+            [0.53, 0.42, 0.38, 0.36, 0.35, 0.33],
+            [0.53, 0.30, 0.25, 0.21, 0.19, 0.17],
+            [0.53, 0.27, 0.21, 0.17, 0.15, 0.13],
+            [0.53, 0.24, 0.18, 0.14, 0.12, 0.09]
         ];
 
         let dr = Math.max(0, Math.min(5, dr_br));
@@ -697,7 +697,7 @@ export function initCastPileModule(container) {
         let v00 = grid[r0][c0], v01 = grid[r0][c1];
         let v10 = grid[r1][c0], v11 = grid[r1][c1];
         let v0 = v00 + tx * (v01 - v00);
-        let v1 = v10 + ty * (v11 - v10);
+        let v1 = v10 + tx * (v11 - v10);
         return v0 + ty * (v1 - v0);
     }
 
@@ -1524,7 +1524,7 @@ export function initCastPileModule(container) {
         let bromsTableHtml = "";
         if (head_cond === 'fixed') {
             bromsTableHtml = `
-            <div style="font-weight:bold; margin-top:10px; margin-bottom:4px; color:#2c3e50;">■ 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 구속)</div>
+            <div style="font-weight:bold; margin-top:6px; margin-bottom:6px; color:#2c3e50;">■ 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 고정)</div>
             <div class="table-container" style="margin: 5px 0;">
                 <table class="result-table" style="font-size:0.83em; text-align:center; width:100%;">
                     <thead>
@@ -1573,7 +1573,7 @@ export function initCastPileModule(container) {
             </div>`;
         } else {
             bromsTableHtml = `
-            <div style="font-weight:bold; margin-top:10px; margin-bottom:4px; color:#2c3e50;">■ 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 자유)</div>
+            <div style="font-weight:bold; margin-top:6px; margin-bottom:6px; color:#2c3e50;">■ 극한지반 반력법에 의한 수평지지력 산정 (말뚝머리 자유)</div>
             <div class="table-container" style="margin: 5px 0;">
                 <table class="result-table" style="font-size:0.83em; text-align:center; width:100%;">
                     <thead>
@@ -1588,7 +1588,7 @@ export function initCastPileModule(container) {
                         <tr style="${activeKey === 'clay_1' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
                             <td rowspan="3" style="vertical-align:middle;">점성토</td>
                             <td>&beta;L &lt; 2.25</td>
-                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 9 c<sub>u</sub> D² [ {4(h/D)² + 2(L/D)² + 4(h/D)(L/D) + 6(h/D) + 4.5}<sup>1/2</sup> - {2(h/D) + L/D + 1.5} ]</td>
+                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = 9 c<sub>u</sub> D'² [ { 4(h/D')² + 2(L/D')² + 4(h/D')(L/D') + 6(h/D') + 4.5 }<sup>1/2</sup> - { 2(h/D') + (L/D') } ]</td>
                             <td>${activeKey === 'clay_1' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
                         </tr>
                         <tr style="${activeKey === 'clay_2' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
@@ -1598,13 +1598,13 @@ export function initCastPileModule(container) {
                         </tr>
                         <tr style="${activeKey === 'clay_3' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
                             <td>&beta;L &gt; 2.25</td>
-                            <td style="text-align:left; padding-left:10px;">{H<sub>u</sub> / (c<sub>u</sub> D²)}² + {18(h/D) + 27}{H<sub>u</sub> / (c<sub>u</sub> D²)} = 18{M<sub>y</sub> / (c<sub>u</sub> D³)}</td>
+                            <td style="text-align:left; padding-left:10px;">{ H<sub>u</sub> / (c<sub>u</sub> D'²) }² + { 18(h/D') + 27 }{ H<sub>u</sub> / (c<sub>u</sub> D'²) } = 18 { M<sub>y</sub> / (c<sub>u</sub> D'³) }</td>
                             <td>${activeKey === 'clay_3' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
                         </tr>
                         <tr style="${activeKey === 'sand_1' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
                             <td rowspan="3" style="vertical-align:middle;">사질토</td>
                             <td>&eta;L &lt; 2</td>
-                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = (K<sub>p</sub> &gamma; D L²) / {2(1 + h/L)}</td>
+                            <td style="text-align:left; padding-left:10px;">H<sub>u</sub> = ( K<sub>p</sub> &gamma;' D' L² ) / { 2 (1 + h/L) }</td>
                             <td>${activeKey === 'sand_1' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
                         </tr>
                         <tr style="${activeKey === 'sand_2' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
@@ -1613,8 +1613,8 @@ export function initCastPileModule(container) {
                             <td>${activeKey === 'sand_2' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
                         </tr>
                         <tr style="${activeKey === 'sand_3' ? 'background:#e8f8f5; font-weight:bold;' : ''}">
-                            <td>&eta;L &gt; 4</td>
-                            <td style="text-align:left; padding-left:10px;">{H<sub>u</sub> / (K<sub>p</sub> &gamma; D³)} [ h/D + 0.544{H<sub>u</sub> / (K<sub>p</sub> &gamma; D³)}<sup>1/2</sup> ] = {M<sub>y</sub> / (K<sub>p</sub> &gamma; D⁴)}</td>
+                            <td style="color:#27ae60;">&eta;L &gt; 4</td>
+                            <td style="text-align:left; padding-left:10px;">{ H<sub>u</sub> / (K<sub>p</sub> &gamma;' D'³) } [ h/D' + 0.544 { H<sub>u</sub> / (K<sub>p</sub> &gamma;' D'³) }<sup>1/2</sup> ] = { M<sub>y</sub> / (K<sub>p</sub> &gamma;' D'⁴) }</td>
                             <td>${activeKey === 'sand_3' ? '<span style="color:#27ae60; font-size:1.2em; font-weight:bold;">O</span>' : '-'}</td>
                         </tr>
                     </tbody>
@@ -1644,9 +1644,7 @@ export function initCastPileModule(container) {
             const E_m = lastRockEs;
             const L_s = sumLs;
             
-            const fcu = fck_eff + 4;
-            const E_c_MPa = 8500 * Math.cbrt(fcu); 
-            const E_c = E_c_MPa * 1000; 
+            const E_c = user_Ep; 
 
             const ec_em = E_c / E_m;
             const dr_br = D_r / B_r;
@@ -1658,45 +1656,49 @@ export function initCastPileModule(container) {
             ratio_settle_norm = (finalS_norm / allow_settle) * 100.0;
             ratio_settle_seis = (finalS_seis / allow_settle) * 100.0;
 
-            const svgWidth = 600, svgHeight = 350;
-            const padX = 60, padY = 40;
-            const plotW = svgWidth - padX * 2, plotH = svgHeight - padY * 2;
-            const logMin = -1; 
-            const logMax = 0.477; 
-            
+            const svgWidth = 380, svgHeight = 440;
+            const padX = 55, padY = 40;
+            const plotW = svgWidth - padX - 25, plotH = svgHeight - padY - 45;
+            const logMin = -1.0; 
+            const logMax = Math.log10(2.0); 
+
             const getPx = (x) => padX + (Math.max(0, Math.min(5, x)) / 5.0) * plotW;
-            const getPy = (y) => padY + plotH - ((Math.max(-1, Math.min(logMax, Math.log10(y))) - logMin) / (logMax - logMin)) * plotH;
+            const getPy = (y) => {
+                let clampedY = Math.max(0.1, Math.min(2.0, y));
+                let logY = Math.log10(clampedY);
+                return padY + plotH - ((logY - logMin) / (logMax - logMin)) * plotH;
+            };
 
             const gridLinesY = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0];
             let yGridStr = gridLinesY.map(y => {
                 let py = getPy(y);
-                return `<line x1="${padX}" y1="${py}" x2="${padX+plotW}" y2="${py}" stroke="#e0e0e0" stroke-width="1"/>
-                        <text x="${padX-5}" y="${py+4}" font-size="11" text-anchor="end" fill="#555">${y.toFixed(1)}</text>`;
+                let isMain = (y === 0.1 || y === 0.2 || y === 0.5 || y === 1.0 || y === 2.0);
+                return `<line x1="${padX}" y1="${py}" x2="${padX+plotW}" y2="${py}" stroke="#d0d0d0" stroke-width="${isMain?1.2:0.6}"/>
+                        <text x="${padX-7}" y="${py+4}" font-size="11" text-anchor="end" fill="#333" font-weight="${isMain?'bold':'normal'}">${y.toFixed(1)}</text>`;
             }).join('');
 
             const gridLinesX = [0, 1, 2, 3, 4, 5];
             let xGridStr = gridLinesX.map(x => {
                 let px = getPx(x);
-                return `<line x1="${px}" y1="${padY}" x2="${px}" y2="${padY+plotH}" stroke="#e0e0e0" stroke-width="1"/>
-                        <text x="${px}" y="${padY+plotH+15}" font-size="11" text-anchor="middle" fill="#555">${x}</text>`;
+                return `<line x1="${px}" y1="${padY}" x2="${px}" y2="${padY+plotH}" stroke="#d0d0d0" stroke-width="1"/>
+                        <text x="${px}" y="${padY+plotH+16}" font-size="11" text-anchor="middle" fill="#333" font-weight="bold">${x}</text>`;
             }).join('');
 
-            const curves = [
-                { r: 0.2, color: '#34495e', pts: [[0, 0.53], [0.5, 1.15], [1, 1.30], [2, 1.35], [3, 1.38], [5, 1.42]] },
-                { r: 0.5, color: '#34495e', pts: [[0, 0.53], [0.5, 0.65], [1, 0.68], [2, 0.70], [3, 0.71], [5, 0.72]] },
-                { r: 1.0, color: '#34495e', pts: [[0, 0.53], [1, 0.53], [2, 0.53], [3, 0.53], [5, 0.53]] },
-                { r: 2.0, color: '#34495e', pts: [[0, 0.53], [0.5, 0.42], [1, 0.38], [2, 0.36], [3, 0.35], [5, 0.34]] },
-                { r: 10,  color: '#34495e', pts: [[0, 0.53], [0.5, 0.30], [1, 0.25], [2, 0.21], [3, 0.20], [5, 0.16]] },
-                { r: 50,  color: '#34495e', pts: [[0, 0.53], [0.5, 0.28], [1, 0.21], [2, 0.13], [3, 0.13], [5, 0.08]] },
-                { r: 1000, color: '#34495e', pts: [[0, 0.53], [0.5, 0.25], [1, 0.18], [2, 0.13], [3, 0.09], [5, 0.03]] }
+            const curvesData = [
+                { r: 0.2, lbl: '0.2', pts: [[0, 0.55], [0.3, 1.10], [0.6, 1.25], [1, 1.30], [2, 1.35], [3, 1.38], [5, 1.45]] },
+                { r: 0.5, lbl: '0.5', pts: [[0, 0.55], [0.5, 0.65], [1, 0.68], [2, 0.70], [3, 0.71], [5, 0.73]] },
+                { r: 1.0, lbl: '1',   pts: [[0, 0.53], [1, 0.53], [2, 0.53], [3, 0.53], [5, 0.53]] },
+                { r: 2.0, lbl: '2',   pts: [[0, 0.53], [0.5, 0.42], [1, 0.38], [2, 0.36], [3, 0.35], [5, 0.33]] },
+                { r: 10,  lbl: '10',  pts: [[0, 0.53], [0.5, 0.30], [1, 0.25], [2, 0.21], [3, 0.19], [5, 0.17]] },
+                { r: 50,  lbl: '50',  pts: [[0, 0.53], [0.5, 0.27], [1, 0.21], [2, 0.17], [3, 0.15], [5, 0.13]] },
+                { r: 1000, lbl: '∞',  pts: [[0, 0.53], [0.5, 0.24], [1, 0.18], [2, 0.14], [3, 0.12], [5, 0.09]] }
             ];
 
-            let pathStr = curves.map(c => {
+            let pathStr = curvesData.map(c => {
                 let d = c.pts.map((p, i) => `${i===0?'M':'L'} ${getPx(p[0])} ${getPy(p[1])}`).join(' ');
-                let label = c.r === 1000 ? '∞' : c.r;
-                let lastPt = c.pts[c.pts.length-2];
-                return `<path d="${d}" fill="none" stroke="${c.color}" stroke-width="2"/>
-                        <text x="${getPx(lastPt[0])}" y="${getPy(lastPt[1])-5}" font-size="11" font-weight="bold" fill="${c.color}">${label}</text>`;
+                let lastPt = c.pts[c.pts.length-1];
+                return `<path d="${d}" fill="none" stroke="#111111" stroke-width="1.8"/>
+                        <text x="${getPx(lastPt[0])+3}" y="${getPy(lastPt[1])+4}" font-size="11" font-weight="bold" fill="#111">${c.lbl}</text>`;
             }).join('');
 
             const ptX = getPx(dr_br), ptY = getPy(I_ps);
@@ -1723,20 +1725,46 @@ export function initCastPileModule(container) {
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
                     <strong>■ 암반소켓 침하량 영향계수 (I<sub>ps</sub>) 산출</strong><br>
                     &nbsp;&nbsp;- 콘크리트 강도 조건: <strong>${conc_str_detail}</strong><br>
-                    &nbsp;&nbsp;- 콘크리트 탄성계수 (E<sub>c</sub>) : 8500 &times; (${fck_eff.toFixed(1)}+4)<sup>1/3</sup> = <strong>${formatComma(Math.round(E_c))} kPa</strong><br>
+                    &nbsp;&nbsp;- 콘크리트 탄성계수 (E<sub>c</sub> = E<sub>p</sub>) : <strong>${formatComma(Math.round(E_c))} kPa</strong> (수평 해석 입력 E<sub>p</sub> 적용)<br>
                     &nbsp;&nbsp;- 암반 변형계수 (E<sub>m</sub>) : <strong>${formatComma(Math.round(E_m))} kPa</strong><br>
                     &nbsp;&nbsp;- 강성비 (${frac("E<sub>c</sub>", "E<sub>m</sub>")}) : ${frac(formatComma(Math.round(E_c)), formatComma(Math.round(E_m)))} = <strong>${ec_em.toFixed(2)}</strong><br>
                     &nbsp;&nbsp;- 근입비 (${frac("D<sub>r</sub>", "B<sub>r</sub>")}) : ${frac(D_r.toFixed(2), B_r.toFixed(2))} = <strong>${dr_br.toFixed(2)}</strong><br>
-                    &nbsp;&nbsp;▶ 그래프 보간 산출 영향계수 (I<sub>ps</sub>) = <span style="font-weight:bold; color:#e67e22; font-size:1.1em;">${I_ps.toFixed(3)}</span><br>
+                    &nbsp;&nbsp;▶ 그래프 보간 산출 영향계수 (I<sub>ps</sub>) = <span style="font-weight:bold; color:#003399; font-size:1.1em;">${I_ps.toFixed(3)}</span><br>
                     
                     <div style="text-align:center; margin: 15px 0;">
-                        <svg width="${svgWidth}" height="${svgHeight}" style="background:white; border:1px solid #bdc3c7; border-radius:4px;">
+                        <svg width="${svgWidth}" height="${svgHeight}" style="background:white; border:2px solid #555; border-radius:2px; box-shadow: 2px 2px 5px rgba(0,0,0,0.15);">
+                            <defs>
+                                <radialGradient id="redSphereGrad" cx="35%" cy="35%" r="65%">
+                                    <stop offset="0%" stop-color="#ff9999"/>
+                                    <stop offset="40%" stop-color="#cc0000"/>
+                                    <stop offset="100%" stop-color="#660000"/>
+                                </radialGradient>
+                                <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feDropShadow dx="1" dy="2" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.4"/>
+                                </filter>
+                            </defs>
+
                             ${yGridStr} ${xGridStr} ${pathStr}
-                            <rect x="${padX}" y="${padY}" width="${plotW}" height="${plotH}" fill="none" stroke="#2c3e50" stroke-width="2"/>
-                            <text x="${padX-35}" y="${svgHeight/2}" transform="rotate(-90 ${padX-35},${svgHeight/2})" font-size="13" font-weight="bold">I_ps</text>
-                            <text x="${svgWidth/2}" y="${svgHeight-10}" font-size="13" font-weight="bold">Dr / Br</text>
-                            <circle cx="${ptX}" cy="${ptY}" r="6" fill="#e74c3c" stroke="white" stroke-width="2"/>
-                            <text x="${ptX+10}" y="${ptY+4}" font-size="12" font-weight="bold" fill="#e74c3c">${I_ps.toFixed(3)}</text>
+                            <rect x="${padX}" y="${padY}" width="${plotW}" height="${plotH}" fill="none" stroke="#111" stroke-width="2"/>
+                            
+                            <text x="${padX-35}" y="${padY + plotH/2}" transform="rotate(-90 ${padX-35},${padY + plotH/2})" font-size="14" font-weight="bold" fill="#111" text-anchor="middle">Ips</text>
+                            <text x="${padX + plotW/2}" y="${svgHeight - 10}" font-size="13" font-weight="bold" fill="#111" text-anchor="middle">Dr / Br</text>
+                            
+                            <text x="${padX + plotW - 65}" y="${padY + 18}" font-size="11" font-style="italic" fill="#333">&nu;<sub>m</sub> = 0.25</text>
+                            
+                            <g transform="translate(${padX + plotW - 90}, ${padY + 30}) scale(0.65)">
+                                <line x1="30" y1="5" x2="30" y2="22" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+                                <text x="35" y="15" font-size="14" font-weight="bold">Q</text>
+                                <rect x="15" y="22" width="30" height="35" fill="#e0e0e0" stroke="#000" stroke-width="1.5"/>
+                                <line x1="0" y1="22" x2="60" y2="22" stroke="#000" stroke-width="2"/>
+                                <text x="22" y="36" font-size="10">E<sub>c</sub></text>
+                                <text x="22" y="50" font-size="10">B<sub>r</sub></text>
+                                <text x="-2" y="40" font-size="10">E<sub>m</sub></text>
+                                <text x="52" y="40" font-size="10">D<sub>r</sub></text>
+                            </g>
+
+                            <circle cx="${ptX}" cy="${ptY}" r="7.5" fill="url(#redSphereGrad)" filter="url(#dropShadow)"/>
+                            <text x="${ptX}" y="${ptY - 12}" font-size="13" font-weight="bold" fill="#003399" text-anchor="middle" filter="url(#dropShadow)">${I_ps.toFixed(3)}</text>
                         </svg>
                     </div>
                 </div>
@@ -2068,33 +2096,36 @@ export function initCastPileModule(container) {
                     &bull; 단면계수 (Z) = ${frac("&pi; &times; D³", "32")} = <strong>${Z_m3.toFixed(5)} m³</strong><br>
                     &bull; 항복모멘트 (M<sub>y</sub>) = f<sub>y</sub> &times; Z = ${formatComma(fy_kNm2)} &times; ${Z_m3.toFixed(5)} = <strong>${formatComma(My_kNm, 1)} kN·m</strong>
                 </div>
+
+                <div style="margin-top: 10px; background: #fafafa; padding: 10px; border-radius: 4px; border: 1px solid #e0e0e0;">
+                    <div style="font-weight:bold; margin-bottom:6px; color:#2c3e50;">■ 1/&beta; 심도 내 가중평균 내부마찰각 (&phi;<sub>avg</sub>) 및 수동토압계수 (K<sub>p</sub>) 산출과정</div>
+                    <div style="margin-left: 10px; line-height:1.7;">
+                        <strong>1) 평상시 (1/&beta;<sub>norm</sub> = ${(1/beta_norm).toFixed(3)} m 심도 범위):</strong><br>
+                        &nbsp;&nbsp;&bull; 대상 지층: ${phiInfoNorm.layersStr}<br>
+                        &nbsp;&nbsp;&bull; 가중평균 내부마찰각 &phi;<sub>avg,norm</sub> = <strong>${phiInfoNorm.avgPhi.toFixed(2)}&deg;</strong><br>
+                        &nbsp;&nbsp;&bull; 수동토압계수 K<sub>p,norm</sub> = tan²(45&deg; + ${phiInfoNorm.avgPhi.toFixed(2)}&deg;/2) = ${frac("1 + sin(" + phiInfoNorm.avgPhi.toFixed(2) + "&deg;)", "1 - sin(" + phiInfoNorm.avgPhi.toFixed(2) + "&deg;)")} = <strong>${Kp_norm.toFixed(3)}</strong><br>
+                        &nbsp;&nbsp;&bull; 수중단위중량 &gamma;'<sub>norm</sub> = <strong>${gamma_sub_norm.toFixed(1)} kN/m³</strong><br><br>
+
+                        <strong>2) 지진시 (1/&beta;<sub>seis</sub> = ${(1/beta_seis).toFixed(3)} m 심도 범위):</strong><br>
+                        &nbsp;&nbsp;&bull; 대상 지층: ${phiInfoSeis.layersStr}<br>
+                        &nbsp;&nbsp;&bull; 가중평균 내부마찰각 &phi;<sub>avg,seis</sub> = <strong>${phiInfoSeis.avgPhi.toFixed(2)}&deg;</strong><br>
+                        &nbsp;&nbsp;&bull; 수동토압계수 K<sub>p,seis</sub> = tan²(45&deg; + ${phiInfoSeis.avgPhi.toFixed(2)}&deg;/2) = ${frac("1 + sin(" + phiInfoSeis.avgPhi.toFixed(2) + "&deg;)", "1 - sin(" + phiInfoSeis.avgPhi.toFixed(2) + "&deg;)")} = <strong>${Kp_seis.toFixed(3)}</strong><br>
+                        &nbsp;&nbsp;&bull; 수중단위중량 &gamma;'<sub>seis</sub> = <strong>${gamma_sub_seis.toFixed(1)} kN/m³</strong>
+                    </div>
+
+                    <div style="margin-top:10px; margin-left: 10px;">
+                        &bull; <strong>말뚝 특성치 &eta; 및 &eta;L / &beta;L 판정 :</strong><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 &eta; = <strong>${eta_norm.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_norm.toFixed(3)}</strong>, &beta;L = <strong>${(beta_norm*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${etaL_norm > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝'}</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 &eta; = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_seis.toFixed(3)}</strong>, &beta;L = <strong>${(beta_seis*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${etaL_seis > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝'}</span>
+                    </div>
+                </div>
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <div style="font-weight:bold; margin-bottom:6px; color:#2c3e50;">■ 1/&beta; 심도 내 가중평균 내부마찰각 (&phi;<sub>avg</sub>) 및 수동토압계수 (K<sub>p</sub>) 산출과정</div>
-                <div style="margin-left: 10px; line-height:1.7;">
-                    <strong>1) 평상시 (1/&beta;<sub>norm</sub> = ${(1/beta_norm).toFixed(3)} m 심도 범위):</strong><br>
-                    &nbsp;&nbsp;&bull; 대상 지층: ${phiInfoNorm.layersStr}<br>
-                    &nbsp;&nbsp;&bull; 가중평균 내부마찰각 &phi;<sub>avg,norm</sub> = <strong>${phiInfoNorm.avgPhi.toFixed(2)}&deg;</strong><br>
-                    &nbsp;&nbsp;&bull; 수동토압계수 K<sub>p,norm</sub> = tan²(45&deg; + ${phiInfoNorm.avgPhi.toFixed(2)}&deg;/2) = ${frac("1 + sin(" + phiInfoNorm.avgPhi.toFixed(2) + "&deg;)", "1 - sin(" + phiInfoNorm.avgPhi.toFixed(2) + "&deg;)")} = <strong>${Kp_norm.toFixed(3)}</strong><br>
-                    &nbsp;&nbsp;&bull; 수중단위중량 &gamma;'<sub>norm</sub> = <strong>${gamma_sub_norm.toFixed(1)} kN/m³</strong><br><br>
+                <div style="font-weight:bold; margin-bottom:6px; color:#2c3e50;">(4) Broms 극한평형법 수평 지지력 산정</div>
+                ${bromsTableHtml}
 
-                    <strong>2) 지진시 (1/&beta;<sub>seis</sub> = ${(1/beta_seis).toFixed(3)} m 심도 범위):</strong><br>
-                    &nbsp;&nbsp;&bull; 대상 지층: ${phiInfoSeis.layersStr}<br>
-                    &nbsp;&nbsp;&bull; 가중평균 내부마찰각 &phi;<sub>avg,seis</sub> = <strong>${phiInfoSeis.avgPhi.toFixed(2)}&deg;</strong><br>
-                    &nbsp;&nbsp;&bull; 수동토압계수 K<sub>p,seis</sub> = tan²(45&deg; + ${phiInfoSeis.avgPhi.toFixed(2)}&deg;/2) = ${frac("1 + sin(" + phiInfoSeis.avgPhi.toFixed(2) + "&deg;)", "1 - sin(" + phiInfoSeis.avgPhi.toFixed(2) + "&deg;)")} = <strong>${Kp_seis.toFixed(3)}</strong><br>
-                    &nbsp;&nbsp;&bull; 수중단위중량 &gamma;'<sub>seis</sub> = <strong>${gamma_sub_seis.toFixed(1)} kN/m³</strong>
-                </div>
-
-                <div style="margin-top:10px; margin-left: 10px;">
-                    &bull; <strong>말뚝 특성치 &eta; 및 &eta;L / &beta;L 판정 :</strong><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 &eta; = <strong>${eta_norm.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_norm.toFixed(3)}</strong>, &beta;L = <strong>${(beta_norm*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${etaL_norm > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝'}</span><br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 &eta; = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_seis.toFixed(3)}</strong>, &beta;L = <strong>${(beta_seis*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${etaL_seis > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝'}</span>
-                </div>
-            </div>
-
-            <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <div style="font-weight:bold; margin-bottom:6px; color:#2c3e50;">&bull; Broms 허용수평지지력 (H<sub>a,broms</sub>) 조건별 수치 대입 및 계산 결과 :</div>
+                <div style="margin-top: 10px; font-weight:bold; color:#2c3e50;">&bull; Broms 허용수평지지력 (H<sub>a,broms</sub>) 조건별 수치 대입 및 계산 결과 :</div>
                 <div style="margin-left: 10px; line-height:1.7;">
                     <strong>- 평상시 H<sub>u,norm</sub> 적용 산정식 :</strong> ${bromsNormRes.formulaStr}<br>
                     &nbsp;&nbsp;&bull; 대입 과정: ${bromsNormRes.subStr}<br>
@@ -2109,15 +2140,19 @@ export function initCastPileModule(container) {
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>4. Chang 탄성지반반력법 수평 지지력 산정 수식 및 계산 과정</strong><br>
-                &nbsp;&nbsp;• <strong>허용변위 연동 허용수평지지력 공식 :</strong> H<sub>a</sub> = ${frac("k<sub>h</sub> &times; D &times; &delta;<sub>sa</sub>", "&beta;")}<br>
-                &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 H<sub>a</sub> (&delta;<sub>sa</sub>=${allow_h_disp_norm.toFixed(1)}mm) = <strong><span style="color:#2980b9; font-weight:bold;">${formatComma(Ha_chang_norm, 1)} kN/본</span></strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 H<sub>a</sub> (&delta;<sub>sa</sub>=${allow_h_disp_seis.toFixed(1)}mm) = <strong><span style="color:#2980b9; font-weight:bold;">${formatComma(Ha_chang_seis, 1)} kN/본</span></strong>
+                <div style="font-weight:bold; margin-bottom:6px; color:#2c3e50;">(5) Chang 탄성지반반력법 수평 지지력 산정</div>
+                <div style="margin-left: 10px; line-height:1.7;">
+                    H<sub>a,chang</sub> = ${frac("k<sub>h</sub> &times; D &times; &delta;<sub>sa</sub>", "&beta;")}<br>
+                    &bull; 허용수평변위량 &delta;<sub>sa</sub>: 평상시 = ${allow_h_disp_norm.toFixed(1)} mm (${(allow_h_disp_norm/1000).toFixed(4)} m), 지진시 = ${allow_h_disp_seis.toFixed(1)} mm (${(allow_h_disp_seis/1000).toFixed(4)} m)<br><br>
+
+                    <strong>&bull; 수치 대입 계산 결과 :</strong><br>
+                    &nbsp;&nbsp;- 평상시 H<sub>a,chang</sub> = ${frac(formatComma(kh_norm, 1) + " &times; " + D.toFixed(3) + " &times; " + (allow_h_disp_norm/1000).toFixed(4), beta_norm.toFixed(5))} = <strong><span style="color:#2980b9;">${formatComma(Ha_chang_norm, 1)} kN/본</span></strong><br>
+                    &nbsp;&nbsp;- 지진시 H<sub>a,chang</sub> = ${frac(formatComma(kh_seis, 1) + " &times; " + D.toFixed(3) + " &times; " + (allow_h_disp_seis/1000).toFixed(4), beta_seis.toFixed(5))} = <strong><span style="color:#2980b9;">${formatComma(Ha_chang_seis, 1)} kN/본</span></strong>
+                </div>
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>5. 수평 허용지지력 결과 비교 및 최종 적용값</strong><br>
+                <div style="font-weight:bold; margin-bottom:6px; color:#2c3e50;">(6) 수평 허용지지력 비교 및 최종 산정값</div>
                 <div class="table-container" style="margin: 5px 0;">
                     <table class="result-table" style="font-size:0.88em; text-align:center;">
                         <thead>
@@ -2127,10 +2162,10 @@ export function initCastPileModule(container) {
                         </thead>
                         <tbody>
                             <tr>
-                                <td>평상시</td><td>${formatComma(Ha_broms_norm, 1)}</td><td>${formatComma(Ha_chang_norm, 1)}</td><td style="font-weight:bold; color:#27ae60;">${formatComma(Ha_app_norm, 1)}</td><td style="font-weight:bold; color:#2980b9;">${Ha_norm_source}</td><td>${formatComma(H_norm, 1)}</td><td style="font-weight:bold; color:${H_norm <= Ha_app_norm ? '#27ae60' : '#c0392b'};">${H_norm <= Ha_app_norm ? 'O.K' : 'N.G'} (${ratio_h_norm.toFixed(1)}%)</td>
+                                <td>평상시</td><td>${formatComma(Ha_broms_norm, 1)}</td><td>${formatComma(Ha_chang_norm, 1)}</td><td style="font-weight:bold; color:#27ae60;">${formatComma(Ha_app_norm, 1)}</td><td style="font-weight:bold; color:#2980b9;">${Ha_norm_source}</td><td>${formatComma(H_norm, 1)}</td><td style="font-weight:bold; color:${H_norm <= Ha_app_norm ? '#27ae60' : '#c0392b'};">${H_norm <= Ha_app_norm ? 'O.K' : 'N.G'}</td>
                             </tr>
                             <tr>
-                                <td>지진시</td><td>${formatComma(Ha_broms_seis, 1)}</td><td>${formatComma(Ha_chang_seis, 1)}</td><td style="font-weight:bold; color:#27ae60;">${formatComma(Ha_app_seis, 1)}</td><td style="font-weight:bold; color:#2980b9;">${Ha_seis_source}</td><td>${formatComma(H_seis, 1)}</td><td style="font-weight:bold; color:${H_seis <= Ha_app_seis ? '#27ae60' : '#c0392b'};">${H_seis <= Ha_app_seis ? 'O.K' : 'N.G'} (${ratio_seis.toFixed(1)}%)</td>
+                                <td>지진시</td><td>${formatComma(Ha_broms_seis, 1)}</td><td>${formatComma(Ha_chang_seis, 1)}</td><td style="font-weight:bold; color:#27ae60;">${formatComma(Ha_app_seis, 1)}</td><td style="font-weight:bold; color:#2980b9;">${Ha_seis_source}</td><td>${formatComma(H_seis, 1)}</td><td style="font-weight:bold; color:${H_seis <= Ha_app_seis ? '#27ae60' : '#c0392b'};">${H_seis <= Ha_app_seis ? 'O.K' : 'N.G'}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -2138,11 +2173,14 @@ export function initCastPileModule(container) {
             </div>
 
             <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                <strong>6. Chang 탄성식에 의한 지표면 수평발생변위량 (&delta;) 산정 및 검토</strong><br>
-                &nbsp;&nbsp;• <strong>지표면 변위 산정 공식 :</strong> &delta; = ${frac("H &times; &beta;", "k<sub>h</sub> &times; D")} &times; 1000 (mm)<br>
-                &nbsp;&nbsp;• <strong>수치 대입 계산 :</strong><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 발생변위 &delta;<sub>norm</sub> = <strong><span style="color:#d35400; font-weight:bold;">${disp_norm_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp_norm.toFixed(1)} mm ( <strong>${disp_norm_mm <= allow_h_disp_norm ? 'O.K' : 'N.G'}</strong> )<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 발생변위 &delta;<sub>seis</sub> = <strong><span style="color:#d35400; font-weight:bold;">${disp_seis_mm.toFixed(2)} mm</span></strong> &le; ${allow_h_disp_seis.toFixed(1)} mm ( <strong>${disp_seis_mm <= allow_h_disp_seis ? 'O.K' : 'N.G'}</strong> )
+                <div style="font-weight:bold; margin-bottom:6px; color:#2c3e50;">(7) Chang 탄성식에 의한 지표면 수평발생변위량 (&delta;) 산정</div>
+                <div style="margin-left: 10px; line-height:1.7;">
+                    &delta; = ${frac("H &times; &beta;", "k<sub>h</sub> &times; D")} &times; 1000 (mm)<br><br>
+
+                    <strong>&bull; 수치 대입 계산 결과 :</strong><br>
+                    &nbsp;&nbsp;- 평상시 발생변위 &delta;<sub>norm</sub> = ${frac(formatComma(H_norm, 1) + " &times; " + beta_norm.toFixed(5), formatComma(kh_norm, 1) + " &times; " + D.toFixed(3))} &times; 1000 = <strong><span style="color:#d35400;">${disp_norm_mm.toFixed(2)} mm</span> (&le; ${allow_h_disp_norm.toFixed(1)} mm, ${disp_norm_mm <= allow_h_disp_norm ? 'O.K' : 'N.G'})</strong><br>
+                    &nbsp;&nbsp;- 지진시 발생변위 &delta;<sub>seis</sub> = ${frac(formatComma(H_seis, 1) + " &times; " + beta_seis.toFixed(5), formatComma(kh_seis, 1) + " &times; " + D.toFixed(3))} &times; 1000 = <strong><span style="color:#d35400;">${disp_seis_mm.toFixed(2)} mm</span> (&le; ${allow_h_disp_seis.toFixed(1)} mm, ${disp_seis_mm <= allow_h_disp_seis ? 'O.K' : 'N.G'})</strong>
+                </div>
             </div>
         `;
     }
