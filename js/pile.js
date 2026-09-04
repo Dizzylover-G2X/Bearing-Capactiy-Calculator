@@ -96,7 +96,7 @@ export function initPileModule(container) {
             .pl-input::-webkit-outer-spin-button, .pl-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
             .pl-input { -moz-appearance: textfield; width: 100%; box-sizing: border-box; padding: 4px 2px; text-align: center; border: 1px solid #ccc; border-radius: 3px; font-size: 0.88em; }
             .pl-input:focus { border-color: #2980b9; outline: none; }
-            .pl-select { width: 100%; box-sizing: border-box; padding: 4px 0px; text-align: center; text-align-last: center; border: 1px solid #ccc; border-radius: 3px; font-size: 0.88em; margin: 0; }
+            .pl-select { width: 100%; box-sizing: border-box; padding: 4px 0px; text-align: left; text-align-last: left; border: 1px solid #ccc; border-radius: 3px; font-size: 0.88em; margin: 0; }
         </style>
 
         <h3>기성말뚝 기초 검토 (PHC / 강관말뚝 - 연직/수평 지지력 및 침하/변위)</h3>
@@ -331,6 +331,21 @@ export function initPileModule(container) {
         }
     });
 
+    function syncTipSoilWithLayers() {
+        const tipSoil = container.querySelector('#pile_tip_soil')?.value || 'soil';
+        if (!pileLayers || pileLayers.length === 0) return;
+        const lastIdx = pileLayers.length - 1;
+
+        if (tipSoil === 'rock') {
+            pileLayers[lastIdx].type = 'rock';
+        } else {
+            if (pileLayers[lastIdx].type === 'rock') {
+                pileLayers[lastIdx].type = 'weathered_rock';
+            }
+        }
+        try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch (e) {}
+    }
+
     function updateFormulaInfoText() {
         const method = container.querySelector('#pile_method')?.value || 'bored';
         const tipSoil = container.querySelector('#pile_tip_soil')?.value || 'soil';
@@ -344,11 +359,8 @@ export function initPileModule(container) {
         let qsText = "";
 
         if (tipSoil === 'rock') {
-            if (qpVal === 'rock_2015') {
-                qpText = "Q<sub>up</sub> = 443 &times; q<sub>u</sub><sup>1/2</sup> &times; A<sub>t</sub><sup>2/5</sup> &times; A<sub>i</sub><sup>1/3</sup> (q<sub>u</sub> &le; 10,000 kPa) [구조물기초 설계기준해설 (2015)]";
-            } else {
-                qpText = "Q<sub>up</sub> = q<sub>u</sub> &times; (N<sub>&phi;</sub> + 1) &times; A<sub>p</sub> [Goodman 제안식 (도로교 설계기준 해설)]";
-            }
+            qpText = "1) Q<sub>up</sub> = 443 &times; q<sub>u</sub><sup>1/2</sup> &times; A<sub>t</sub><sup>2/5</sup> &times; A<sub>i</sub><sup>1/3</sup> (q<sub>u</sub> &le; 10,000 kPa) [구조물기초설계기준 해설 (2018)]<br>" +
+                     "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2) Q<sub>up</sub> = q<sub>u</sub> &times; (N<sub>&phi;</sub> + 1) &times; A<sub>p</sub> [Goodman 제안식 (도로교 설계기준 해설)]";
         } else {
             if (method === 'driven') {
                 qpText = "q<sub>p</sub> = 300 &times; N (N &le; 60) [항타공법 표준식]";
@@ -394,11 +406,8 @@ export function initPileModule(container) {
         const savedQs = getVal('qs_formula', 'road');
 
         if (tipSoil === 'rock') {
-            qpSelect.disabled = false;
-            qpSelect.innerHTML = `
-                <option value="rock_2015" ${savedQp === 'rock_2015' ? 'selected' : ''}>구조물기초 설계기준해설 (2015)</option>
-                <option value="rock_goodman" ${savedQp === 'rock_goodman' ? 'selected' : ''}>Goodman 제안식 (도로교 설계기준 해설)</option>
-            `;
+            qpSelect.disabled = true;
+            qpSelect.innerHTML = `<option value="rock_both" selected>구조물기초(2018) & 도로교기준 동시검토</option>`;
         } else {
             if (method === 'driven') {
                 qpSelect.innerHTML = `<option value="driven_standard" selected>항타공법 표준식 (300N)</option>`;
@@ -488,6 +497,7 @@ export function initPileModule(container) {
             row2Container.innerHTML = commonRow2Html;
         }
         applySpecSelection();
+        syncTipSoilWithLayers();
         updateMethodFormulas();
     }
 
@@ -548,11 +558,11 @@ export function initPileModule(container) {
                 es_val: 30000,
                 qu_val: 0
             });
-            try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch(err){}
+            syncTipSoilWithLayers();
             renderLayers();
         } else if (e.target.classList.contains('pl-del')) {
             pileLayers.splice(e.target.dataset.idx, 1);
-            try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch(err){}
+            syncTipSoilWithLayers();
             renderLayers();
         }
     });
@@ -599,14 +609,19 @@ export function initPileModule(container) {
             pileLayers[idx].name = target.value;
         }
 
-        try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch(err){}
+        try { localStorage.setItem('geo_pile_layers', JSON.stringify(pileLayers)); } catch (err){}
     });
 
     container.addEventListener('change', (e) => {
         if (e.target.id === 'pile_type') {
             updateUIState();
             try { localStorage.setItem('geo_pile_type', e.target.value); } catch(err){}
-        } else if (e.target.id === 'pile_method' || e.target.id === 'pile_tip_soil') {
+        } else if (e.target.id === 'pile_tip_soil') {
+            syncTipSoilWithLayers();
+            renderLayers();
+            updateMethodFormulas();
+            try { localStorage.setItem('geo_pile_' + e.target.id, e.target.value); } catch(err){}
+        } else if (e.target.id === 'pile_method') {
             updateMethodFormulas();
             try { localStorage.setItem('geo_pile_' + e.target.id, e.target.value); } catch(err){}
         } else if (e.target.id === 'phc_class' || e.target.id === 'pile_spec_select') {
@@ -636,20 +651,25 @@ export function initPileModule(container) {
     }
 
     function renderLayers() {
+        syncTipSoilWithLayers();
         const tbody = container.querySelector('#pile_layers_body');
         if (!tbody) return;
         tbody.innerHTML = '';
+        const tipSoil = container.querySelector('#pile_tip_soil')?.value || 'soil';
+
         pileLayers.forEach((l, idx) => {
+            const isLast = (idx === pileLayers.length - 1);
             tbody.innerHTML += `
                 <tr>
                     <td style="padding:2px;"><input type="text" value="${l.name || '지층' + (idx+1)}" data-idx="${idx}" class="pl-name pl-input"></td>
                     <td style="padding:2px;">
-                        <select data-idx="${idx}" class="pl-type pl-select">
+                        <select data-idx="${idx}" class="pl-type pl-select" style="text-align: left; text-align-last: left;">
                             <option value="sand" ${l.type === 'sand' ? 'selected' : ''}>사질토</option>
                             <option value="clay" ${l.type === 'clay' ? 'selected' : ''}>점성토</option>
                             <option value="gravel" ${l.type === 'gravel' ? 'selected' : ''}>자갈층</option>
                             <option value="weathered_soil" ${l.type === 'weathered_soil' ? 'selected' : ''}>풍화토</option>
                             <option value="weathered_rock" ${l.type === 'weathered_rock' ? 'selected' : ''}>풍화암</option>
+                            <option value="rock" ${l.type === 'rock' ? 'selected' : ''} ${isLast && tipSoil === 'soil' ? 'disabled' : ''}>기반암</option>
                         </select>
                     </td>
                     <td style="padding:2px;"><input type="number" value="${parseFloat(l.dz || 0).toFixed(1)}" data-idx="${idx}" class="pl-dz pl-input" step="0.1"></td>
@@ -961,6 +981,7 @@ export function initPileModule(container) {
     }
 
     function calculatePileCapacity() {
+        syncTipSoilWithLayers();
         const p_type = container.querySelector('#pile_type').value;
         const method = container.querySelector('#pile_method')?.value || 'bored';
         const tipSoil = container.querySelector('#pile_tip_soil')?.value || 'soil';
@@ -1012,25 +1033,35 @@ export function initPileModule(container) {
         let qp_detail_html = "";
 
         if (tipSoil === 'rock') {
-            if (qp_formula_key === 'rock_2015') {
-                let qu_eff = Math.min(qu_tip, 10000.0);
-                Qup = 443.0 * Math.sqrt(qu_eff) * Math.pow(At, 0.4) * Math.pow(Ai, 1/3);
-                q_p = Qup / Ap;
-                qp_detail_html = `• 구조물기초 설계기준해설(2015) 암반 선단지지력 공식 적용:<br>` +
-                                 `&nbsp;&nbsp;Q<sub>up</sub> = 443 &times; q<sub>u</sub><sup>1/2</sup> &times; A<sub>t</sub><sup>2/5</sup> &times; A<sub>i</sub><sup>1/3</sup> (q<sub>u</sub> &le; 10,000 kPa 제한)<br>` +
-                                 `&nbsp;&nbsp;= 443 &times; ${qu_eff.toFixed(1)}<sup>1/2</sup> &times; ${At.toFixed(5)}<sup>2/5</sup> &times; ${Ai.toFixed(5)}<sup>1/3</sup><br>` +
-                                 `&nbsp;&nbsp;= <strong><span style="color:#2980b9;">${formatComma(Qup, 1)} kN</span></strong> (환산 q<sub>p</sub> = ${formatComma(q_p, 1)} kPa)`;
-            } else {
-                let phi_rad = (phi_tip * Math.PI) / 180.0;
-                let N_phi = Math.pow(Math.tan((45.0 * Math.PI / 180.0) + (phi_rad / 2.0)), 2);
-                Qup = qu_tip * (N_phi + 1.0) * Ap;
-                q_p = Qup / Ap;
-                qp_detail_html = `• Goodman 제안식 (도로교 설계기준 해설) 적용:<br>` +
-                                 `&nbsp;&nbsp;N<sub>&phi;</sub> = tan²(45&deg; + &phi;/2) = tan²(45&deg; + ${phi_tip.toFixed(1)}&deg;/2) = <strong>${N_phi.toFixed(3)}</strong><br>` +
-                                 `&nbsp;&nbsp;Q<sub>up</sub> = q<sub>u</sub> &times; (N<sub>&phi;</sub> + 1) &times; A<sub>p</sub><br>` +
-                                 `&nbsp;&nbsp;= ${qu_tip.toFixed(1)} &times; (${N_phi.toFixed(3)} + 1) &times; ${Ap.toFixed(5)}<br>` +
-                                 `&nbsp;&nbsp;= <strong><span style="color:#2980b9;">${formatComma(Qup, 1)} kN</span></strong> (환산 q<sub>p</sub> = ${formatComma(q_p, 1)} kPa)`;
-            }
+            let qu_eff = Math.min(qu_tip, 10000.0);
+            let Qup1 = 443.0 * Math.sqrt(qu_eff) * Math.pow(At, 0.4) * Math.pow(Ai, 1/3);
+            let qp1 = Ap > 0 ? Qup1 / Ap : 0;
+
+            let phi_rad = (phi_tip * Math.PI) / 180.0;
+            let N_phi = Math.pow(Math.tan((45.0 * Math.PI / 180.0) + (phi_rad / 2.0)), 2);
+            let Qup2 = qu_tip * (N_phi + 1.0) * Ap;
+            let qp2 = Ap > 0 ? Qup2 / Ap : 0;
+
+            Qup = Math.min(Qup1, Qup2);
+            q_p = Ap > 0 ? Qup / Ap : 0;
+
+            qp_detail_html = `
+                • <strong>기반암 선단지지력 계산용 기호 설명:</strong><br>
+                &nbsp;&nbsp;- q<sub>u</sub> : ■ 지층 정보 기반암 지층의 일축압축강도 = <strong>${formatComma(qu_tip, 1)} kPa</strong> (구조물기초기준 적용시 상한 10,000 kPa 제한 &rArr; <strong>${formatComma(qu_eff, 1)} kPa</strong>)<br>
+                &nbsp;&nbsp;- &phi; : 기반암 내부마찰각 = <strong>${phi_tip.toFixed(1)}&deg;</strong><br>
+                &nbsp;&nbsp;- A<sub>p</sub> : 말뚝 선단 전체면적 = ${frac("&pi; &times; D<sub>out</sub>²", "4")} = <strong>${Ap.toFixed(5)} m²</strong><br>
+                &nbsp;&nbsp;- A<sub>t</sub> : 말뚝 실효 단면적 = ${frac("&pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²)", "4")} = <strong>${At.toFixed(5)} m²</strong><br>
+                &nbsp;&nbsp;- A<sub>i</sub> : 말뚝 중공부 면적 = A<sub>p</sub> - A<sub>t</sub> = <strong>${Ai.toFixed(5)} m²</strong><br>
+                &nbsp;&nbsp;- N<sub>&phi;</sub> : 암반 강도계수 = tan²(45&deg; + &phi;/2) = tan²(45&deg; + ${phi_tip.toFixed(1)}&deg;/2) = <strong>${N_phi.toFixed(3)}</strong><br><br>
+                • <strong>공식 및 계산 과정 (두 산정식 동시 검토):</strong><br>
+                &nbsp;&nbsp;1) <u>구조물기초설계기준 해설 (2018)</u><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&bull; 산정식: Q<sub>up1</sub> = 443 &times; q<sub>u</sub><sup>1/2</sup> &times; A<sub>t</sub><sup>2/5</sup> &times; A<sub>i</sub><sup>1/3</sup> (q<sub>u</sub> &le; 10,000 kPa)<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&bull; 계산 과정: Q<sub>up1</sub> = 443 &times; ${qu_eff.toFixed(1)}<sup>1/2</sup> &times; ${At.toFixed(5)}<sup>2/5</sup> &times; ${Ai.toFixed(5)}<sup>1/3</sup> = <strong>${formatComma(Qup1, 1)} kN</strong> (q<sub>p1</sub> = ${formatComma(qp1, 1)} kPa)<br>
+                &nbsp;&nbsp;2) <u>Goodman 제안식 (도로교 설계기준 해설)</u><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&bull; 산정식: Q<sub>up2</sub> = q<sub>u</sub> &times; (N<sub>&phi;</sub> + 1) &times; A<sub>p</sub><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&bull; 계산 과정: Q<sub>up2</sub> = ${qu_tip.toFixed(1)} &times; (${N_phi.toFixed(3)} + 1) &times; ${Ap.toFixed(5)} = <strong>${formatComma(Qup2, 1)} kN</strong> (q<sub>p2</sub> = ${formatComma(qp2, 1)} kPa)<br><br>
+                • <strong>최종 적용 극한선단지지력 Q<sub>up</sub> :</strong> min(Q<sub>up1</sub>, Q<sub>up2</sub>) = <span style="font-weight:bold; color:#2980b9;">${formatComma(Qup, 1)} kN</span> (환산 q<sub>p</sub> = ${formatComma(q_p, 1)} kPa)
+            `;
         } else {
             if (method === 'driven') {
                 q_p = 300.0 * Math.min(raw_N_tip, 60);
@@ -1057,7 +1088,7 @@ export function initPileModule(container) {
         let layer_calc_rows = [];
         let c_factor = (method === 'driven') ? 2.0 : (qs_formula_key === 'lh' ? 2.0 : 2.5);
         let c_factor_c = (method === 'driven') ? 1.0 : (qs_formula_key === 'lh' ? 5.0 : 0.8);
-        const typeMap = { 'sand': '사질토', 'clay': '점성토', 'gravel': '자갈층', 'weathered_soil': '풍화토', 'weathered_rock': '풍화암' };
+        const typeMap = { 'sand': '사질토', 'clay': '점성토', 'gravel': '자갈층', 'weathered_soil': '풍화토', 'weathered_rock': '풍화암', 'rock': '기반암' };
 
         pileLayers.forEach((l) => {
             let dz_i = parseFloat(l.dz) || 0;
@@ -1073,6 +1104,9 @@ export function initPileModule(container) {
                 let calc_val = c_factor * n_i;
                 f_unit = Math.min(100.0, calc_val);
                 formula_str = `min(100, ${c_factor} &times; ${n_i}) = ${f_unit.toFixed(1)} kN/m²`;
+            } else if (l.type === 'rock') {
+                f_unit = 0;
+                formula_str = `기반암 주면마찰력 생략 = 0.0 kN/m²`;
             } else {
                 let calc_val = c_factor_c * c_i;
                 f_unit = Math.min(100.0, calc_val);
