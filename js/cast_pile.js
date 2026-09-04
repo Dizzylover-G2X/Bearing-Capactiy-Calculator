@@ -624,22 +624,12 @@ export function initCastPileModule(container) {
         { ratio: 1.000, alpha: 1.000 }
     ];
 
-    // RMR 구간 시작점 하한값 기준 보간 함수
+    // RMR 구간 시작점 하한값 기준 보간 함수 (수정됨: RMR 85 이상 무결암 보간 정상화)
     function interpolateHoekBrown(rmrVal, miVal) {
         if (rmrVal <= 0) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 0, r2: 3 };
-        if (rmrVal >= 85) {
-            const r1 = 85, r2 = 100;
-            const t = Math.min(1.0, (rmrVal - r1) / (r2 - r1));
-            const row1 = HB_TABLE_DATA[4], row2 = HB_TABLE_DATA[5];
-            const logS1 = Math.log10(row1.s), logS2 = Math.log10(row2.s);
-            return {
-                m: row1.m[miVal] + t * (row2.m[miVal] - row1.m[miVal]),
-                s: Math.pow(10, logS1 + t * (logS2 - logS1)),
-                r1: r1, r2: r2
-            };
-        }
+        if (rmrVal >= 85) return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s, r1: 85, r2: 100 };
 
-        const boundaries = [0, 3, 23, 44, 65, 85, 100];
+        const boundaries = [0, 3, 23, 44, 65, 85];
         for (let i = 0; i < HB_TABLE_DATA.length - 1; i++) {
             const r1 = boundaries[i], r2 = boundaries[i + 1];
             if (rmrVal >= r1 && rmrVal <= r2) {
