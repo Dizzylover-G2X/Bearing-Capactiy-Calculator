@@ -359,8 +359,10 @@ export function initPileModule(container) {
         let qsText = "";
 
         if (tipSoil === 'rock') {
-            qpText = "1) Q<sub>up</sub> = 443 &times; q<sub>u</sub><sup>1/2</sup> &times; A<sub>t</sub><sup>2/5</sup> &times; A<sub>i</sub><sup>1/3</sup> (q<sub>u</sub> &le; 10,000 kPa) [구조물기초설계기준 해설 (2018)]<br>" +
-                     "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2) Q<sub>up</sub> = q<sub>u</sub> &times; (N<sub>&phi;</sub> + 1) &times; A<sub>p</sub> [Goodman 제안식 (도로교 설계기준 해설)]";
+            qpText = `<div style="display:inline-flex; flex-direction:column; vertical-align:top;">` +
+                     `<div>1) Q<sub>up</sub> = 443 &times; q<sub>u</sub><sup>1/2</sup> &times; A<sub>t</sub><sup>2/5</sup> &times; A<sub>i</sub><sup>1/3</sup> (q<sub>u</sub> &le; 10,000 kPa) [구조물기초설계기준 해설 (2018)]</div>` +
+                     `<div>2) Q<sub>up</sub> = q<sub>u</sub> &times; (N<sub>&phi;</sub> + 1) &times; A<sub>p</sub> [Goodman 제안식 (도로교 설계기준 해설)]</div>` +
+                     `</div>`;
         } else {
             if (method === 'driven') {
                 qpText = "q<sub>p</sub> = 300 &times; N (N &le; 60) [항타공법 표준식]";
@@ -1047,7 +1049,7 @@ export function initPileModule(container) {
 
             qp_detail_html = `
                 • <strong>기반암 선단지지력 계산용 기호 설명:</strong><br>
-                &nbsp;&nbsp;- q<sub>u</sub> : ■ 지층 정보 기반암 지층의 일축압축강도 = <strong>${formatComma(qu_tip, 1)} kPa</strong> (구조물기초기준 적용시 상한 10,000 kPa 제한 &rArr; <strong>${formatComma(qu_eff, 1)} kPa</strong>)<br>
+                &nbsp;&nbsp;- q<sub>u</sub> : 기반암 지층의 일축압축강도 = <strong>${formatComma(qu_tip, 1)} kPa</strong> (구조물기초기준 적용시 상한 10,000 kPa 제한 &rArr; <strong>${formatComma(qu_eff, 1)} kPa</strong>)<br>
                 &nbsp;&nbsp;- &phi; : 기반암 내부마찰각 = <strong>${phi_tip.toFixed(1)}&deg;</strong><br>
                 &nbsp;&nbsp;- A<sub>p</sub> : 말뚝 선단 전체면적 = ${frac("&pi; &times; D<sub>out</sub>²", "4")} = <strong>${Ap.toFixed(5)} m²</strong><br>
                 &nbsp;&nbsp;- A<sub>t</sub> : 말뚝 실효 단면적 = ${frac("&pi; &times; (D<sub>out</sub>² - D<sub>in</sub>²)", "4")} = <strong>${At.toFixed(5)} m²</strong><br>
