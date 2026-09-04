@@ -1131,7 +1131,7 @@ export function initCastPileModule(container) {
 
             const gridM = [0, 5, 10, 15, 20, 25];
             let yGridM = gridM.map(m => `
-                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${padL_m+plotW_m}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
                 <text x="${padL_m-5}" y="${getPyM(m)+4}" font-size="10" text-anchor="end" fill="#555">${m}</text>
             `).join('');
 
