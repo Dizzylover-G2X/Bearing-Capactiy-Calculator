@@ -2209,8 +2209,8 @@ export function initCastPileModule(container) {
 
                     <div style="margin-top:10px; margin-left: 4px;">
                         &bull; <strong>말뚝 특성치 &eta; 및 &eta;L / &beta;L 판정 :</strong><br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 &eta; = <strong>${eta_norm.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_norm.toFixed(3)}</strong>, &beta;L = <strong>${(beta_norm*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${etaL_norm > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝'}</span><br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 &eta; = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_seis.toFixed(3)}</strong>, &beta;L = <strong>${(beta_seis*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${etaL_seis > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝'}</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;- 평상시 &eta; = <strong>${eta_norm.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_norm.toFixed(3)}</strong>, &beta;L = <strong>${(beta_norm*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${isSand ? (etaL_norm > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝(&eta;L &le; 4)') : ((beta_norm * L) >= 2.25 ? '긴말뚝(&beta;L &ge; 2.25)' : '짧은말뚝(&beta;L < 2.25)')}</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;- 지진시 &eta; = <strong>${eta_seis.toFixed(3)} m<sup>-1</sup></strong>, &eta;L = <strong>${etaL_seis.toFixed(3)}</strong>, &beta;L = <strong>${(beta_seis*L).toFixed(3)}</strong> &rArr; <span style="text-decoration:underline; font-weight:bold;">${isSand ? (etaL_seis > 4 ? '긴말뚝(&eta;L > 4)' : '짧은말뚝(&eta;L &le; 4)') : ((beta_seis * L) >= 2.25 ? '긴말뚝(&beta;L &ge; 2.25)' : '짧은말뚝(&beta;L < 2.25)')}</span>
                     </div>
                 </div>
             </div>
