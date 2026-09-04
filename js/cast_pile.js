@@ -1025,6 +1025,13 @@ export function initCastPileModule(container) {
             let u_mid = Math.max(0, (z_mid - gwt) * 9.807);
             let sigma_v_prime = Math.max(0, sigma_v_mid - u_mid);
 
+            let total_str = cum_sigma_v > 0 
+                ? `${cum_sigma_v.toFixed(1)} + (${gamma_i.toFixed(1)}&times;${(0.5*dz_i).toFixed(2)}) = ${sigma_v_mid.toFixed(1)}` 
+                : `${gamma_i.toFixed(1)}&times;${(0.5*dz_i).toFixed(2)} = ${sigma_v_mid.toFixed(1)}`;
+            let u_str = z_mid > gwt 
+                ? `(${z_mid.toFixed(2)} - ${gwt.toFixed(1)})&times;9.81 = ${u_mid.toFixed(1)}` 
+                : `0.0`;
+
             if (l.type === 'rock' && p_type === 'CAST_ROCK') {
                 let P_a = 0.101; 
                 let qu_MPa = qu_val_i / 1000.0; 
@@ -1047,8 +1054,10 @@ export function initCastPileModule(container) {
                     let condStr = N_60 >= 15 ? `N<sub>60</sub> &ge; 15` : `N<sub>60</sub> &lt; 15`;
                     let formulaBase = N_60 >= 15 ? `1.5 - (7.7&times;10<sup>-3</sup>&radic;z)` : `(N<sub>60</sub> / 15) &times; [1.5 - (7.7&times;10<sup>-3</sup>&radic;z)]`;
 
-                    formula_str = `&bull; 유효응력 <i>&sigma;'<sub>v</sub></i> = <i>&sigma;<sub>v</sub></i>(${sigma_v_mid.toFixed(1)}) - u(${u_mid.toFixed(1)}) = <strong>${sigma_v_prime.toFixed(1)} kPa</strong><br>` +
-                                  `&bull; <i>&beta;</i> = ${formulaBase} (${condStr}, z=${z_mm.toFixed(0)}mm) &rarr; <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
+                    formula_str = `&bull; 전응력 &sigma;<sub>v</sub> = ${total_str} kPa<br>` +
+                                  `&bull; 간극수압 u = ${u_str} kPa<br>` +
+                                  `&bull; 유효응력 &sigma;'<sub>v</sub> = ${sigma_v_mid.toFixed(1)} - ${u_mid.toFixed(1)} = <strong>${sigma_v_prime.toFixed(1)} kPa</strong><br>` +
+                                  `&bull; <i>&beta;</i> = ${formulaBase} (${condStr}) &rarr; <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
                                   `&bull; q<sub>s</sub> = min(190 kPa, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else if (l.type === 'gravel') {
                     let z_mm = z_mid * 1000.0;
@@ -1057,7 +1066,9 @@ export function initCastPileModule(container) {
                     let calc_val = beta_clamped * sigma_v_prime;
                     f_unit = Math.min(190.0, calc_val);
 
-                    formula_str = `&bull; 유효응력 <i>&sigma;'<sub>v</sub></i> = <i>&sigma;<sub>v</sub></i>(${sigma_v_mid.toFixed(1)}) - u(${u_mid.toFixed(1)}) = <strong>${sigma_v_prime.toFixed(1)} kPa</strong><br>` +
+                    formula_str = `&bull; 전응력 &sigma;<sub>v</sub> = ${total_str} kPa<br>` +
+                                  `&bull; 간극수압 u = ${u_str} kPa<br>` +
+                                  `&bull; 유효응력 &sigma;'<sub>v</sub> = ${sigma_v_mid.toFixed(1)} - ${u_mid.toFixed(1)} = <strong>${sigma_v_prime.toFixed(1)} kPa</strong><br>` +
                                   `&bull; <i>&beta;</i> = 2.0 - 0.00082(z)<sup>0.75</sup> &rarr; <i>&beta;</i> = ${beta_clamped.toFixed(3)}<br>` +
                                   `&bull; q<sub>s</sub> = min(190 kPa, <i>&beta;</i>&middot;<i>&sigma;'<sub>v</sub></i>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 } else {
@@ -1081,7 +1092,9 @@ export function initCastPileModule(container) {
                         ? `0.55 (S<sub>u</sub>/P<sub>a</sub> &le; 1.5)` 
                         : `0.55 - 0.1(S<sub>u</sub>/P<sub>a</sub> - 1.5) = ${alpha_clay.toFixed(3)}`;
 
-                    formula_str = `&bull; S<sub>u</sub> = ${Su.toFixed(1)} kPa, S<sub>u</sub>/P<sub>a</sub> = ${ratio_su_pa.toFixed(2)} (P<sub>a</sub> = 101 kPa)<br>` +
+                    formula_str = `&bull; 전응력 &sigma;<sub>v</sub> = ${total_str} kPa, 간극수압 u = ${u_str} kPa<br>` +
+                                  `&bull; 유효응력 &sigma;'<sub>v</sub> = ${sigma_v_mid.toFixed(1)} - ${u_mid.toFixed(1)} = ${sigma_v_prime.toFixed(1)} kPa<br>` +
+                                  `&bull; S<sub>u</sub> = ${Su.toFixed(1)} kPa, S<sub>u</sub>/P<sub>a</sub> = ${ratio_su_pa.toFixed(2)} (P<sub>a</sub> = 101 kPa)<br>` +
                                   `&bull; 부착력계수 &alpha; = ${alpha_formula_str}<br>` +
                                   `&bull; q<sub>s</sub> = min(190, &alpha;&middot;S<sub>u</sub>) = <strong>${f_unit.toFixed(1)} kN/m²</strong>`;
                 }
@@ -1118,7 +1131,7 @@ export function initCastPileModule(container) {
 
             const gridM = [0, 5, 10, 15, 20, 25];
             let yGridM = gridM.map(m => `
-                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${padL_m+plotW_m}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
                 <text x="${padL_m-5}" y="${getPyM(m)+4}" font-size="10" text-anchor="end" fill="#555">${m}</text>
             `).join('');
 
@@ -1729,16 +1742,17 @@ export function initCastPileModule(container) {
             settlementHtmlStr = `
                 <div class="section-title">[검증 3] 현장타설말뚝(암반소켓) 연직침하량 산정 (Pells & Turner, 1979)</div>
                 <div class="calc-step" style="background-color: #fcfcfc; padding: 12px; border: 1px solid #d5d8dc; border-radius: 4px; margin-bottom: 15px; line-height: 1.6;">
-                    <strong>■ 암반소켓 침하량 영향계수 (I<sub>ps</sub>) 산출</strong><br>
-                    &nbsp;&nbsp;- 콘크리트 강도 조건: <strong>${conc_str_detail}</strong><br>
-                    &nbsp;&nbsp;- 콘크리트 탄성계수 (E<sub>c</sub> = E<sub>p</sub>) : <strong>${formatComma(Math.round(E_c))} kPa</strong> (수평 해석 입력 E<sub>p</sub> 적용)<br>
-                    &nbsp;&nbsp;- 암반 변형계수 (E<sub>m</sub>) : <strong>${formatComma(Math.round(E_m))} kPa</strong><br>
-                    &nbsp;&nbsp;- 강성비 (${frac("E<sub>c</sub>", "E<sub>m</sub>")}) : ${frac(formatComma(Math.round(E_c)), formatComma(Math.round(E_m)))} = <strong>${ec_em.toFixed(2)}</strong><br>
-                    &nbsp;&nbsp;- 근입비 (${frac("D<sub>r</sub>", "B<sub>r</sub>")}) : ${frac(D_r.toFixed(2), B_r.toFixed(2))} = <strong>${dr_br.toFixed(2)}</strong><br>
-                    &nbsp;&nbsp;▶ 그래프 보간 산출 영향계수 (I<sub>ps</sub>) = <span style="font-weight:bold; color:#003399; font-size:1.1em;">${I_ps.toFixed(3)}</span><br>
+                    <strong>▶ 그래프 보간 산출 영향계수 (I<sub>ps</sub>) = <span style="font-weight:bold; color:#003399; font-size:1.1em;">${I_ps.toFixed(3)}</span></strong><br>
+                    <div style="margin-top: 6px; line-height: 1.6; font-size: 0.9em; color: #2c3e50;">
+                        &bull; 콘크리트 강도 조건: <strong>${conc_str_detail}</strong><br>
+                        &bull; 콘크리트 탄성계수 (E<sub>c</sub> = E<sub>p</sub>) : <strong>${formatComma(Math.round(E_c))} kPa</strong> (수평 해석 입력 E<sub>p</sub> 적용)<br>
+                        &bull; 암반 변형계수 (E<sub>m</sub>) : <strong>${formatComma(Math.round(E_m))} kPa</strong><br>
+                        &bull; 강성비 (${frac("E<sub>c</sub>", "E<sub>m</sub>")}) : ${frac(formatComma(Math.round(E_c)), formatComma(Math.round(E_m)))} = <strong>${ec_em.toFixed(2)}</strong><br>
+                        &bull; 근입비 (${frac("D<sub>r</sub>", "B<sub>r</sub>")}) : ${frac(D_r.toFixed(2), B_r.toFixed(2))} = <strong>${dr_br.toFixed(2)}</strong>
+                    </div>
                     
                     <div style="text-align:center; margin: 15px 0;">
-                        <svg width="${svgWidth}" height="${svgHeight}" style="background:white; border:2px solid #555; border-radius:2px; box-shadow: 2px 2px 5px rgba(0,0,0,0.15);">
+                        <svg width="${svgWidth}" height="${svgHeight}" style="background:white; border:1px solid #555; border-radius:2px;">
                             <defs>
                                 <radialGradient id="redSphereGrad" cx="35%" cy="35%" r="65%">
                                     <stop offset="0%" stop-color="#ff9999"/>
@@ -1756,21 +1770,9 @@ export function initCastPileModule(container) {
                             <text x="${padX-35}" y="${padY + plotH/2}" transform="rotate(-90 ${padX-35},${padY + plotH/2})" font-size="14" font-weight="bold" fill="#111" text-anchor="middle">Ips</text>
                             <text x="${padX + plotW/2}" y="${svgHeight - 10}" font-size="13" font-weight="bold" fill="#111" text-anchor="middle">Dr / Br</text>
                             
-                            <text x="${padX + plotW - 65}" y="${padY + 18}" font-size="11" font-style="italic" fill="#333">&nu;<sub>m</sub> = 0.25</text>
-                            
-                            <g transform="translate(${padX + plotW - 90}, ${padY + 30}) scale(0.65)">
-                                <line x1="30" y1="5" x2="30" y2="22" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
-                                <text x="35" y="15" font-size="14" font-weight="bold">Q</text>
-                                <rect x="15" y="22" width="30" height="35" fill="#e0e0e0" stroke="#000" stroke-width="1.5"/>
-                                <line x1="0" y1="22" x2="60" y2="22" stroke="#000" stroke-width="2"/>
-                                <text x="22" y="36" font-size="10">E<sub>c</sub></text>
-                                <text x="22" y="50" font-size="10">B<sub>r</sub></text>
-                                <text x="-2" y="40" font-size="10">E<sub>m</sub></text>
-                                <text x="52" y="40" font-size="10">D<sub>r</sub></text>
-                            </g>
-
-                            <circle cx="${ptX}" cy="${ptY}" r="7.5" fill="url(#redSphereGrad)" filter="url(#dropShadow)"/>
-                            <text x="${ptX}" y="${ptY - 12}" font-size="13" font-weight="bold" fill="#003399" text-anchor="middle" filter="url(#dropShadow)">${I_ps.toFixed(3)}</text>
+                            <circle cx="${ptX}" cy="${ptY}" r="7" fill="url(#redSphereGrad)" filter="url(#dropShadow)"/>
+                            <rect x="${ptX - 25}" y="${ptY - 22}" width="50" height="18" fill="#ffffff" fill-opacity="0.9" rx="3" stroke="#e74c3c" stroke-width="1"/>
+                            <text x="${ptX}" y="${ptY - 9}" font-size="12" font-weight="bold" fill="#003399" text-anchor="middle">${I_ps.toFixed(3)}</text>
                         </svg>
                     </div>
                 </div>
