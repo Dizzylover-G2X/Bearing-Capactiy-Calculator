@@ -624,7 +624,6 @@ export function initCastPileModule(container) {
         { ratio: 1.000, alpha: 1.000 }
     ];
 
-    // RMR 구간 시작점 하한값 기준 보간 함수 (수정됨: RMR 85 이상 무결암 보간 정상화)
     function interpolateHoekBrown(rmrVal, miVal) {
         if (rmrVal <= 0) return { m: HB_TABLE_DATA[0].m[miVal], s: HB_TABLE_DATA[0].s, r1: 0, r2: 3 };
         if (rmrVal >= 85) return { m: HB_TABLE_DATA[5].m[miVal], s: HB_TABLE_DATA[5].s, r1: 85, r2: 100 };
@@ -1090,7 +1089,7 @@ export function initCastPileModule(container) {
 
             const gridM = [0, 5, 10, 15, 20, 25];
             let yGridM = gridM.map(m => `
-                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${getPyM(m)}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
+                <line x1="${padL_m}" y1="${getPyM(m)}" x2="${padL_m+plotW_m}" y2="${padL_m+plotW_m}" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="3,3"/>
                 <text x="${padL_m-5}" y="${getPyM(m)+4}" font-size="10" text-anchor="end" fill="#555">${m}</text>
             `).join('');
 
@@ -1357,7 +1356,9 @@ export function initCastPileModule(container) {
         const Ast = user_rebar_count * Ab_single; 
         const Ac_net = Math.max(0, Ac_gross - Ast); 
         const fca_kNm2 = Math.min(0.25 * fck_eff, 8.5) * 1000.0; 
-        const fsa_rebar_kNm2 = 0.40 * user_rebar_fy_MPa * 1000.0; 
+        
+        const fsa_rebar_MPa = 0.40 * user_rebar_fy_MPa;
+        const fsa_rebar_kNm2 = fsa_rebar_MPa * 1000.0; 
         const Q_mat_base = (fca_kNm2 * Ac_net) + (fsa_rebar_kNm2 * Ast); 
 
         const L_over_D = L / D;
@@ -1373,10 +1374,13 @@ export function initCastPileModule(container) {
             • <strong>현장타설말뚝 장기허용압축강도 산정 :</strong><br>
             &nbsp;&nbsp;- 콘크리트 강도 조건: <strong>${conc_str_detail}</strong><br>
             &nbsp;&nbsp;- 말뚝 단면적 (A) = ${frac("&pi; &times; D²", "4")} = <strong>${Ac_gross.toFixed(4)} m²</strong><br>
-            &nbsp;&nbsp;- 보강철근 단면적 (A<sub>st</sub>) = n &times; A<sub>b</sub> = <strong>${Ast.toFixed(6)} m²</strong><br>
+            &nbsp;&nbsp;- 보강철근 단면적 (A<sub>st</sub>) = n &times; A<sub>b</sub> = <strong>${Ast.toFixed(6)} m²</strong> (D${Math.round(user_rebar_d_mm)} &times; ${user_rebar_count}개)<br>
             &nbsp;&nbsp;- 콘크리트 순단면적 (A<sub>c</sub>) = A - A<sub>st</sub> = <strong>${Ac_net.toFixed(4)} m²</strong><br>
-            &nbsp;&nbsp;- 콘크리트 허용압축강도 (f<sub>ca</sub>) = min(0.25 &times; ${fck_eff.toFixed(1)}, 8.5 MPa) = <strong>${formatComma(fca_kNm2)} kN/m²</strong><br>
-            &nbsp;&nbsp;- 총 기본 허용압축하중 (Q<sub>mat_base</sub>) = <strong>${formatComma(Q_mat_base, 1)} kN</strong>
+            &nbsp;&nbsp;- 콘크리트 허용압축강도 (f<sub>ca</sub>) = min(0.25 &times; ${fck_eff.toFixed(1)}, 8.5 MPa) = <strong>${(fca_kNm2 / 1000.0).toFixed(2)} MPa</strong> (${formatComma(fca_kNm2)} kN/m²)<br>
+            &nbsp;&nbsp;- 철근 항복강도 (f<sub>y</sub>) = <strong>${user_rebar_fy_MPa} MPa</strong> (SD${user_rebar_fy_MPa})<br>
+            &nbsp;&nbsp;- 철근 허용압축강도 (f<sub>sa</sub>) = 0.40 &times; f<sub>y</sub> = 0.40 &times; ${user_rebar_fy_MPa} = <strong>${fsa_rebar_MPa.toFixed(1)} MPa</strong> (${formatComma(fsa_rebar_kNm2)} kN/m²)<br>
+            &nbsp;&nbsp;- 총 기본 허용압축하중 (Q<sub>mat_base</sub>) = f<sub>ca</sub>&middot;A<sub>c</sub> + f<sub>sa</sub>&middot;A<sub>st</sub><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;= (${formatComma(fca_kNm2)} &times; ${Ac_net.toFixed(4)}) + (${formatComma(fsa_rebar_kNm2)} &times; ${Ast.toFixed(6)}) = <strong>${formatComma(Q_mat_base, 1)} kN</strong>
         `;
 
         const Ip_cm4 = (Math.PI * Math.pow(D, 4)) / 64.0 * 1.0e8;
@@ -1807,7 +1811,7 @@ export function initCastPileModule(container) {
                             <td style="font-weight:bold; color:#d35400;">${disp_seis_mm.toFixed(2)} mm</td>
                             <td>${allow_h_disp_seis.toFixed(1)} mm</td>
                             <td style="font-size:0.85em;">Chang 탄성지반반력법</td>
-                            <td style="font-weight:bold; color:${disp_seis_mm <= allow_h_disp_seis ? '#27ae60' : '#c0392b'};">${disp_seis_mm <= allow_h_disp_seis ? 'O.K' : 'N.G'} (${ratio_disp_seis.toFixed(1)}%)</td>
+                            <td style="font-weight:bold; color:${disp_seis_mm <= allow_h_disp_seis ? '#27ae60' : '#c0392b'};">${disp_seis_mm <= allow_h_disp_seis ? 'O.K' : 'N.G'} (${ratio_seis.toFixed(1)}%)</td>
                         </tr>
                     </tbody>
                 </table>
